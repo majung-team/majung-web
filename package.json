@@ -1,4 +1,19 @@
 {
+  "name": "majung-web",
   "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "lint:commit": "commitlint",
+    "test": "node --test model.test.js",
+    "start": "node dev-server.mjs"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "husky": "9.1.7"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module"
 }
