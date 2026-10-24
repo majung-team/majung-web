@@ -1,0 +1,2 @@
+# /etc/caddy/majung.env. Domain only; no API/administrator credentials here.
+MAJUNG_DOMAIN=your-domain.example

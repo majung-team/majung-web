@@ -1,6 +1,7 @@
 import { request, ApiError } from "./api.js";
 import {
   parseInvitation,
+  parseHostInvitation,
   validSession,
   invitationUrl,
   nextSequence,
@@ -13,16 +14,22 @@ import {
 const root = document.querySelector("#app");
 const storageKey = "majung.pickup.session.v1";
 let invitation = parseInvitation(location.hash);
+const hostInvitation = parseHostInvitation(location.hash);
 const invalidInvitation = Boolean(
-  location.hash.startsWith("#join") && !invitation,
+  (location.hash.startsWith("#join") || location.hash.startsWith("#share")) && !invitation && !hostInvitation,
 );
+// A second invitation opened in the same tab is a new session entry point.
+// Reload with its fragment intact so a previous request/session cannot handle it.
+window.addEventListener("hashchange", () => {
+  if (location.hash.startsWith("#join") || location.hash.startsWith("#share")) location.reload();
+});
 // Remove the fragment before loading or requesting anything else.
 if (location.hash) history.replaceState(null, "", location.pathname);
 let session = null;
 let storageAvailable = true;
 try {
   const restored = JSON.parse(sessionStorage.getItem(storageKey) || "null");
-  if (!invitation && validSession(restored)) session = restored;
+  if (!invitation && !hostInvitation && !invalidInvitation && validSession(restored)) session = restored;
 } catch {
   storageAvailable = false;
 }
@@ -96,6 +103,14 @@ function home() {
     <p>운전자에게 받은 링크를 열어주세요.<br />참여 요청을 확인한 뒤 위치 공유가 시작돼요.</p></section>
     ${developmentToolsEnabled ? `<section class="dev-card"><h2>운전자 확인 화면</h2><p>차량 없이 API를 확인하는 개발용 화면이에요.<br />이 브라우저에서 약속을 만들고 탑승자 참여를 확인할 수 있어요.</p>
     ${button("픽업 준비하기", "prepare", true)}</section>` : ""}`;
+}
+
+function hostShare() {
+  const url = invitationUrl(location.origin, hostInvitation.pickupId, hostInvitation.inviteToken);
+  return `<section class="intro small"><p class="eyebrow">운전자 · 초대 전달</p><h1>이 링크를<br />탑승자에게 보내주세요.</h1><p>이 화면에서는 픽업에 참여하지 않아요.<br />탑승자가 링크를 열고 참여하면 차량에서 확인해주세요.</p></section>
+    <section class="card">${button("카카오톡 등으로 초대 보내기", "share-passenger-invite")}${button("초대 링크 복사", "copy-passenger-invite", true)}
+    ${manualLink ? `<label>초대 링크<input readonly value="${e(url)}" aria-label="탑승자 초대 링크" /></label>` : ""}
+    <p class="hint">링크는 초대한 사람에게만 보내주세요. 새로고침하면 차량 QR을 다시 스캔해야 해요. 만료된 초대는 차량에서 다시 만들어주세요.</p></section>`;
 }
 
 function createForm() {
@@ -185,7 +200,9 @@ function guest() {
     <div class="arrival" id="arrival-info">${
       !online
         ? "<h2>연결을 확인하고 있어요.</h2><p>지난 위치와 도착 시간을 숨겼어요.<br />연결이 돌아오면 다시 확인할게요.</p>"
-        : current
+        : status === "ARRIVED"
+          ? "<h2>약속 장소에 도착했어요.</h2><p>탑승한 뒤 운전자에게 픽업 완료를 확인해주세요.</p>"
+          : current
           ? `<span>도착까지</span><strong>약 ${eta}<small>분</small></strong><p>차량 정보 수신 시각 ${e(new Date(current.receivedAt).toLocaleTimeString("ko-KR"))}</p><div class="coordinates">차량 위치 · 위도 ${e(current.latitude.toFixed(5))}<br />경도 ${e(current.longitude.toFixed(5))}</div>`
           : `<h2>${vehicle?.freshness === "WAITING" ? "차량 정보를 기다리고 있어요." : "최신 정보를 확인하고 있어요."}</h2><p>${vehicle?.freshness === "WAITING" ? "차량에서 정보를 보내면<br />도착 예정 시간을 확인할 수 있어요." : "지난 위치와 도착 시간은 표시하지 않아요."}</p>`
     }</div>
@@ -211,6 +228,7 @@ function render() {
   else if (session && !snapshot)
     content = `<section class="card"><h1>${online ? "약속을 확인하고 있어요." : "약속에 연결하고 있어요."}</h1><p>잠시 후 다시 확인해주세요.</p>${button("다시 확인", "refresh", true)}${button("이 탭에서 나가기", "leave", true)}</section>`;
   else if (session) content = session.role === "driver" ? driver() : guest();
+  else if (hostInvitation) content = hostShare();
   else
     content =
       page === "create" ? createForm() : page === "join" ? joinForm() : home();
@@ -429,6 +447,25 @@ root.addEventListener("click", async (event) => {
   }
   if (action === "refresh") {
     await refresh();
+    return;
+  }
+  if (["share-passenger-invite", "copy-passenger-invite"].includes(action) && hostInvitation) {
+    const url = invitationUrl(location.origin, hostInvitation.pickupId, hostInvitation.inviteToken);
+    try {
+      if (action === "share-passenger-invite" && navigator.share) {
+        await navigator.share({title: "마중 픽업 초대", text: "이 링크에서 픽업에 참여해주세요.", url});
+        notice = "초대 공유 창을 닫았어요.";
+      } else {
+        await navigator.clipboard.writeText(url);
+        notice = "탑승자에게 보낼 초대 링크를 복사했어요.";
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        manualLink = true;
+        notice = "아래 링크를 직접 복사해주세요.";
+      }
+    }
+    render();
     return;
   }
   if (action === "copy-invite") {
