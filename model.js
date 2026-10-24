@@ -15,6 +15,11 @@ export function parseInvitation(hash) {
   return { pickupId: parts[1], inviteToken: parts[2] };
 }
 
+export function parseHostInvitation(hash) {
+  if (!hash.startsWith("#share/")) return null;
+  return parseInvitation(hash.replace(/^#share\//, "#join/"));
+}
+
 export function validSession(value) {
   return Boolean(
     value &&

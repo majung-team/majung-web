@@ -1,0 +1,15 @@
+{
+  "origin": "https://majung.cloud",
+  "homepageStatus": 200,
+  "configurationStatus": 200,
+  "developmentToolsDisabled": true,
+  "cspPresent": true,
+  "noStore": true,
+  "adminBlocked": true,
+  "encodedAdminBlocked": true,
+  "anonymousCreationBlocked": true,
+  "oversizedBodyStatus": 413,
+  "certificateVerified": true,
+  "certificateNotAfter": "Jan 22 08:37:02 2027 GMT",
+  "oversizedChunkedBodyStatus": 413
+}

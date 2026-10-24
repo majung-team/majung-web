@@ -1,0 +1,47 @@
+{$MAJUNG_DOMAIN} {
+    encode zstd gzip
+    request_body {
+        max_size 16KB
+    }
+    header {
+        Cache-Control "no-store"
+        Referrer-Policy "no-referrer"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+    @oversized expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 16384`
+    handle @oversized {
+        header Content-Type application/json
+        respond `{ "code": "PAYLOAD_TOO_LARGE", "message": "요청 크기를 줄여주세요." }` 413
+    }
+    @admin path /api/v1/admin /api/v1/admin/*
+    handle @admin {
+        respond 404
+    }
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8080 {
+            transport http {
+                dial_timeout 3s
+                response_header_timeout 10s
+            }
+        }
+    }
+    handle {
+        root * /srv/majung/web
+        file_server
+    }
+    handle_errors {
+        @largeBody expression `{http.error.status_code} == 413 || {http.error.message}.contains("request body too large")`
+        handle @largeBody {
+            header Content-Type application/json
+            respond `{ "code": "PAYLOAD_TOO_LARGE", "message": "요청 크기를 줄여주세요." }` 413
+        }
+        handle {
+            header Content-Type application/json
+            respond `{ "code": "REQUEST_FAILED", "message": "요청을 처리하지 못했어요. 잠시 후 다시 확인해주세요.", "requestId": "{http.error.id}" }` {http.error.status_code}
+        }
+    }
+}

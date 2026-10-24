@@ -80,3 +80,13 @@ test("준비 상태 순서와 사용자 입력 이스케이프", () => {
     "&lt;img onerror=&quot;x&quot;&gt;&amp;",
   );
 });
+
+import { parseHostInvitation } from "./model.js";
+test("운전자 공유 주소와 탑승자 참여 주소는 구분한다", () => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  const token = "A".repeat(43);
+  assert.equal(parseInvitation(`#share/${id}/${token}`), null);
+  assert.equal(parseHostInvitation(`#join/${id}/${token}`), null);
+  assert.deepEqual(parseHostInvitation(`#share/${id}/${token}`), {pickupId: id, inviteToken: token});
+  assert.equal(parseHostInvitation(`#share/${id}/short`), null);
+});
