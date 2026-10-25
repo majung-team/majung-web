@@ -10,12 +10,13 @@ const root = dirname(fileURLToPath(import.meta.url));
 const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ...['app.js', 'api.js', 'model.js', 'account.js', 'account-api.js'].map(f => ['/' + f, [f, 'text/javascript; charset=utf-8']]),
-  ['/account.html', ['account.html', 'text/html; charset=utf-8']],
+  ['/account', ['account.html', 'text/html; charset=utf-8']],
   ['/account.css', ['account.css', 'text/css; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
 ]);
 const server = http.createServer(async (req, res) => {
-  const path = new URL(req.url, 'http://localhost').pathname;
+  const url = new URL(req.url, 'http://localhost');
+  const path = url.pathname;
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -32,6 +33,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405); res.end(); return; }
+  if (path === '/account.html' || path === '/account/') {
+    res.writeHead(308, {Location: '/account' + url.search});
+    res.end(); return;
+  }
   const file = files.get(path);
   if (!file) { res.writeHead(404); res.end(); return; }
   try {
