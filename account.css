@@ -1,0 +1,26 @@
+.account-home {color:var(--ink, #173c35);font-size:.9rem;text-decoration:none;border-bottom:1px solid #b9cec4;padding-bottom:4px}
+.account-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.account-heading h1 {font-size:clamp(2rem,6vw,3.4rem);overflow-wrap:anywhere}
+.account-heading .quiet {width:auto;white-space:nowrap;margin-top:20px}
+.account-steps {padding-left:24px;line-height:2.1;color:#526b63;margin-bottom:24px}
+.kakao-login {display:block;text-align:center;border-radius:12px;background:#fee500;color:#191919;padding:18px 24px;text-decoration:none;font-weight:700;margin-bottom:12px}
+.person-list {list-style:none;margin:20px 0 0;padding:0}
+.person-row {border-top:1px solid #dbe4dc;padding:20px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.person-row:last-child {padding-bottom:0}
+.person-name {flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
+.person-name strong {font-size:1.05rem}
+.majung-id {font-size:.85rem;color:#5c746b;font-variant-numeric:tabular-nums;letter-spacing:.03em}
+.connection-state {font-size:.8rem;background:#edf3e9;color:#35645a;padding:6px 10px;border-radius:8px}
+.row-actions {display:flex;gap:8px;width:100%;flex-wrap:wrap;margin-top:8px}
+.person-row button,.row-actions button {width:auto;min-height:46px;padding:12px 18px;font-size:.9rem;margin:0}
+.person-row>.primary {margin:0}
+.section-heading {display:flex;align-items:center;justify-content:space-between;gap:12px}
+.section-heading h2 {margin:0}
+.section-heading button {width:auto;padding:12px 16px;font-size:.85rem;margin:0}
+.pager {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:24px}
+.pager button {width:auto;font-size:.9rem;padding:10px 18px;margin:0}
+.pager span {font-size:.85rem;color:#5c746b}
+.empty-account {padding:24px 0;color:#5c746b;line-height:1.7}
+.confirmation {border:2px solid #b38a27}
+button:focus-visible,a:focus-visible,input:focus-visible {outline:3px solid #a98220;outline-offset:4px}
+@media (max-width:500px) {.account-heading{gap:12px}.account-heading .quiet{font-size:.8rem;padding:12px}.section-heading{align-items:flex-start}.section-heading button{white-space:nowrap}.person-row>.primary{width:100%}}
