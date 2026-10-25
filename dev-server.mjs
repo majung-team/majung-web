@@ -9,7 +9,9 @@ if (![apiPort, webPort].every(p => Number.isInteger(p) && p > 0 && p < 65536)) t
 const root = dirname(fileURLToPath(import.meta.url));
 const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
-  ...['app.js', 'api.js', 'model.js'].map(f => ['/' + f, [f, 'text/javascript; charset=utf-8']]),
+  ...['app.js', 'api.js', 'model.js', 'account.js', 'account-api.js'].map(f => ['/' + f, [f, 'text/javascript; charset=utf-8']]),
+  ['/account.html', ['account.html', 'text/html; charset=utf-8']],
+  ['/account.css', ['account.css', 'text/css; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
 ]);
 const server = http.createServer(async (req, res) => {
