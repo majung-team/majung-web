@@ -29,6 +29,17 @@
             }
         }
     }
+    @legacyAccount path /account.html /account/
+    handle @legacyAccount {
+        @accountQuery expression `{http.request.uri.query} != ""`
+        redir @accountQuery /account?{http.request.uri.query} 308
+        redir * /account 308
+    }
+    handle /account {
+        root * /srv/majung/web
+        rewrite * /account.html
+        file_server
+    }
     handle {
         root * /srv/majung/web
         file_server
