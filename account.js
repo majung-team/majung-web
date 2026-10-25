@@ -25,9 +25,11 @@ let tracking = new Map();
 let linkedVehicles = [];
 let vehicleRequest = null;
 let vehiclePair = null;
+let pairingGeneration = 0;
 function readVehiclePair() {
   const match=/^#vehicle\/([a-f0-9-]{36})\/([A-Za-z0-9_-]{43})$/.exec(location.hash);
   if (match) {
+    pairingGeneration++;
     vehiclePair={challengeId:match[1],code:match[2],until:Date.now()+300000}; vehicleRequest=null;
     try { sessionStorage.setItem("majung.vehiclePair",JSON.stringify(vehiclePair)); sessionStorage.removeItem("majung.vehicleRequest"); } catch { }
   } else {
@@ -43,6 +45,7 @@ function readVehiclePair() {
 readVehiclePair();
 window.addEventListener("hashchange",()=>{ if (!location.hash.startsWith("#vehicle/")) return; readVehiclePair(); if (!busy) run(refresh); });
 function clearVehiclePair() {
+  pairingGeneration++;
   vehiclePair=null; vehicleRequest=null;
   try { sessionStorage.removeItem("majung.vehiclePair"); sessionStorage.removeItem("majung.vehicleRequest"); } catch { }
 }
@@ -121,10 +124,12 @@ async function refresh() {
       catch (failure) { if (![403,404,410].includes(failure.status)) throw failure; }
     }
     if (vehicleRequest) {
+      const generation=pairingGeneration;
       try {
         const state=await api(`/vehicle-links/requests/${vehicleRequest.challengeId}`);
+        if (generation!==pairingGeneration) return;
         if (state.status==="LINKED") { clearVehiclePair(); notice="차량 연결을 마쳤어요."; linkedVehicles=await api("/vehicle-links"); }
-      } catch (failure) { if ([404,410].includes(failure.status)) clearVehiclePair(); else throw failure; }
+      } catch (failure) { if ([404,410].includes(failure.status)) { if (generation===pairingGeneration) clearVehiclePair(); } else throw failure; }
     }
   } else { connections = []; results = []; searchDone = false; pendingAction = null; }
 }
@@ -195,7 +200,10 @@ root.addEventListener("click", event => {
       await api(`/ride-requests/${target.dataset.id}/readiness`,{method:"PUT",body:{readiness:action==="ride-ready"?"READY":"PREPARING",sequence:current.pickup.participant.readinessSequence+1}}); await refresh();
     } else if (action === "vehicle-claim") {
       if (!vehiclePair || vehiclePair.until<=Date.now()) { clearVehiclePair(); throw new AccountError(410,"QR_EXPIRED","QR이 만료됐어요. 차량에서 다시 열어주세요."); }
-      vehicleRequest=await api("/vehicle-links/requests",{method:"POST",body:{challengeId:vehiclePair.challengeId,code:vehiclePair.code}});
+      const generation=pairingGeneration;
+      const claimed=await api("/vehicle-links/requests",{method:"POST",body:{challengeId:vehiclePair.challengeId,code:vehiclePair.code}});
+      if (generation!==pairingGeneration) return;
+      vehicleRequest=claimed;
       try { sessionStorage.removeItem("majung.vehiclePair"); sessionStorage.setItem("majung.vehicleRequest",JSON.stringify(vehicleRequest)); } catch { }
       vehiclePair=null; await refresh();
     } else if (action === "vehicle-dismiss") {
