@@ -19,3 +19,7 @@ backups/
 data/
 __pycache__/
 dist/
+
+# Temporary build output and OIDC credentials
+build/
+gha-creds-*.json
