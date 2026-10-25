@@ -35,7 +35,11 @@ function connectionRow(item) {
 function render() {
   root.setAttribute("aria-busy", String(busy));
   const alerts = `${error ? `<div class="alert" role="alert">${e(error)}</div>` : ""}${notice ? `<p class="notice" role="status">${e(notice)}</p>` : ""}`;
-  if (!info?.authenticated) {
+  if (info === null) {
+    root.innerHTML = `<section class="intro small"><p class="eyebrow">내 연결</p><h1>${busy ? "내 연결을 확인하고 있어요." : "내 연결을 불러오지 못했어요."}</h1><p>${busy ? "잠시만 기다려주세요." : "연결을 확인한 뒤 다시 불러와주세요."}</p></section>${alerts}${!busy ? button("다시 확인", "refresh", "", true) : ""}`;
+    return;
+  }
+  if (!info.authenticated) {
     root.innerHTML = `<section class="intro small"><p class="eyebrow">내 연결</p><h1>찾아두면,<br />다음 만남이 편해져요.</h1><p>닉네임으로 사람을 찾아 연결해두세요.<br />같은 닉네임은 마중 ID로 구분할 수 있어요.</p></section>${alerts}
       <section class="card"><h2>마중 시작하기</h2><ol class="account-steps"><li>카카오로 로그인해요.</li><li>마중에서 쓸 닉네임을 정해요.</li><li>상대를 찾아 연결 요청을 보내요.</li></ol>
       ${info?.loginEnabled ? '<a class="kakao-login" href="/api/v1/auth/login">카카오로 시작하기</a>' : '<p class="hint">로그인 기능을 준비하고 있어요. 받은 픽업 초대는 기존 링크에서 열 수 있어요.</p>'}
