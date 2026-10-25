@@ -24,3 +24,9 @@
 .confirmation {border:2px solid #b38a27}
 button:focus-visible,a:focus-visible,input:focus-visible {outline:3px solid #a98220;outline-offset:4px}
 @media (max-width:500px) {.account-heading{gap:12px}.account-heading .quiet{font-size:.8rem;padding:12px}.section-heading{align-items:flex-start}.section-heading button{white-space:nowrap}.person-row>.primary{width:100%}}
+
+.ride-row {display:block;padding:24px 0}
+.ride-row>.person-name {margin-bottom:12px}
+.ride-row>strong {display:inline-block;color:#225d51;background:#e9f1e8;border-radius:8px;padding:6px 10px;font-size:.88rem}
+.ride-row>p {margin:12px 0;line-height:1.75}
+.ride-row>button {margin:6px 8px 0 0}

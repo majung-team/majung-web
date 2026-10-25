@@ -9,7 +9,7 @@
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
         Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
-        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
         -Server
     }
     @oversized expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 16384`
