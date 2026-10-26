@@ -53,3 +53,5 @@ Node.js 22 이상에서 `npm ci`, `npm test`, `npm start`를 실행한다.
 차량 QR이나 기존 연결 없이 운전자를 검색해 장소와 함께 요청한다. 운전자는 여러 요청을 수락해 대기에 넣고 현재 픽업을 마친 뒤 차례대로 시작한다. [사용 방법과 현재 검증 범위](docs/account-connections.md)를 참고한다. 새 흐름의 공개 배포 상태는 PR 반영과 구분한다.
 
 차량에서 받은 초대의 수락·거절은 [직접 초대 안내](docs/direct-invitation.md)를 참고한다.
+
+[남은 시간 갱신과 SSE 검토](docs/eta-updates.md): 진행 중 계정 픽업의 3초 조회, 실패 후 이전 정보 숨김, SSE 인증·재연결 설계안.

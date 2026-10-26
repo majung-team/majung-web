@@ -75,7 +75,7 @@ function rideEtaText(current) {
 function rideSections() {
   const form=rideTarget?`<section class="card confirmation"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>지금 있는 위치에서 만나는 요청이에요. 차량 QR이나 기존 연결은 필요하지 않아요.</p>${button(ridePlace?"현재 위치 다시 선택":"현재 위치 선택","ride-location","",true)}<p class="hint">${ridePlace?`위치를 선택했어요 · 정확도 약 ${Math.ceil(ridePlace.accuracy)}m` : "위치 권한을 허용한 뒤 만날 장소 설명을 적어주세요."}</p><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><button class="primary" ${busy||!ridePlace?"disabled":""}>이 장소로 마중 요청</button></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
   const pair=vehiclePair||vehicleRequest?`<section class="card"><h2>내 계정과 차량 연결</h2><p>운전자 본인의 차량에서 연 QR인지 확인해주세요. 탑승자는 이 연결을 할 필요가 없어요.</p>${vehicleRequest?`<p>차량에서 ${e(info.member.nickname)} 님의 연결을 승인해주세요.</p>${button("연결 상태 확인","refresh","",true)}`:button("이 계정으로 차량 연결 요청","vehicle-claim")}${button("차량 연결 요청 닫기","vehicle-dismiss","",true)}</section>`:"";
-  return `${pair}<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>${form}<section class="card"><div class="section-heading"><h2>받은 초대와 내 마중 요청</h2>${button("새로 확인","refresh","",true)}</div><p class="hint">운전자가 보낸 초대를 여기서 수락하거나 거절할 수 있어요. 직접 운전자를 찾아 마중을 요청할 수도 있어요.</p><p class="hint">이 화면이 열려 있으면 10초마다 새로 확인해요. 웹을 닫은 동안에는 초대 알림이 오지 않아요.</p>${rides.length?`<ul class="person-list">${rides.map(rideRow).join("")}</ul>`:"<p>받은 초대나 보낸 마중 요청이 없어요.</p>"}</section>`;
+  return `${pair}<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>${form}<section class="card"><div class="section-heading"><h2>받은 초대와 내 마중 요청</h2>${button("새로 확인","refresh","",true)}</div><p class="hint">운전자가 보낸 초대를 여기서 수락하거나 거절할 수 있어요. 직접 운전자를 찾아 마중을 요청할 수도 있어요.</p><p class="hint">픽업 진행 중에는 약 3초마다, 그 외에는 약 10초마다 새로 확인해요. 웹을 닫은 동안에는 초대 알림이 오지 않아요.</p>${rides.length?`<ul class="person-list">${rides.map(rideRow).join("")}</ul>`:"<p>받은 초대나 보낸 마중 요청이 없어요.</p>"}</section>`;
 }
 const failedLogin = new URL(location.href).searchParams.get("login") === "failed";
 if (location.search) history.replaceState(null, "", location.pathname);
@@ -145,7 +145,7 @@ async function refresh() {
         if (state.status==="LINKED") { clearVehiclePair(); notice="차량 연결을 마쳤어요."; linkedVehicles=await api("/vehicle-links"); }
       } catch (failure) { if ([404,410].includes(failure.status)) { if (generation===pairingGeneration) clearVehiclePair(); } else throw failure; }
     }
-  } else { connections = []; results = []; searchDone = false; pendingAction = null; }
+  } else { connections = []; results = []; rides = []; tracking.clear(); linkedVehicles = []; searchDone = false; pendingAction = null; }
 }
 async function search() {
   results = await api(`/accounts/search?query=${encodeURIComponent(searchedQuery)}&page=${searchPage}`);
@@ -259,16 +259,31 @@ run(async () => {
 });
 
 // Pause while the user enters a form; mutations are never retried by polling.
+let nextRefreshAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) nextRefreshAt = 0;
+});
 setInterval(() => {
   if (document.hidden || busy || !info?.authenticated || rideTarget || root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") return;
+  if (performance.now() < nextRefreshAt) return;
   const visible=()=>JSON.stringify({member:info?.member,authenticated:info?.authenticated,connections,rides:rides.map(({_etaUntil,...item})=>item),linkedVehicles,vehicleRequest,tracking:[...tracking].map(([id,{deadline,timing,...data}])=>[id,data])});
-  const before=visible(); busy=true;
-  refresh().then(()=>{ busy=false; if (visible()!==before) render(); }).catch(failure=>{
+  const before=visible(); const previousError=error; busy=true;
+  refresh().then(()=>{
     busy=false;
-    if (failure.status===401) { info=null; rides=[]; tracking.clear(); linkedVehicles=[]; rideTarget=null; ridePlace=null; render(); }
-    else if (error!=="상태를 새로 확인하지 못했어요. 새로 확인을 눌러주세요.") { error="상태를 새로 확인하지 못했어요. 새로 확인을 눌러주세요."; render(); }
+    if (error === "상태를 새로 확인하지 못했어요. 새로 확인을 눌러주세요.") error="";
+    if (visible()!==before || error!==previousError) render();
+  }).catch(failure=>{
+    busy=false;
+    // A failed account read must not leave the previous vehicle position or countdown visible.
+    tracking.clear();
+    for (const ride of rides) ride.currentPickupRemainingSeconds=null;
+    if (failure.status===401) { info=null; rides=[]; linkedVehicles=[]; rideTarget=null; ridePlace=null; }
+    else error="상태를 새로 확인하지 못했어요. 새로 확인을 눌러주세요.";
+    render();
+  }).finally(()=>{
+    nextRefreshAt=performance.now()+(rides.some(ride=>ride.status==="ACTIVE")?3000:10000);
   });
-}, 10000);
+}, 1000);
 
 setInterval(()=>{
   let expired=false;
