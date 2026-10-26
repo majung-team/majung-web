@@ -307,6 +307,11 @@ input {
 .arrival.stale .coordinates {
   opacity: 0.45;
 }
+.push-card {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 16px;
+}
 .coordinates {
   font-size: 12px;
   line-height: 1.8;

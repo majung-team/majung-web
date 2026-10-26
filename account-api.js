@@ -11,7 +11,7 @@ export class AccountError extends Error {
 export function createAccountClient(fetcher = globalThis.fetch) {
   let csrfToken = null;
   return async function accountRequest(path, { method = "GET", body } = {}) {
-    if (!/^\/(auth\/session|auth\/logout|accounts\/me|accounts\/search(?:\?.*)?|vehicle-links(?:\/requests(?:\/[a-f0-9-]+(?:\/cancel)?)?|\/[a-f0-9-]+)?|ride-requests(?:\/[a-f0-9-]+\/(?:cancel|tracking|readiness|accept-invitation|reject-invitation))?|connections(?:\?.*|\/[a-f0-9-]+\/(?:accept|reject|cancel|disconnect))?)$/.test(path)) {
+    if (!/^\/(auth\/session|auth\/logout|accounts\/me|accounts\/search(?:\?.*)?|vehicle-links(?:\/requests(?:\/[a-f0-9-]+(?:\/cancel)?)?|\/[a-f0-9-]+)?|ride-requests(?:\/[a-f0-9-]+\/(?:cancel|tracking|readiness|accept-invitation|reject-invitation|arrival-push))?|connections(?:\?.*|\/[a-f0-9-]+\/(?:accept|reject|cancel|disconnect))?)$/.test(path)) {
       throw new Error("Unknown account endpoint");
     }
     const headers = { Accept: "application/json" };

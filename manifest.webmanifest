@@ -1,0 +1,10 @@
+{
+  "name": "마중",
+  "short_name": "마중",
+  "lang": "ko",
+  "start_url": "/account",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f6ee",
+  "theme_color": "#176457"
+}
