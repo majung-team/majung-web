@@ -39,6 +39,9 @@ Node.js 22 이상에서 `npm ci`, `npm test`, `npm start`를 실행한다.
 ## 도착 임박 알림
 
 차량이 약 3분 안에 도착하면 브라우저 알림을 한 번 보낸다. 서버에 VAPID 키가 있을 때만 켜진다. [화면, 제한과 확인 범위](docs/arrival-push.md)를 참고한다.
+## 탑승자 지도
+
+서버 설정에 카카오맵 JavaScript 키가 있으면 약속 장소와 차량 위치를 지도에 표시한다. 키가 없으면 기존 화면을 유지한다. [동작과 배포 전 준비](docs/passenger-map.md)를 참고한다.
 
 ## GitHub Actions
 
