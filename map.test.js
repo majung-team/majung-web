@@ -86,7 +86,7 @@ test('장소명·주소 검색 결과를 합치고 공급자 ID와 잘못된 좌
   const calls=[];
   const place={id:'provider-only',place_name:'시험 정문',road_address_name:'시험 도로 10',x:'127.3',y:'37.3'};
   const maps={services:{Status:{OK:'OK',ZERO_RESULT:'ZERO_RESULT'},
-    Places:class {keywordSearch(query,callback,options){calls.push({query,...options});callback([place,place,{place_name:'좌표 없음',x:'',y:''},{place_name:'잘못된 점',x:'0',y:'0'}],'OK',{hasNextPage:true});}},
+    Places:class {keywordSearch(query,callback,options){calls.push({query,...options});callback([null,place,place,{place_name:'좌표 없음',x:'',y:''},{place_name:'잘못된 점',x:'0',y:'0'}],'OK',{hasNextPage:true});}},
     Geocoder:class {addressSearch(query,callback,options){calls.push({query,...options});callback([{address_name:'시험 도로 20',road_address:{address_name:'시험 도로 20'},x:'127.4',y:'37.4'}],'OK',{hasNextPage:false});}}}};
   const result=await searchPickupPlaces(maps,'  시험  ');
   assert.equal(result.items.length,2);

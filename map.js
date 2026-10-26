@@ -172,6 +172,7 @@ export async function searchPickupPlaces(maps, query, page = 1) {
     if (result.status !== "fulfilled") continue;
     hasNext ||= result.value.hasNext;
     for (const source of result.value.items) {
+      if (!source || typeof source !== "object") continue;
       const latitude = Number(source.y), longitude = Number(source.x);
       const label = String(source.place_name || source.address_name || "").trim().slice(0,120);
       if (!label || !String(source.y ?? "").trim() || !String(source.x ?? "").trim() ||
