@@ -26,6 +26,9 @@ let rideLabel = "";
 let rideRequestId = null;
 let rides = [];
 let tracking = new Map();
+let networkAvailable = globalThis.navigator?.onLine !== false;
+let recoveringNetwork = false;
+let networkEpoch = 0;
 let linkedVehicles = [];
 let vehicleRequest = null;
 let vehiclePair = null;
@@ -142,7 +145,7 @@ function updateRideMap() {
   if (!pickupMap) return;
   pickupMap.attach(root.querySelector("[data-ride-map]"));
   const [current]=[...tracking.values()];
-  if (current) pickupMap.update(current.pickup.place,vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),true,current.pickup.status),current.pickup.placeProposal?.place);
+  if (current) pickupMap.update(current.pickup.place,vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),networkAvailable,current.pickup.status),current.pickup.placeProposal?.place);
   if (pickingRide && current && tracking.has(pickingRide) && current.pickup.status==="ACTIVE") {
     proposalPanel.attach(root.querySelector("[data-proposal-slot]"));
     pickupMap.startPicking(point => proposalPanel.setPoint(point));
@@ -153,7 +156,7 @@ function updateRideMap() {
 }
 function rideEtaText(current) {
   if (current.pickup.status==="ARRIVED") return "차가 도착했어요.";
-  const view=vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),true,current.pickup.status);
+  const view=vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),networkAvailable,current.pickup.status);
   if (!view) return "도착 시간을 확인하고 있어요.";
   if (view.kind==="lost") return `위치 확인 중 · 마지막 갱신 ${ageText(view.ageMillis)}`;
   const eta=`내 장소까지 ${etaText(view)}`;
@@ -184,7 +187,7 @@ function connectionRow(item) {
 let rideStream=null, streamedRide=null, accountStreamConnected=false;
 let streamRevision=0;
 function syncRideStream() {
-  const active=info?.authenticated && !document.hidden ? rides.find(ride=>ride.status==="ACTIVE")?.requestId ?? null : null;
+  const active=info?.authenticated && networkAvailable && !document.hidden ? rides.find(ride=>ride.status==="ACTIVE")?.requestId ?? null : null;
   if(active===streamedRide)return;
   rideStream?.close();rideStream=null;streamedRide=active;accountStreamConnected=false;
   if(!active)return;
@@ -197,7 +200,8 @@ function render() {
   syncRideStream();
   if (!info?.authenticated) clearPlacePicker();
   root.setAttribute("aria-busy", String(busy));
-  const alerts = `${error ? `<div class="alert" role="alert">${e(error)}</div>` : ""}${notice ? `<p class="notice" role="status">${e(notice)}</p>` : ""}`;
+  const connectionAlert = !networkAvailable ? '<p class="alert" role="status">인터넷 연결이 끊겼어요. 차량 위치와 도착 시간은 다시 연결한 뒤 확인할게요.</p>' : recoveringNetwork ? '<p class="notice" role="status">다시 연결됐어요. 최신 픽업 정보를 확인하고 있어요.</p>' : "";
+  const alerts = `${connectionAlert}${error ? `<div class="alert" role="alert">${e(error)}</div>` : ""}${notice ? `<p class="notice" role="status">${e(notice)}</p>` : ""}`;
   if (info === null) {
     root.innerHTML = `<section class="intro small"><p class="eyebrow">내 연결</p><h1>${busy ? "내 연결을 확인하고 있어요." : "내 연결을 불러오지 못했어요."}</h1><p>${busy ? "잠시만 기다려주세요." : "연결을 확인한 뒤 다시 불러와주세요."}</p></section>${alerts}${!busy ? button("다시 확인", "refresh", "", true) : ""}`;
     return;
@@ -226,6 +230,7 @@ function render() {
   updatePlacePicker();
 }
 async function refresh() {
+  const epochAtStart=networkEpoch;
   try {
   info = await api("/auth/session");
   if (info.authenticated) {
@@ -233,14 +238,16 @@ async function refresh() {
     connections = await api(`/connections?page=${connectionPage}`);
     linkedVehicles = await api("/vehicle-links");
     const requestedAt=performance.now();
-    rides = (await api("/ride-requests")).requests.map(item=>({...item,_etaUntil:requestedAt+Number(item.currentPickupValidForMillis||0)}));
+    rides = (await api("/ride-requests")).requests.map(item=>({...item,
+      currentPickupRemainingSeconds:networkAvailable && epochAtStart===networkEpoch ? item.currentPickupRemainingSeconds : null,
+      _etaUntil:requestedAt+Number(item.currentPickupValidForMillis||0)}));
     tracking.clear();
     for (const ride of rides.filter(item=>item.status==="ACTIVE")) {
       try {
         const requestedAt=performance.now();
         const data=await api(`/ride-requests/${ride.requestId}/tracking`);
         const receivedAt=performance.now();
-        tracking.set(ride.requestId,{...data,deadline:vehicleDeadline(data.vehicle,requestedAt,receivedAt),timing:vehicleTiming(data.vehicle,requestedAt,receivedAt)});
+        if (networkAvailable && epochAtStart===networkEpoch) tracking.set(ride.requestId,{...data,deadline:vehicleDeadline(data.vehicle,requestedAt,receivedAt),timing:vehicleTiming(data.vehicle,requestedAt,receivedAt)});
       }
       catch (failure) { if (![403,404,410].includes(failure.status)) throw failure; }
     }
@@ -257,7 +264,14 @@ async function refresh() {
     tracking.clear();
     for (const ride of rides) ride.currentPickupRemainingSeconds=null;
     throw failure;
+  } finally {
+    if (!networkAvailable || epochAtStart!==networkEpoch) hideAccountVehicle();
+    else recoveringNetwork=false;
   }
+}
+function hideAccountVehicle() {
+  for (const current of tracking.values()) {current.vehicle=null;current.deadline=0;current.timing=null;}
+  for (const ride of rides) ride.currentPickupRemainingSeconds=null;
 }
 async function search() {
   results = await api(`/accounts/search?query=${encodeURIComponent(searchedQuery)}&page=${searchPage}`);
@@ -399,14 +413,22 @@ run(async () => {
 
 // Pause while the user enters a form; mutations are never retried by polling.
 let nextRefreshAt = 0;
+window.addEventListener("offline",()=>{
+  networkAvailable=false;recoveringNetwork=false;networkEpoch++;streamRevision++;
+  hideAccountVehicle();syncRideStream();render();
+});
+window.addEventListener("online",()=>{
+  networkAvailable=true;recoveringNetwork=true;networkEpoch++;streamRevision++;
+  nextRefreshAt=0;render();
+});
 document.addEventListener("visibilitychange", () => {
   syncRideStream();
   if (!document.hidden) nextRefreshAt = 0;
 });
 setInterval(() => {
-  if (document.hidden || busy || !info?.authenticated || rideTarget || root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") return;
+  if (!networkAvailable || document.hidden || busy || !info?.authenticated || rideTarget || root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") return;
   if (performance.now() < nextRefreshAt) return;
-  const visible=()=>JSON.stringify({member:info?.member,authenticated:info?.authenticated,connections,rides:rides.map(({_etaUntil,...item})=>item),linkedVehicles,vehicleRequest,tracking:[...tracking].map(([id,{deadline,timing,...data}])=>[id,data])});
+  const visible=()=>JSON.stringify({recoveringNetwork,member:info?.member,authenticated:info?.authenticated,connections,rides:rides.map(({_etaUntil,...item})=>item),linkedVehicles,vehicleRequest,tracking:[...tracking].map(([id,{deadline,timing,...data}])=>[id,data])});
   const before=visible(); const previousError=error; const revisionAtStart=streamRevision; busy=true;
   refresh().then(()=>{
     busy=false;
