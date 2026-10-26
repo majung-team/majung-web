@@ -137,3 +137,12 @@ test("정보 없음·연결 끊김·종료 때는 끊김 표시도 하지 않음
   assert.equal(vehicleView(vehicle, timing, 30000, 0, true, "COMPLETED"), null);
   assert.equal(vehicleView(vehicle, null, 30000, 0, true, "ACTIVE"), null);
 });
+
+test("새 SDK ETA가 늘거나 줄면 이전 카운트다운 대신 새 값을 사용", () => {
+  const snapshot = seconds => ({ ...vehicle, durationSeconds: seconds });
+  assert.equal(vehicleView(snapshot(420), { ageMillis: 0, at: 0 }, 30000, 3000, true, "ACTIVE").remainingSeconds, 417);
+  assert.equal(vehicleView(snapshot(720), { ageMillis: 0, at: 3000 }, 33000, 3000, true, "ACTIVE").remainingSeconds, 720);
+  assert.equal(vehicleView(snapshot(180), { ageMillis: 0, at: 6000 }, 36000, 6000, true, "ACTIVE").remainingSeconds, 180);
+  assert.equal(vehicleView(snapshot(180), { ageMillis: 0, at: 6000 }, 36000, 6000, false, "ACTIVE"), null);
+  assert.equal(vehicleView(snapshot(540), { ageMillis: 1000, at: 9000 }, 38000, 9000, true, "ACTIVE").remainingSeconds, 539);
+});
