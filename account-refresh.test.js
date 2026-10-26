@@ -14,6 +14,7 @@ async function screen() {
   let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
   const timers = [], events = {}, rootEvents = {}, writes = [];
   let streamCallbacks=null, streamClosed=false;
+  let pauseTracking=false, finishTracking=null;
   const root = { innerHTML: "", setAttribute() {}, addEventListener(name, callback) { rootEvents[name] = callback; }, contains: () => false, querySelector: () => null };
   const api = async (path, options = {}) => {
     if (path === "/ride-requests" && options.method === "POST") { writes.push(options.body); return {}; }
@@ -24,7 +25,9 @@ async function screen() {
     if (path === "/ride-requests") return { requests: [{ requestId: "test-ride", status: "ACTIVE", nickname: "시험 운전자", majungId: "driver", place: { label: "시험 장소" } }] };
     if (path.endsWith("/tracking")) {
       trackingReads++;
-      return { pickup: { status: "ACTIVE", placeProposal, participant: { readiness: "READY", readinessSequence, readinessReceivedSequence } }, vehicle: { freshness: "FRESH", durationSeconds: seconds, latitude: 37, longitude: 127, ageMillis: 0, validForMillis: 30000 } };
+      const response = { pickup: { status: "ACTIVE", placeProposal, participant: { readiness: "READY", readinessSequence, readinessReceivedSequence } }, vehicle: { freshness: "FRESH", durationSeconds: seconds, latitude: 37, longitude: 127, ageMillis: 0, validForMillis: 30000 } };
+      if (pauseTracking) { pauseTracking=false; await new Promise(resolve=>{finishTracking=resolve;}); }
+      return response;
     }
     throw new Error(`Unexpected test route ${path}`);
   };
@@ -45,6 +48,8 @@ async function screen() {
     root, context, events, rootEvents, writes,
     stream: () => streamCallbacks, closed: () => streamClosed,
     reads: () => trackingReads,
+    pauseNextTracking: () => {pauseTracking=true;},
+    finishTracking: () => finishTracking(),
     proposal: value => { placeProposal = value; },
     receipt: (sequence, received) => { readinessSequence = sequence; readinessReceivedSequence = received; },
     seconds: value => { seconds = value; },
@@ -201,4 +206,18 @@ test("픽업·사람 찾기·내 정보를 나누고 요청을 열면 픽업으�
   assert.match(app.root.innerHTML,/내 차량/);
   click("tab-pickup");
   assert.match(app.root.innerHTML,/data-ride-eta/);
+});
+
+
+test("조회 도중 새 SSE 신호가 오면 안전 조회 주기를 기다리지 않고 다시 읽음",async()=>{
+  const app=await screen();
+  app.stream().onState(true);
+  await app.tick(1000);
+  app.seconds(600);app.pauseNextTracking();
+  app.stream().onChange();await app.tick(2000);
+  app.seconds(1200);app.stream().onChange();
+  app.finishTracking();await new Promise(resolve=>setImmediate(resolve));
+  assert.match(app.root.innerHTML,/약 10분/);
+  await app.tick(2100);
+  assert.match(app.root.innerHTML,/약 20분/);
 });
