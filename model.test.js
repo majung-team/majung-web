@@ -146,3 +146,14 @@ test("새 SDK ETA가 늘거나 줄면 이전 카운트다운 대신 새 값을 �
   assert.equal(vehicleView(snapshot(180), { ageMillis: 0, at: 6000 }, 36000, 6000, false, "ACTIVE"), null);
   assert.equal(vehicleView(snapshot(540), { ageMillis: 1000, at: 9000 }, 38000, 9000, true, "ACTIVE").remainingSeconds, 539);
 });
+
+// A receipt for an older sequence must not confirm a newer selection.
+test("준비 상태의 서버 저장과 차량 수신을 구분", async () => {
+  const { readinessDeliveryText } = await import("./model.js");
+  assert.match(readinessDeliveryText({readinessSequence: 0}), /선택하면/);
+  assert.match(readinessDeliveryText({readinessSequence: 2}), /아직 확인되지/);
+  assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 1}), /기다리고/);
+  assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 2}), /차량 앱에 전달/);
+  assert.match(readinessDeliveryText({readinessSequence: 3, readinessReceivedSequence: 2}), /기다리고/);
+  assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 2}, false), /확인하지 못/);
+});

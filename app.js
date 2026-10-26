@@ -5,6 +5,7 @@ import {
   validSession,
   invitationUrl,
   nextSequence,
+  readinessDeliveryText,
   vehicleDeadline,
   vehicleTiming,
   vehicleView,
@@ -263,10 +264,10 @@ function guest() {
     }</div>
     ${status === "ACTIVE" ? arrivalPushCard() : ""}
     ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : ""}
-    ${placeCard()}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : "마지막으로 서버에 저장된 상태예요."}</small></div>
+    ${placeCard()}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : e(readinessDeliveryText(snapshot.participant, online))}</small></div>
     <div class="button-pair">${button("준비 중", "preparing", snapshot.participant.readiness !== "PREPARING", !online)}${button("준비 완료", "ready", snapshot.participant.readiness !== "READY", !online)}</div>
     ${pendingReadiness && online ? button("선택한 상태 다시 보내기", "retry-readiness", true) : ""}
-    <p class="hint">저장된 상태가 운전자 화면에 표시되기까지 잠시 걸릴 수 있어요.</p></section>`;
+    <p class="hint">준비 상태를 바꾸면 새 상태의 전달 여부를 다시 확인해요.</p></section>`;
 }
 
 function render() {

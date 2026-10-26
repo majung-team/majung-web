@@ -1,5 +1,5 @@
 import { createAccountClient, AccountError } from "./account-api.js";
-import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, etaText, ageText } from "./model.js";
+import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, etaText, ageText, readinessDeliveryText } from "./model.js";
 import { browserPushEnvironment, pushState, pushCard, pushErrorText, enableArrivalPush, disableBrowserPush, pushFlag, setPushFlag } from "./push.js";
 import { loadKakaoMaps, createPickupMap } from "./map.js";
 
@@ -57,7 +57,7 @@ function rideRow(source) {
   const labels={INVITED:"운전자가 보낸 초대 · 내 응답 대기",PENDING:"운전자 응답 대기",QUEUED:"수락됨 · 픽업 대기",ACTIVE:"내 픽업 진행 중",COMPLETED:"탑승 완료",CANCELLED:"취소됨",REJECTED:"거절됨",EXPIRED:"만료됨"};
   const current=tracking.get(item.requestId);
   const waiting=item.status==="QUEUED" ? `<p>내 앞에 ${Number(item.peopleAhead)||0}건이 있어요.</p><p class="hint">${item.currentPickupRemainingSeconds == null ? "현재 진행 중인 픽업의 남은 시간은 아직 확인할 수 없어요." : `현재 진행 중인 픽업 장소까지 약 ${Math.max(1,Math.ceil(item.currentPickupRemainingSeconds/60))}분 남았어요.`}<br />${item.currentPickupRemainingSeconds == null ? "내 장소 도착 예정 시간도 아직 정해지지 않았어요." : "위 시간은 내 장소 도착 예정 시간이 아니에요. 실제 탑승 시간에 따라 더 걸릴 수 있어요."}</p>` : "";
-  const active=current ? `${pickupMap && current.pickup.place ? '<div class="pickup-map" data-ride-map></div>' : ""}<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>${current.pickup.status==="ACTIVE"?ridePushCard(item.requestId):""}<p>내 준비 상태 · ${e(current.pickup.participant.readiness==="READY"?"준비 완료":"준비 중")}</p>${button("준비 완료","ride-ready",`data-id="${e(item.requestId)}"`)}${button("준비 중","ride-preparing",`data-id="${e(item.requestId)}"`,true)}` : "";
+  const active=current ? `${pickupMap && current.pickup.place ? '<div class="pickup-map" data-ride-map></div>' : ""}<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>${current.pickup.status==="ACTIVE"?ridePushCard(item.requestId):""}<p>내 준비 상태 · ${e(current.pickup.participant.readiness==="READY"?"준비 완료":"준비 중")}</p><p class="hint">${e(readinessDeliveryText(current.pickup.participant))}</p>${button("준비 완료","ride-ready",`data-id="${e(item.requestId)}"`)}${button("준비 중","ride-preparing",`data-id="${e(item.requestId)}"`,true)}` : "";
   return `<li class="person-row ride-row">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong><p>${item.driverInvitation?"운전자가 제안한 장소":"내가 요청한 장소"} · ${e(item.place.label)}</p>${waiting}${active}${item.status==="INVITED"?`<p>이 장소에서 탈까요? 수락해도 내 픽업이 시작되기 전에는 차량 위치가 공유되지 않아요.</p><p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답해주세요.</p>${button("이 장소에서 탈게요","invitation-accept",`data-id="${e(item.requestId)}"`)}${button("초대 거절","invitation-reject",`data-id="${e(item.requestId)}"`,true)}`:""}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
 }
 let pushKey=null, pushBusyId=null, pushMessageFor=null, pushMessage="";
