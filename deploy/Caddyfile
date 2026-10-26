@@ -8,7 +8,7 @@
         Referrer-Policy "no-referrer"
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
-        Content-Security-Policy "default-src 'self'; script-src 'self' https://dapi.kakao.com https://t1.daumcdn.net https://t1.kakaocdn.net; style-src 'self'; img-src 'self' data: https://*.daumcdn.net; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+        Content-Security-Policy "default-src 'self'; script-src 'self' https://dapi.kakao.com https://t1.daumcdn.net https://t1.kakaocdn.net; style-src 'self'; img-src 'self' data: https://*.daumcdn.net https://t1.kakaocdn.net https://mts.kakaocdn.net; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
         Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
         -Server
     }
