@@ -1,3 +1,4 @@
+import { openPickupStream } from "./stream.js";
 import { createAccountClient, AccountError } from "./account-api.js";
 import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, vehicleForPlace, etaText, ageText, readinessDeliveryText } from "./model.js";
 import { browserPushEnvironment, pushState, pushCard, pushErrorText, enableArrivalPush, disableBrowserPush, pushFlag, setPushFlag } from "./push.js";
@@ -58,8 +59,8 @@ function rideRow(source) {
   const labels={INVITED:"운전자가 보낸 초대 · 내 응답 대기",PENDING:"운전자 응답 대기",QUEUED:"수락됨 · 픽업 대기",ACTIVE:"내 픽업 진행 중",COMPLETED:"탑승 완료",CANCELLED:"취소됨",REJECTED:"거절됨",EXPIRED:"만료됨"};
   const current=tracking.get(item.requestId);
   const waiting=item.status==="QUEUED" ? `<p>내 앞에 ${Number(item.peopleAhead)||0}건이 있어요.</p><p class="hint">${item.currentPickupRemainingSeconds == null ? "현재 진행 중인 픽업의 남은 시간은 아직 확인할 수 없어요." : `현재 진행 중인 픽업 장소까지 약 ${Math.max(1,Math.ceil(item.currentPickupRemainingSeconds/60))}분 남았어요.`}<br />${item.currentPickupRemainingSeconds == null ? "내 장소 도착 예정 시간도 아직 정해지지 않았어요." : "위 시간은 내 장소 도착 예정 시간이 아니에요. 실제 탑승 시간에 따라 더 걸릴 수 있어요."}</p>` : "";
-  const active=current ? `${pickupMap && current.pickup.place ? '<div class="pickup-map" data-ride-map></div>' : ""}<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>${current.pickup.status==="ACTIVE"?ridePushCard(item.requestId):""}<p>내 준비 상태 · ${e(current.pickup.participant.readiness==="READY"?"준비 완료":"준비 중")}</p><p class="hint">${e(readinessDeliveryText(current.pickup.participant))}</p>${button("준비 완료","ride-ready",`data-id="${e(item.requestId)}"`)}${button("준비 중","ride-preparing",`data-id="${e(item.requestId)}"`,true)}${proposalBlock({proposal:current.pickup.placeProposal,picking:pickingRide===item.requestId,mapReady:Boolean(pickupMap),status:current.pickup.status})}` : "";
-  return `<li class="person-row ride-row">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong><p>${item.driverInvitation?"운전자가 제안한 장소":"내가 요청한 장소"} · ${e(item.place.label)}</p>${waiting}${active}${item.status==="INVITED"?`<p>이 장소에서 탈까요? 수락해도 내 픽업이 시작되기 전에는 차량 위치가 공유되지 않아요.</p><p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답해주세요.</p>${button("이 장소에서 탈게요","invitation-accept",`data-id="${e(item.requestId)}"`)}${button("초대 거절","invitation-reject",`data-id="${e(item.requestId)}"`,true)}`:""}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
+  const active=current ? `<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>${pickupMap && current.pickup.place ? '<div class="pickup-map" data-ride-map></div>' : ""}${current.pickup.status==="ACTIVE"?ridePushCard(item.requestId):""}<p>내 준비 상태 · ${e(current.pickup.participant.readiness==="READY"?"준비 완료":"준비 중")}</p><p class="hint">${e(readinessDeliveryText(current.pickup.participant))}</p><div class="readiness-options" role="group" aria-label="내 준비 상태">${button("준비 중","ride-preparing",`data-id="${e(item.requestId)}" aria-pressed="${current.pickup.participant.readiness==="PREPARING"}"`,current.pickup.participant.readiness!=="PREPARING")}${button("준비 완료","ride-ready",`data-id="${e(item.requestId)}" aria-pressed="${current.pickup.participant.readiness==="READY"}"`,current.pickup.participant.readiness!=="READY")}</div>${proposalBlock({proposal:current.pickup.placeProposal,picking:pickingRide===item.requestId,mapReady:Boolean(pickupMap),status:current.pickup.status})}` : "";
+  return `<li class="person-row ride-row" data-state="${e(item.status)}">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong><p>${item.status==="ACTIVE" ? "만날 장소" : item.driverInvitation?"운전자가 제안한 장소":"내가 요청한 장소"} · ${e(item.place.label)}</p>${waiting}${active}${item.status==="INVITED"?`<p>이 장소에서 탈까요? 수락해도 내 픽업이 시작되기 전에는 차량 위치가 공유되지 않아요.</p><p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답해주세요.</p>${button("이 장소에서 탈게요","invitation-accept",`data-id="${e(item.requestId)}"`)}${button("초대 거절","invitation-reject",`data-id="${e(item.requestId)}"`,true)}`:""}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
 }
 let pushKey=null, pushBusyId=null, pushMessageFor=null, pushMessage="";
 function ridePushCard(requestId) {
@@ -151,7 +152,7 @@ function updateRideMap() {
 function rideEtaText(current) {
   if (current.pickup.status==="ARRIVED") return "차가 도착했어요.";
   const view=vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),true,current.pickup.status);
-  if (!view) return "차량의 새 위치와 시간을 기다리고 있어요.";
+  if (!view) return "도착 시간을 확인하고 있어요.";
   if (view.kind==="lost") return `위치 확인 중 · 마지막 갱신 ${ageText(view.ageMillis)}`;
   const eta=`내 장소까지 ${etaText(view)}`;
   return view.kind==="stale" ? `${eta} · 마지막 갱신 ${ageText(view.ageMillis)}` : eta;
@@ -159,8 +160,9 @@ function rideEtaText(current) {
 function rideSections() {
   const form=rideTarget?`<section class="card confirmation"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>장소명·주소로 검색한 뒤 만날 곳을 선택해주세요. 지도나 현재 위치로도 고를 수 있어요.</p>${placeSearchPanel()}${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 불러오지 못하면 현재 위치로 요청할 수 있어요.</p>'}<p class="hint" aria-live="polite">${e(selectedPlaceText())}</p><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><button class="primary" ${busy||placeSearchBusy||!ridePlace?"disabled":""}>이 장소로 마중 요청</button></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
   const pair=vehiclePair||vehicleRequest?`<section class="card"><h2>내 계정과 차량 연결</h2><p>운전자 본인의 차량에서 연 QR인지 확인해주세요. 탑승자는 이 연결을 할 필요가 없어요.</p>${vehicleRequest?`<p>차량에서 ${e(info.member.nickname)} 님의 연결을 승인해주세요.</p>${button("연결 상태 확인","refresh","",true)}`:button("이 계정으로 차량 연결 요청","vehicle-claim")}${button("차량 연결 요청 닫기","vehicle-dismiss","",true)}</section>`:"";
-  return `${pair}<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>${form}<section class="card"><div class="section-heading"><h2>받은 초대와 내 마중 요청</h2>${button("새로 확인","refresh","",true)}</div><p class="hint">운전자가 보낸 초대를 여기서 수락하거나 거절할 수 있어요. 직접 운전자를 찾아 마중을 요청할 수도 있어요.</p><p class="hint">픽업 진행 중에는 약 3초마다, 그 외에는 약 10초마다 새로 확인해요. 웹을 닫은 동안에는 초대 알림이 오지 않아요.</p>${rides.length?`<ul class="person-list">${rides.map(rideRow).join("")}</ul>`:"<p>받은 초대나 보낸 마중 요청이 없어요.</p>"}</section>`;
+  return `${pair}${accountTab === "settings" ? `<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>` : ""}${accountTab === "pickup" ? `${form}<section class="card${rides.some(ride=>ride.status==="ACTIVE") ? " active-pickup-card" : ""}"><div class="section-heading"><h2>${rides.some(ride=>ride.status==="ACTIVE") ? "진행 중인 픽업" : "받은 초대와 내 마중 요청"}</h2>${button("새로 확인","refresh","",true)}</div>${rides.some(ride=>ride.status==="ACTIVE") ? "" : '<p class="hint">받은 초대를 확인하거나 사람 찾기에서 새 마중을 요청해보세요.</p>'}${rides.length?`<ul class="person-list">${[...rides].sort((a,b)=>({ACTIVE:0,INVITED:1,QUEUED:2,PENDING:3}[a.status]??4)-({ACTIVE:0,INVITED:1,QUEUED:2,PENDING:3}[b.status]??4)).map(rideRow).join("")}</ul>`:`<div class="empty-pickup"><strong>다음 만남을 준비해볼까요?</strong><p>운전자를 찾아 만날 장소와 함께 요청해보세요.<br />초대받았다면 목록에 표시돼요.</p>${button("운전자 찾기", "tab-people")}</div>`}</section>` : ""}`;
 }
+let accountTab = "pickup";
 const failedLogin = new URL(location.href).searchParams.get("login") === "failed";
 if (location.search) history.replaceState(null, "", location.pathname);
 
@@ -177,7 +179,19 @@ function connectionRow(item) {
       : button("요청 취소", "confirm-cancel", `data-id="${e(item.connectionId)}"`, true);
   return `<li class="person-row">${person(item.nickname, item.majungId)}<span class="connection-state">${status}</span><div class="row-actions">${controls}</div></li>`;
 }
+let rideStream=null, streamedRide=null, accountStreamConnected=false;
+function syncRideStream() {
+  const active=info?.authenticated && !document.hidden ? rides.find(ride=>ride.status==="ACTIVE")?.requestId ?? null : null;
+  if(active===streamedRide)return;
+  rideStream?.close();rideStream=null;streamedRide=active;accountStreamConnected=false;
+  if(!active)return;
+  rideStream=openPickupStream({path:`/api/v1/ride-requests/${active}/events`,
+    onState:connected=>{if(streamedRide===active){accountStreamConnected=connected;const indicator=root.querySelector("[data-live-connection]");if(indicator)indicator.textContent=connected?"실시간으로 확인 중":"연결 상태 확인 중";}},
+    onChange:()=>{if(streamedRide===active)nextRefreshAt=0;},
+    onFallback:()=>{if(streamedRide===active){accountStreamConnected=false;nextRefreshAt=0;}}});
+}
 function render() {
+  syncRideStream();
   if (!info?.authenticated) clearPlacePicker();
   root.setAttribute("aria-busy", String(busy));
   const alerts = `${error ? `<div class="alert" role="alert">${e(error)}</div>` : ""}${notice ? `<p class="notice" role="status">${e(notice)}</p>` : ""}`;
@@ -194,9 +208,11 @@ function render() {
   }
   const profile = info.member;
   const ready = profile.profileReady;
-  root.innerHTML = `<section class="intro small account-heading"><div><p class="eyebrow">내 연결</p><h1>${ready ? `${e(profile.nickname)} 님` : "어떤 이름으로<br />만날까요?"}</h1><p class="majung-id">내 마중 ID · ${e(profile.majungId)}</p></div>${button("로그아웃", "logout", "", true)}</section>${alerts}
-    <section class="card"><h2>${ready ? "내 닉네임" : "먼저 닉네임을 정해주세요."}</h2><form id="nickname-form"><label for="nickname">닉네임<input id="nickname" name="nickname" value="${e(nickname)}" minlength="2" maxlength="20" required autocomplete="nickname" placeholder="2~20자" /></label><p class="hint">닉네임은 같을 수 있어요. 마중 ID는 바뀌지 않아요.</p><button class="primary" ${busy ? "disabled" : ""}>${ready ? "닉네임 저장" : "이 이름으로 시작하기"}</button></form></section>
-    ${ready ? `<section class="card"><h2>사람 찾기</h2><form id="search-form"><label for="query">닉네임 또는 마중 ID<input id="query" name="query" value="${e(query)}" minlength="2" maxlength="32" required placeholder="찾을 사람의 닉네임" autocomplete="off" /></label><button class="primary" ${busy ? "disabled" : ""}>검색</button></form>
+  const activePickup = accountTab === "pickup" && rides.some(ride => ride.status === "ACTIVE");
+  root.innerHTML = `<section class="account-welcome account-heading${activePickup ? " compact" : ""}"><div><p class="eyebrow">마중</p><h1>${ready ? `${e(profile.nickname)} 님` : "어떤 이름으로<br />만날까요?"}</h1><p class="majung-id">내 마중 ID · ${e(profile.majungId)}</p></div></section>${alerts}
+    ${ready ? `<nav class="account-nav${activePickup ? " bottom-nav" : ""}" aria-label="마중 메뉴">${[["pickup","픽업"],["people","사람 찾기"],["settings","내 정보"]].map(([key,label])=>`<button type="button" data-action="tab-${key}" aria-current="${accountTab===key?"page":"false"}">${label}</button>`).join("")}</nav>${rides.some(ride=>ride.status==="ACTIVE") ? `<p class="live-connection" data-live-connection role="status">${accountStreamConnected ? "실시간으로 확인 중" : "연결 상태 확인 중"}</p>` : ""}` : ""}
+    ${(!ready || accountTab === "settings") ? `<section class="card"><h2>${ready ? "내 닉네임" : "먼저 닉네임을 정해주세요."}</h2><form id="nickname-form"><label for="nickname">닉네임<input id="nickname" name="nickname" value="${e(nickname)}" minlength="2" maxlength="20" required autocomplete="nickname" placeholder="2~20자" /></label><p class="hint">닉네임은 같을 수 있어요. 마중 ID는 바뀌지 않아요.</p><button class="primary" ${busy ? "disabled" : ""}>${ready ? "닉네임 저장" : "이 이름으로 시작하기"}</button></form>${ready ? button("로그아웃", "logout", "", true) : ""}</section>` : ""}
+    ${ready && accountTab === "people" ? `<section class="card"><p class="eyebrow">새 마중 요청</p><h2>누구를 만날까요?</h2><form id="search-form"><label for="query">닉네임 또는 마중 ID<input id="query" name="query" value="${e(query)}" minlength="2" maxlength="32" required placeholder="찾을 사람의 닉네임" autocomplete="off" /></label><button class="primary" ${busy ? "disabled" : ""}>검색</button></form>
       ${searchDone ? results.length ? `<p class="hint">닉네임이 같다면 마중 ID까지 확인해주세요.</p><ul class="person-list">${results.map(item => `<li class="person-row">${person(item.nickname, item.majungId)}${button("마중 요청", "ride-open", `data-id="${e(item.memberId)}"`)}${button("연결만 요청", "request", `data-id="${e(item.memberId)}"`,true)}</li>`).join("")}</ul>` : '<p class="empty-account">검색 결과가 없어요. 닉네임이나 마중 ID를 다시 확인해주세요.</p>' : '<p class="hint">이름·마중 ID만 표시해요. 차량 위치와 픽업 정보는 공개하지 않아요.</p>'}
       ${searchDone ? pager("search", searchPage, results.length) : ""}</section>
       <section class="card"><div class="section-heading"><h2>연결 목록</h2>${button("새로 확인", "refresh", "", true)}</div><p class="hint">연결 요청은 받은 사람이 수락해야 연결돼요.<br />마중 요청·픽업 승인은 별도로 진행해요.</p>
@@ -285,7 +301,7 @@ root.addEventListener("click", event => {
   if (!target || busy) return;
   const action = target.dataset.action;
   if (action === "ride-open") {
-    clearPlacePicker(); rideTarget=results.find(item=>item.memberId===target.dataset.id); ridePlace=null; rideLabel=""; rideRequestId=crypto.randomUUID(); render(); root.querySelector(".confirmation")?.scrollIntoView({block:"center"}); return;
+    clearPlacePicker(); accountTab="pickup"; rideTarget=results.find(item=>item.memberId===target.dataset.id); ridePlace=null; rideLabel=""; rideRequestId=crypto.randomUUID(); render(); root.querySelector(".confirmation")?.scrollIntoView({block:"center"}); return;
   }
   if (action === "place-search-previous" || action === "place-search-next") {
     const page=placeSearchPage+(action==="place-search-next"?1:-1);
@@ -299,6 +315,11 @@ root.addEventListener("click", event => {
     ridePlace={latitude:chosen.latitude,longitude:chosen.longitude,label:chosen.label,source:"search",at:Date.now()};
     rideLabel=chosen.label;
     render(); root.querySelector("[data-place-picker]")?.scrollIntoView({block:"center"}); return;
+  }
+  if (action?.startsWith("tab-")) {
+    const next=action.slice(4);
+    if (!["pickup","people","settings"].includes(next)) return;
+    accountTab=next; render(); return;
   }
   if (action === "ride-map-center") { placePicker?.chooseCenter(); return; }
   if (action === "propose-start") { const [id]=[...tracking.keys()]; if (!id) return; pickingRide=id; render(); return; }
@@ -376,6 +397,7 @@ run(async () => {
 // Pause while the user enters a form; mutations are never retried by polling.
 let nextRefreshAt = 0;
 document.addEventListener("visibilitychange", () => {
+  syncRideStream();
   if (!document.hidden) nextRefreshAt = 0;
 });
 setInterval(() => {
@@ -396,7 +418,7 @@ setInterval(() => {
     else error="상태를 새로 확인하지 못했어요. 새로 확인을 눌러주세요.";
     render();
   }).finally(()=>{
-    nextRefreshAt=performance.now()+(rides.some(ride=>ride.status==="ACTIVE")?3000:10000);
+    nextRefreshAt=performance.now()+(accountStreamConnected?30000:rides.some(ride=>ride.status==="ACTIVE")?3000:10000);
   });
 }, 1000);
 
@@ -436,3 +458,5 @@ void fetch("/api/v1/config", { cache: "no-store", credentials: "omit", redirect:
   .then(configuration => { pushKey = typeof configuration?.webPushPublicKey === "string" ? configuration.webPushPublicKey : null; if (pushKey && tracking.size && !busy) render(); return loadKakaoMaps(configuration?.kakaoMapJavaScriptKey); })
   .then(maps => { if (!maps) return; placeMaps=maps; pickupMap=createPickupMap(maps); if ((tracking.size || rideTarget) && !busy) render(); })
   .catch(() => { });
+
+window.addEventListener("pagehide",()=>{rideStream?.close();rideStream=null;streamedRide=null;});

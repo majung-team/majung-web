@@ -39,3 +39,42 @@ button:focus-visible,a:focus-visible,input:focus-visible {outline:3px solid #a98
 .place-results span {font-size:.85rem;color:#526b63;font-weight:400;overflow-wrap:anywhere}
 
 .place-results button[aria-pressed="true"] {background:#edf3e9;box-shadow:inset 4px 0 #276457}
+
+/* A task-focused mobile shell: current pickup first, account controls one level away. */
+.account-welcome {padding:4px 2px 20px}
+.account-welcome h1 {font-size:28px;letter-spacing:-1px;margin:0 0 8px}
+.account-welcome .eyebrow {margin:0 0 8px}
+.account-welcome .majung-id {margin:0;font-size:12px}
+.account-nav {position:sticky;top:0;z-index:10;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;margin:0 0 24px;background:#e9edf0;border:1px solid #dce2e6;border-radius:14px}
+.account-nav button {border:0;margin:0;min-height:48px;padding:12px 8px;border-radius:10px;background:transparent;color:#626d75;font-size:14px;font-weight:600}
+.account-nav button[aria-current="page"] {background:white;color:#244f73;box-shadow:0 2px 6px #20282e0c}
+.empty-pickup {padding:32px 8px 20px;text-align:center}
+.empty-pickup strong {font-size:21px;color:#20282e}
+.empty-pickup p {font-size:14px;margin:12px 0 24px}
+.ride-row[data-state="ACTIVE"] {padding:0;border:0}
+.ride-row[data-state="ACTIVE"]>.person-name {display:flex;margin-top:18px}
+.ride-row[data-state="ACTIVE"]>.person-name .majung-id {font-size:12px}
+.ride-row[data-state="ACTIVE"]>[data-ride-eta] {font-size:30px;font-weight:700;letter-spacing:-1px;color:#20282e;margin:16px 0}
+.ride-row .readiness-options {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0 12px}
+.ride-row .readiness-options button {width:100%;margin:0;min-height:56px}
+.ride-row .pickup-map {height:280px;border-radius:16px;margin:18px 0}
+.account-nav button:focus-visible {outline:3px solid #244f73;outline-offset:2px}
+@media(min-width:700px) {.account-welcome h1{font-size:32px}.account-nav{margin-bottom:28px}}
+.account-welcome.compact {padding-bottom:12px}
+.account-welcome.compact .eyebrow,.account-welcome.compact .majung-id {display:none}
+.account-welcome.compact h1 {font-size:16px;font-weight:500;margin:0;color:#626d75}
+.live-connection {font-size:12px;margin:-12px 0 20px;color:#626d75;display:flex;align-items:center;gap:7px}
+.live-connection::before {content:"";width:6px;height:6px;border-radius:50%;background:#244f73}
+.ride-row>strong {background:#e7eef3;color:#244f73}
+.account-welcome.compact {display:none}
+.account-nav.bottom-nav {position:fixed;top:auto;bottom:max(14px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:calc(100% - 40px);max-width:580px;background:#fff;box-shadow:0 6px 28px #20282e20;margin:0;border-radius:16px}
+.active-pickup-card {border:0;background:transparent;padding:0 2px 92px}
+.active-pickup-card>.section-heading {margin-bottom:18px;align-items:center}
+.active-pickup-card>.section-heading h2 {font-size:13px;color:#626d75;font-weight:500}
+.active-pickup-card>.section-heading button {font-size:12px;background:transparent;border:1px solid #d7dedf;padding:8px 12px}
+.active-pickup-card .person-name {flex-direction:row!important;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px!important}
+.active-pickup-card .person-name strong {font-size:18px}
+.active-pickup-card .ride-row>p {margin:12px 0;line-height:1.6}
+.active-pickup-card .ride-row>[data-ride-eta] {font-size:30px;line-height:1.35;letter-spacing:-1px;margin:20px 0}
+.active-pickup-card .pickup-map {height:240px}
+@media(max-width:500px) {.active-pickup-card{padding:0 0 92px}.active-pickup-card .pickup-map{height:230px}.account-nav.bottom-nav button{min-height:46px}}

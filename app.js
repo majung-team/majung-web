@@ -1,3 +1,4 @@
+import { openPickupStream } from "./stream.js";
 import { request, ApiError } from "./api.js";
 import {
   parseInvitation,
@@ -127,12 +128,12 @@ function alerts() {
 }
 
 function home() {
-  return `<section class="intro"><p class="eyebrow">만나는 순간까지, 연락은 간단하게.</p>
-    <h1>기다림을<br />같은 약속으로.</h1><p>초대 링크를 열면 만날 장소와 도착 정보를 확인하고,<br class="desktop" /> 준비 상태를 운전자에게 전할 수 있어요.</p></section>
-    <section class="card"><span class="badge">탑승자 안내</span><h2>초대 링크로 참여해요.</h2>
-    <p>운전자에게 받은 링크를 열어주세요.<br />참여하면 바로 연결돼서 차량 위치를 볼 수 있어요.</p></section>
-    ${developmentToolsEnabled ? `<section class="dev-card"><h2>운전자 확인 화면</h2><p>차량 없이 API를 확인하는 개발용 화면이에요.<br />이 브라우저에서 약속을 만들고 탑승자 참여를 확인할 수 있어요.</p>
-    ${button("픽업 준비하기", "prepare", true)}</section>` : ""}`;
+  return `<section class="intro service-intro"><p class="eyebrow">함께 만날 약속, 마중</p>
+    <h1>차가 언제 오는지<br />함께 확인해요.</h1><p>만날 장소를 정하고 준비 상태를 전해보세요.<br />차량이 출발하면 위치와 도착 시간을 확인할 수 있어요.</p>
+    <a class="primary service-start" href="/account">마중 시작하기</a></section>
+    <section class="card service-guide"><h2>처음이라면 이렇게 시작해요.</h2><ol><li><strong>운전자를 찾아요.</strong><span>카카오로 로그인하고 닉네임이나 마중 ID로 찾아주세요.</span></li><li><strong>만날 장소를 보내요.</strong><span>장소를 검색하고 운전자가 수락하면 픽업 대기에 들어가요.</span></li><li><strong>위치와 시간을 함께 봐요.</strong><span>내 픽업이 시작되면 준비 상태를 전하고 도착 시간을 확인해요.</span></li></ol></section>
+    <section class="card"><h2>초대 링크를 받았나요?</h2><p>받은 링크를 열면 이 화면 대신 이번 픽업이 바로 열려요. 링크 초대는 회원가입 없이 참여할 수 있어요.</p></section>
+    ${developmentToolsEnabled ? `<details class="dev-card"><summary>개발 도구</summary><p>차량 없이 API를 확인하는 로컬 시험용 화면이에요.</p>${button("픽업 준비하기", "prepare", true)}</details>` : ""}`;
 }
 
 function hostShare() {
@@ -267,8 +268,8 @@ function guest() {
     online,
     status,
   );
-  return `${connection()}<section class="card"><span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
-    <h1>${status === "ARRIVED" ? "차량이 도착했어요." : "만나는 시간을<br />맞춰볼까요?"}</h1>
+  return `${connection()}<section class="card pickup-live"><span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
+    <h1>${status === "ARRIVED" ? "차량이 도착했어요." : "마중 차량이 오고 있어요"}</h1>
     ${status === "ARRIVED" ? "<p>확정된 약속 장소에서 만나세요.<br />탑승 확인 후 공유가 종료돼요.</p>" : ""}
     <div class="arrival${current?.kind === "stale" ? " stale" : ""}" id="arrival-info">${
       !online
@@ -281,15 +282,28 @@ function guest() {
               ? `<span>도착까지</span><strong>${current.remainingSeconds > 0 ? `약 ${Math.ceil(current.remainingSeconds / 60)}<small>분</small>` : "곧 도착"}</strong><p>${current.kind === "stale" ? `마지막 갱신 ${e(ageText(current.ageMillis))} · 남은 시간을 이어서 세고 있어요.` : `차량 정보 수신 시각 ${e(new Date(vehicle.receivedAt).toLocaleTimeString("ko-KR"))}`}</p>${pickupMap ? "" : `<div class="coordinates">차량 위치 · 위도 ${e(current.latitude.toFixed(5))}<br />경도 ${e(current.longitude.toFixed(5))}</div>`}`
               : `<h2>${vehicle?.freshness === "WAITING" ? "차량 정보를 기다리고 있어요." : "최신 정보를 확인하고 있어요."}</h2><p>${vehicle?.freshness === "WAITING" ? "차량에서 정보를 보내면<br />도착 예정 시간을 확인할 수 있어요." : "지난 위치와 도착 시간은 표시하지 않아요."}</p>`
     }</div>
-    ${status === "ACTIVE" ? arrivalPushCard() : ""}
     ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : ""}
     ${placeCard()}${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : e(readinessDeliveryText(snapshot.participant, online))}</small></div>
     <div class="button-pair">${button("준비 중", "preparing", snapshot.participant.readiness !== "PREPARING", !online)}${button("준비 완료", "ready", snapshot.participant.readiness !== "READY", !online)}</div>
     ${pendingReadiness && online ? button("선택한 상태 다시 보내기", "retry-readiness", true) : ""}
-    <p class="hint">준비 상태를 바꾸면 새 상태의 전달 여부를 다시 확인해요.</p></section>`;
+    <p class="hint">탑승하면 운전자가 픽업을 완료하고 위치 공유를 끝내요.</p>
+    ${status === "ACTIVE" ? arrivalPushCard() : ""}</section>`;
 }
 
+let pickupStream = null, streamSession = null, streamConnected = false;
+let streamRefreshPending = false, lastSafetyRefresh = 0;
+function syncPickupStream() {
+  const wanted = !document.hidden && session?.role === "guest" && ["ACTIVE","ARRIVED"].includes(snapshot?.status) ? session : null;
+  if (wanted === streamSession) return;
+  pickupStream?.close(); pickupStream=null; streamSession=wanted; streamConnected=false;
+  if (!wanted) return;
+  pickupStream=openPickupStream({path:`/api/v1/pickups/${wanted.pickupId}/events`,token:wanted.token,
+    onState:connected=>{ if (streamSession===wanted) streamConnected=connected; },
+    onChange:()=>{ if(streamSession===wanted) streamRefreshPending=true; },
+    onFallback:()=>{ if(streamSession===wanted) {streamConnected=false;streamRefreshPending=true;} }});
+}
 function render() {
+  syncPickupStream();
   // Typing a place description must not be interrupted by the periodic redraw.
   if (picking && proposalPanel.hasFocus()) return;
   if (picking && snapshot?.status !== "ACTIVE") {
@@ -668,8 +682,13 @@ setInterval(() => {
   if (session?.role === "guest" && snapshot && !document.hidden) render();
 }, 1000);
 setInterval(() => {
+  syncPickupStream();
+  const now=performance.now();
+  if (!streamRefreshPending && now-lastSafetyRefresh<(streamConnected?30000:3000)) return;
+  if (busy || refreshing || document.hidden) return;
+  streamRefreshPending=false; lastSafetyRefresh=now;
   void refresh();
-}, 3000);
+}, 1000);
 render();
 if (session) void refresh();
 // Start closed: a failed configuration read must not expose the development form.
@@ -694,3 +713,6 @@ void fetch("/api/v1/config", {
       .catch(() => { /* Without the map the screen keeps the text-only layout. */ });
   }
 }).catch(() => { /* Invitation access remains available without development tools. */ });
+
+window.addEventListener("pagehide",()=>{pickupStream?.close();pickupStream=null;streamSession=null;});
+document.addEventListener("visibilitychange",()=>{syncPickupStream();if(!document.hidden)streamRefreshPending=true;});
