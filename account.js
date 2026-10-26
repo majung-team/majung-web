@@ -52,17 +52,17 @@ function clearVehiclePair() {
 function rideRow(source) {
   const item={...source};
   if (performance.now()>=item._etaUntil) item.currentPickupRemainingSeconds=null;
-  const labels={PENDING:"운전자 응답 대기",QUEUED:"수락됨 · 픽업 대기",ACTIVE:"내 픽업 진행 중",COMPLETED:"탑승 완료",CANCELLED:"취소됨",REJECTED:"거절됨",EXPIRED:"만료됨"};
+  const labels={INVITED:"운전자가 보낸 초대 · 내 응답 대기",PENDING:"운전자 응답 대기",QUEUED:"수락됨 · 픽업 대기",ACTIVE:"내 픽업 진행 중",COMPLETED:"탑승 완료",CANCELLED:"취소됨",REJECTED:"거절됨",EXPIRED:"만료됨"};
   const current=tracking.get(item.requestId);
   const fresh=current?.vehicle.freshness==="FRESH" && performance.now()<current.validUntil;
   const waiting=item.status==="QUEUED" ? `<p>내 앞에 ${Number(item.peopleAhead)||0}건이 있어요.</p><p class="hint">${item.currentPickupRemainingSeconds == null ? "현재 진행 중인 픽업의 남은 시간은 아직 확인할 수 없어요." : `현재 진행 중인 픽업 장소까지 약 ${Math.max(1,Math.ceil(item.currentPickupRemainingSeconds/60))}분 남았어요.`}<br />${item.currentPickupRemainingSeconds == null ? "내 장소 도착 예정 시간도 아직 정해지지 않았어요." : "위 시간은 내 장소 도착 예정 시간이 아니에요. 실제 탑승 시간에 따라 더 걸릴 수 있어요."}</p>` : "";
   const active=current ? `<p data-ride-eta="${e(item.requestId)}">${current.pickup.status==="ARRIVED"?"차가 도착했어요.":fresh?`내 장소까지 약 ${Math.max(1,Math.ceil(current.vehicle.durationSeconds/60))}분` : "차량의 새 위치와 시간을 기다리고 있어요."}</p><p>내 준비 상태 · ${e(current.pickup.participant.readiness==="READY"?"준비 완료":"준비 중")}</p>${button("준비 완료","ride-ready",`data-id="${e(item.requestId)}"`)}${button("준비 중","ride-preparing",`data-id="${e(item.requestId)}"`,true)}` : "";
-  return `<li class="person-row ride-row">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong><p>내가 요청한 장소 · ${e(item.place.label)}</p>${waiting}${active}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
+  return `<li class="person-row ride-row">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong><p>${item.driverInvitation?"운전자가 제안한 장소":"내가 요청한 장소"} · ${e(item.place.label)}</p>${waiting}${active}${item.status==="INVITED"?`<p>이 장소에서 탈까요? 수락해도 내 픽업이 시작되기 전에는 차량 위치가 공유되지 않아요.</p><p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답해주세요.</p>${button("이 장소에서 탈게요","invitation-accept",`data-id="${e(item.requestId)}"`)}${button("초대 거절","invitation-reject",`data-id="${e(item.requestId)}"`,true)}`:""}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
 }
 function rideSections() {
   const form=rideTarget?`<section class="card confirmation"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>지금 있는 위치에서 만나는 요청이에요. 차량 QR이나 기존 연결은 필요하지 않아요.</p>${button(ridePlace?"현재 위치 다시 선택":"현재 위치 선택","ride-location","",true)}<p class="hint">${ridePlace?`위치를 선택했어요 · 정확도 약 ${Math.ceil(ridePlace.accuracy)}m` : "위치 권한을 허용한 뒤 만날 장소 설명을 적어주세요."}</p><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><button class="primary" ${busy||!ridePlace?"disabled":""}>이 장소로 마중 요청</button></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
   const pair=vehiclePair||vehicleRequest?`<section class="card"><h2>내 계정과 차량 연결</h2><p>운전자 본인의 차량에서 연 QR인지 확인해주세요. 탑승자는 이 연결을 할 필요가 없어요.</p>${vehicleRequest?`<p>차량에서 ${e(info.member.nickname)} 님의 연결을 승인해주세요.</p>${button("연결 상태 확인","refresh","",true)}`:button("이 계정으로 차량 연결 요청","vehicle-claim")}${button("차량 연결 요청 닫기","vehicle-dismiss","",true)}</section>`:"";
-  return `${pair}<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>${form}<section class="card"><div class="section-heading"><h2>내 마중 요청</h2>${button("새로 확인","refresh","",true)}</div><p class="hint">운전자를 검색해 장소와 함께 요청할 수 있어요. 연결 이력이 없어도 가능해요.</p>${rides.length?`<ul class="person-list">${rides.map(rideRow).join("")}</ul>`:"<p>아직 보낸 마중 요청이 없어요.</p>"}</section>`;
+  return `${pair}<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>${form}<section class="card"><div class="section-heading"><h2>받은 초대와 내 마중 요청</h2>${button("새로 확인","refresh","",true)}</div><p class="hint">운전자가 보낸 초대를 여기서 수락하거나 거절할 수 있어요. 직접 운전자를 찾아 마중을 요청할 수도 있어요.</p><p class="hint">이 화면이 열려 있으면 10초마다 새로 확인해요. 웹을 닫은 동안에는 초대 알림이 오지 않아요.</p>${rides.length?`<ul class="person-list">${rides.map(rideRow).join("")}</ul>`:"<p>받은 초대나 보낸 마중 요청이 없어요.</p>"}</section>`;
 }
 const failedLogin = new URL(location.href).searchParams.get("login") === "failed";
 if (location.search) history.replaceState(null, "", location.pathname);
@@ -192,6 +192,13 @@ root.addEventListener("click", event => {
       const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,()=>reject(new AccountError(400,"LOCATION_UNAVAILABLE","위치 권한과 휴대전화 GPS를 확인한 뒤 다시 선택해주세요.")),{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
       if (position.coords.accuracy>300) throw new AccountError(400,"LOCATION_INACCURATE","위치 오차가 커요. GPS가 잘 잡히는 곳에서 다시 선택해주세요.");
       ridePlace={latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy,at:Date.now()};
+    } else if (action === "invitation-accept" || action === "invitation-reject") {
+      const invite=rides.find(item=>item.requestId===target.dataset.id && item.status==="INVITED");
+      if (!invite) return;
+      const accepting=action==="invitation-accept";
+      if (!window.confirm(`${invite.nickname} 님의 초대를 ${accepting?"수락":"거절"}할까요?\n만날 장소 · ${invite.place.label}`)) return;
+      await api(`/ride-requests/${invite.requestId}/${accepting?"accept":"reject"}-invitation`,{method:"POST"});
+      await refresh(); notice=accepting?"초대를 수락했어요. 운전자가 내 픽업을 시작하면 위치를 확인할 수 있어요.":"초대를 거절했어요.";
     } else if (action === "ride-cancel") {
       if (!window.confirm("이 마중 요청을 취소할까요?")) return;
       await api(`/ride-requests/${target.dataset.id}/cancel`,{method:"POST"}); await refresh();
