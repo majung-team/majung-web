@@ -9,6 +9,7 @@ import {
   vehicleDeadline,
   vehicleTiming,
   vehicleView,
+  vehicleForPlace,
   ageText,
   terminalStatuses,
   escapeHtml as e,
@@ -259,7 +260,7 @@ function guest() {
     <h1>${status === "INVITE_EXPIRED" ? "새 초대를<br />받아주세요." : "운전자 확인을<br />기다리고 있어요."}</h1><p>${status === "INVITE_EXPIRED" ? "운전자에게 새 링크를 요청해주세요." : "확인되면 이 화면에서<br />약속 장소와 도착 정보를 볼 수 있어요."}</p>
     <div class="empty-state">아직 차량 위치를 공유하지 않아요.</div></section>`;
   const current = vehicleView(
-    vehicle,
+    vehicleForPlace(snapshot, vehicle),
     timing,
     deadline,
     performance.now(),
@@ -323,7 +324,7 @@ function render() {
     pickupMap.attach(root.querySelector("#map-slot"));
     pickupMap.update(
       snapshot.place,
-      vehicleView(vehicle, timing, deadline, performance.now(), online, snapshot.status),
+      vehicleView(vehicleForPlace(snapshot, vehicle), timing, deadline, performance.now(), online, snapshot.status),
       snapshot.placeProposal?.place,
     );
     if (picking) {
@@ -390,7 +391,7 @@ async function refresh() {
           { token: currentSession.token },
         );
         if (generation !== epoch || currentSession !== session || busy) return;
-        vehicle = state;
+        vehicle = vehicleForPlace(snapshot, state);
         const received = performance.now();
         deadline = vehicleDeadline(state, started, received);
         timing = vehicleTiming(state, started, received);
