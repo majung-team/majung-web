@@ -12,7 +12,7 @@ import { AccountError } from "./account-api.js";
 async function screen() {
   let now = 0, seconds = 420, fail = false, authenticated = true, trackingReads = 0;
   let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
-  const timers = [], events = {}, rootEvents = {}, writes = [];
+  const timers = [], events = {}, windowEvents = {}, rootEvents = {}, writes = [];
   let streamCallbacks=null, streamClosed=false;
   let pauseTracking=false, finishTracking=null;
   const root = { innerHTML: "", setAttribute() {}, addEventListener(name, callback) { rootEvents[name] = callback; }, contains: () => false, querySelector: () => null };
@@ -35,7 +35,7 @@ async function screen() {
     openPickupStream: callbacks => { streamCallbacks=callbacks; return {close(){streamClosed=true;callbacks.onState(false);}}; },
     ...model, ...push, ...maps, ...proposal, e: model.escapeHtml, AccountError, createAccountClient: () => api,
     document: { querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; }, createElement: () => ({ innerHTML: "", setAttribute(){}, remove(){}, addEventListener() {}, contains: () => false, querySelector: () => ({ addEventListener() {}, hidden: false, value: "", textContent: "" }) }) },
-    window: { addEventListener() {} }, location: { href: "https://test.invalid/account", hash: "", search: "", pathname: "/account" },
+    window: { addEventListener(name,callback) {windowEvents[name]=callback;} }, location: { href: "https://test.invalid/account", hash: "", search: "", pathname: "/account" },
     history: { replaceState() {} }, sessionStorage: { getItem: () => null, removeItem() {} },
     performance: { now: () => now }, URL, AbortSignal, fetch: async () => ({ ok: true, json: async () => ({}) }),
     setInterval: callback => timers.push(callback), CSS: { escape: value => value },
@@ -45,7 +45,7 @@ async function screen() {
   const settle = () => new Promise(resolve => setImmediate(resolve));
   await settle();
   return {
-    root, context, events, rootEvents, writes,
+    root, context, events, windowEvents, rootEvents, writes,
     stream: () => streamCallbacks, closed: () => streamClosed,
     reads: () => trackingReads,
     pauseNextTracking: () => {pauseTracking=true;},
@@ -220,4 +220,39 @@ test("조회 도중 새 SSE 신호가 오면 안전 조회 주기를 기다리�
   assert.match(app.root.innerHTML,/약 10분/);
   await app.tick(2100);
   assert.match(app.root.innerHTML,/약 20분/);
+});
+
+
+test("오프라인은 즉시 ETA를 숨기고 연결 복구 뒤 최신 조회로만 다시 표시",async()=>{
+  const app=await screen();
+  app.stream().onState(true);
+  assert.match(app.root.innerHTML,/약 7분/);
+  app.windowEvents.offline();
+  assert.doesNotMatch(app.root.innerHTML,/약 7분/);
+  assert.match(app.root.innerHTML,/인터넷 연결이 끊겼어요/);
+  assert.equal(app.closed(),true);
+  const reads=app.reads();await app.tick(1000);assert.equal(app.reads(),reads);
+  app.seconds(600);app.windowEvents.online();await app.tick(1100);
+  assert.match(app.root.innerHTML,/약 10분/);
+  assert.doesNotMatch(app.root.innerHTML,/인터넷 연결이 끊겼어요/);
+});
+
+test("연결이 끊기기 전에 시작한 조회가 늦게 끝나도 위치와 ETA를 되살리지 않음",async()=>{
+  const app=await screen();
+  app.pauseNextTracking();app.stream().onChange();await app.tick(1000);
+  app.windowEvents.offline();app.windowEvents.online();
+  app.finishTracking();await new Promise(resolve=>setImmediate(resolve));
+  assert.doesNotMatch(app.root.innerHTML,/약 7분/);
+  app.seconds(900);await app.tick(1100);
+  assert.match(app.root.innerHTML,/약 15분/);
+});
+
+test("새 요청을 작성하다 끊겨도 선택 장소와 설명을 보존하고 자동 전송하지 않음",async()=>{
+  const app=await screen();
+  vm.runInContext('rideTarget={memberId:"driver",nickname:"시험"};rideLabel="시험 정문";ridePlace={latitude:37.3,longitude:127.3,source:"map"};',app.context);
+  app.windowEvents.offline();
+  assert.match(app.root.innerHTML,/시험 정문/);
+  assert.equal(vm.runInContext('ridePlace.latitude',app.context),37.3);
+  app.windowEvents.online();await app.tick(1000);
+  assert.equal(app.writes.length,0);
 });
