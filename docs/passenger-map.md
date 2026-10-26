@@ -13,7 +13,7 @@
 ## 배포 전 준비
 
 1. 서버 [카카오맵 키 설정](https://github.com/majung-team/majung-backend/blob/main/docs/kakao-map.md)에 따라 JavaScript 키와 Web 플랫폼 도메인을 등록한다.
-2. `deploy/Caddyfile`의 CSP에 `https://dapi.kakao.com`·`https://t1.daumcdn.net`(스크립트), `https://*.daumcdn.net`(지도 이미지)을 추가했다. Caddy 설정은 CI가 바꾸지 않으므로 서버에 직접 반영한다.
+2. `deploy/Caddyfile`의 CSP에 `https://dapi.kakao.com`·`https://t1.daumcdn.net`·`https://t1.kakaocdn.net`(스크립트), `https://*.daumcdn.net`(지도 이미지)을 추가했다. Caddy 설정은 CI가 바꾸지 않으므로 서버에 직접 반영한다.
 3. 새 파일 `map.js`를 서버 배포 스크립트의 웹 파일 목록에 추가했다(서버 PR). 설치된 `/usr/local/sbin/majung-deploy`를 갱신한 뒤 웹을 배포한다. 갱신 전에 배포하면 알 수 없는 파일로 거절된다.
 
 ## 확인 범위
@@ -34,3 +34,6 @@
 ![실제 지도 SDK와 가상 픽업](media/passenger-map-live-sdk.png)
 
 지도 이미지는 실제 카카오 SDK이고 픽업·좌표·계정은 시험 데이터다.
+
+
+운영 확인 중 SDK가 `t1.kakaocdn.net`의 4.5.29 스크립트를 추가로 불러오는 것을 확인했다. 기존 `t1.daumcdn.net` 허용만으로는 로딩이 끝나지 않아, 실제 CDN 한 곳을 CSP에 추가했다. 운영 Caddy 문법 검증과 reload 후 공개 HTTPS 화면에서 다시 확인한다.
