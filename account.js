@@ -180,6 +180,7 @@ function connectionRow(item) {
   return `<li class="person-row">${person(item.nickname, item.majungId)}<span class="connection-state">${status}</span><div class="row-actions">${controls}</div></li>`;
 }
 let rideStream=null, streamedRide=null, accountStreamConnected=false;
+let streamRevision=0;
 function syncRideStream() {
   const active=info?.authenticated && !document.hidden ? rides.find(ride=>ride.status==="ACTIVE")?.requestId ?? null : null;
   if(active===streamedRide)return;
@@ -187,8 +188,8 @@ function syncRideStream() {
   if(!active)return;
   rideStream=openPickupStream({path:`/api/v1/ride-requests/${active}/events`,
     onState:connected=>{if(streamedRide===active){accountStreamConnected=connected;const indicator=root.querySelector("[data-live-connection]");if(indicator)indicator.textContent=connected?"실시간으로 확인 중":"연결 상태 확인 중";}},
-    onChange:()=>{if(streamedRide===active)nextRefreshAt=0;},
-    onFallback:()=>{if(streamedRide===active){accountStreamConnected=false;nextRefreshAt=0;}}});
+    onChange:()=>{if(streamedRide===active){streamRevision++;nextRefreshAt=0;}},
+    onFallback:()=>{if(streamedRide===active){accountStreamConnected=false;streamRevision++;nextRefreshAt=0;}}});
 }
 function render() {
   syncRideStream();
@@ -404,7 +405,7 @@ setInterval(() => {
   if (document.hidden || busy || !info?.authenticated || rideTarget || root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") return;
   if (performance.now() < nextRefreshAt) return;
   const visible=()=>JSON.stringify({member:info?.member,authenticated:info?.authenticated,connections,rides:rides.map(({_etaUntil,...item})=>item),linkedVehicles,vehicleRequest,tracking:[...tracking].map(([id,{deadline,timing,...data}])=>[id,data])});
-  const before=visible(); const previousError=error; busy=true;
+  const before=visible(); const previousError=error; const revisionAtStart=streamRevision; busy=true;
   refresh().then(()=>{
     busy=false;
     if (error === "상태를 새로 확인하지 못했어요. 새로 확인을 눌러주세요.") error="";
@@ -418,7 +419,8 @@ setInterval(() => {
     else error="상태를 새로 확인하지 못했어요. 새로 확인을 눌러주세요.";
     render();
   }).finally(()=>{
-    nextRefreshAt=performance.now()+(accountStreamConnected?30000:rides.some(ride=>ride.status==="ACTIVE")?3000:10000);
+    // A change arriving while this read is in flight still needs its own refresh.
+    nextRefreshAt=streamRevision!==revisionAtStart ? 0 : performance.now()+(accountStreamConnected?30000:rides.some(ride=>ride.status==="ACTIVE")?3000:10000);
   });
 }, 1000);
 
