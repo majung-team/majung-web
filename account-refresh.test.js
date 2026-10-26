@@ -11,7 +11,7 @@ import { AccountError } from "./account-api.js";
 // Execute the real account entry point with an isolated DOM shell and controlled API clock.
 async function screen() {
   let now = 0, seconds = 420, fail = false, authenticated = true, trackingReads = 0;
-  let readinessSequence = 1, readinessReceivedSequence = 0;
+  let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
   const timers = [], events = {}, rootEvents = {}, writes = [];
   const root = { innerHTML: "", setAttribute() {}, addEventListener(name, callback) { rootEvents[name] = callback; }, contains: () => false, querySelector: () => null };
   const api = async (path, options = {}) => {
@@ -23,7 +23,7 @@ async function screen() {
     if (path === "/ride-requests") return { requests: [{ requestId: "test-ride", status: "ACTIVE", nickname: "시험 운전자", majungId: "driver", place: { label: "시험 장소" } }] };
     if (path.endsWith("/tracking")) {
       trackingReads++;
-      return { pickup: { status: "ACTIVE", participant: { readiness: "READY", readinessSequence, readinessReceivedSequence } }, vehicle: { freshness: "FRESH", durationSeconds: seconds, latitude: 37, longitude: 127, ageMillis: 0, validForMillis: 30000 } };
+      return { pickup: { status: "ACTIVE", placeProposal, participant: { readiness: "READY", readinessSequence, readinessReceivedSequence } }, vehicle: { freshness: "FRESH", durationSeconds: seconds, latitude: 37, longitude: 127, ageMillis: 0, validForMillis: 30000 } };
     }
     throw new Error(`Unexpected test route ${path}`);
   };
@@ -42,6 +42,7 @@ async function screen() {
   return {
     root, context, events, rootEvents, writes,
     reads: () => trackingReads,
+    proposal: value => { placeProposal = value; },
     receipt: (sequence, received) => { readinessSequence = sequence; readinessReceivedSequence = received; },
     seconds: value => { seconds = value; },
     failure: value => { fail = value; },
@@ -152,4 +153,16 @@ test("검색 결과 선택은 이름·좌표만 장소에 적용하고 전송은
   assert.equal(vm.runInContext('ridePlace.source',app.context),'search');
   assert.equal(vm.runInContext('ridePlace.latitude',app.context),37.3);
   assert.equal(vm.runInContext('ridePlace.id',app.context),undefined);
+});
+
+test("통합 계정 화면은 준비 상태 수신 확인과 별도 제안을 함께 표시", async () => {
+  const app = await screen();
+  app.proposal({proposedBy:"PASSENGER",place:{label:"시험 제안 장소",latitude:37.3,longitude:127.3}});
+  app.receipt(1,1);
+  vm.runInContext('pickupMap={attach(){},update(){},startPicking(){},stopPicking(){}};',app.context);
+  await app.tick(1000);
+  assert.match(app.root.innerHTML,/차량 앱에 전달됐어요/);
+  assert.match(app.root.innerHTML,/내가 제안한 장소/);
+  assert.match(app.root.innerHTML,/시험 제안 장소/);
+  assert.match(app.root.innerHTML,/운전자가 확인할 때까지 약속 장소는 그대로/);
 });
