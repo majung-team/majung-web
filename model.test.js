@@ -90,3 +90,50 @@ test("운전자 공유 주소와 탑승자 참여 주소는 구분한다", () =>
   assert.deepEqual(parseHostInvitation(`#share/${id}/${token}`), {pickupId: id, inviteToken: token});
   assert.equal(parseHostInvitation(`#share/${id}/short`), null);
 });
+
+import {
+  vehicleTiming,
+  vehicleView,
+  etaText,
+  ageText,
+} from "./model.js";
+test("차량 정보 경과 시간은 서버 값에 왕복 시간을 더함", () => {
+  assert.deepEqual(vehicleTiming({ ageMillis: 1000 }, 100, 400), {
+    ageMillis: 1300,
+    at: 400,
+  });
+  assert.equal(vehicleTiming({ ageMillis: null }, 100, 400), null);
+  assert.equal(vehicleTiming({}, 100, 400), null);
+});
+test("30초가 지나면 흐린 위치와 카운트다운, 2분이 지나면 위치 확인 중", () => {
+  const timing = { ageMillis: 0, at: 0 };
+  const fresh = vehicleView(vehicle, timing, 30000, 10000, true, "ACTIVE");
+  assert.equal(fresh.kind, "fresh");
+  assert.equal(fresh.remainingSeconds, 110);
+  const stale = { ...vehicle, freshness: "STALE", validForMillis: 0 };
+  const dimmed = vehicleView(stale, { ageMillis: 31000, at: 0 }, 0, 4000, true, "ACTIVE");
+  assert.equal(dimmed.kind, "stale");
+  assert.equal(dimmed.remainingSeconds, 85);
+  assert.equal(ageText(dimmed.ageMillis), "35초 전");
+  // A FRESH response whose local deadline passed is shown as stale, not hidden.
+  assert.equal(vehicleView(vehicle, timing, 30000, 30000, true, "ACTIVE").kind, "stale");
+  const late = vehicleView(stale, { ageMillis: 119000, at: 0 }, 0, 1000, true, "ACTIVE");
+  assert.deepEqual(late, { kind: "lost", ageMillis: 120000 });
+  assert.equal(ageText(late.ageMillis), "2분 전");
+  const withheld = { ...stale, latitude: null, longitude: null, durationSeconds: null };
+  assert.equal(vehicleView(withheld, { ageMillis: 125000, at: 0 }, 0, 0, true, "ACTIVE").kind, "lost");
+});
+test("카운트다운이 0이 되면 도착이 아니라 곧 도착", () => {
+  const stale = { ...vehicle, freshness: "STALE", durationSeconds: 40 };
+  const view = vehicleView(stale, { ageMillis: 45000, at: 0 }, 0, 0, true, "ACTIVE");
+  assert.equal(view.remainingSeconds, 0);
+  assert.equal(etaText(view), "곧 도착");
+  assert.equal(etaText({ remainingSeconds: 61 }), "약 2분");
+});
+test("정보 없음·연결 끊김·종료 때는 끊김 표시도 하지 않음", () => {
+  const timing = { ageMillis: 0, at: 0 };
+  assert.equal(vehicleView({ freshness: "WAITING" }, timing, 0, 0, true, "ACTIVE"), null);
+  assert.equal(vehicleView(vehicle, timing, 30000, 0, false, "ACTIVE"), null);
+  assert.equal(vehicleView(vehicle, timing, 30000, 0, true, "COMPLETED"), null);
+  assert.equal(vehicleView(vehicle, null, 30000, 0, true, "ACTIVE"), null);
+});
