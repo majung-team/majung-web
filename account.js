@@ -123,6 +123,8 @@ function selectedPlaceText() {
 let pickingRide = null;
 const proposalPanel = createProposalPanel({
   onSubmit: place => { void submitRideProposal(place); },
+  searchPlaces: (keyword,page) => searchPickupPlaces(placeMaps,keyword,page),
+  onSelectPoint: place => pickupMap?.selectPickingPoint(place) ?? false,
   onCancel: () => { pickingRide=null; proposalPanel.reset(); render(); },
   onBlur: () => { if (!busy) render(); },
 });
