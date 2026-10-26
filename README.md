@@ -36,6 +36,10 @@ Node.js 22 이상에서 `npm ci`, `npm test`, `npm start`를 실행한다.
 
 초대 링크로 들어온 첫 사람이 이름 입력과 운전자 승인 없이 연결된다. [동작과 확인 범위](docs/auto-connect.md)를 참고한다.
 
+## 도착 임박 알림
+
+차량이 약 3분 안에 도착하면 브라우저 알림을 한 번 보낸다. 서버에 VAPID 키가 있을 때만 켜진다. [화면, 제한과 확인 범위](docs/arrival-push.md)를 참고한다.
+
 ## GitHub Actions
 
 [웹 테스트와 배포](docs/github-actions.md)에서 CI·main 배포 조건과 확인한 범위를 설명한다. 실제 Actions 배포를 확인한 뒤 자동 배포를 켠다.

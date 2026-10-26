@@ -12,6 +12,16 @@ import {
   terminalStatuses,
   escapeHtml as e,
 } from "./model.js";
+import {
+  browserPushEnvironment,
+  pushState,
+  pushCard,
+  pushErrorText,
+  enableArrivalPush,
+  disableBrowserPush,
+  pushFlag,
+  setPushFlag,
+} from "./push.js";
 
 const root = document.querySelector("#app");
 const storageKey = "majung.pickup.session.v1";
@@ -53,6 +63,9 @@ let pendingReadiness = null;
 let manualLink = false;
 let renderedMarkup = "";
 let developmentToolsEnabled = false;
+let pushKey = null;
+let pushBusy = false;
+let pushMessage = "";
 const draft = { label: "", latitude: "", longitude: "" };
 const readinessText = {
   WAITING: "아직 준비 중이에요",
@@ -181,6 +194,43 @@ function driver() {
     <p class="hint center">이 화면은 개발 확인용이에요. 운전 중에는 조작하지 마세요.</p>`;
 }
 
+function arrivalPushCard() {
+  const state = pushState({
+    publicKey: pushKey,
+    ...browserPushEnvironment(),
+    subscribed: pushFlag(session.pickupId),
+  });
+  return pushCard(state, { busy: pushBusy, message: pushMessage });
+}
+
+async function toggleArrivalPush(turnOn) {
+  if (pushBusy || !session || session.role !== "guest") return;
+  const current = session;
+  pushBusy = true;
+  pushMessage = "";
+  render();
+  try {
+    if (turnOn) {
+      const endpoint = await enableArrivalPush(pushKey);
+      await request(`/${current.pickupId}/arrival-push`, {
+        method: "PUT",
+        token: current.token,
+        body: { endpoint },
+      });
+      setPushFlag(current.pickupId, true);
+    } else {
+      await request(`/${current.pickupId}/arrival-push`, { method: "DELETE", token: current.token });
+      setPushFlag(current.pickupId, false);
+      await disableBrowserPush();
+    }
+  } catch (error) {
+    pushMessage = pushErrorText(error);
+  } finally {
+    pushBusy = false;
+    render();
+  }
+}
+
 function guest() {
   const status = snapshot.status;
   if (["WAITING_APPROVAL", "INVITE_EXPIRED"].includes(status))
@@ -209,6 +259,7 @@ function guest() {
               ? `<span>도착까지</span><strong>${current.remainingSeconds > 0 ? `약 ${Math.ceil(current.remainingSeconds / 60)}<small>분</small>` : "곧 도착"}</strong><p>${current.kind === "stale" ? `마지막 갱신 ${e(ageText(current.ageMillis))} · 남은 시간을 이어서 세고 있어요.` : `차량 정보 수신 시각 ${e(new Date(vehicle.receivedAt).toLocaleTimeString("ko-KR"))}`}</p><div class="coordinates">차량 위치 · 위도 ${e(current.latitude.toFixed(5))}<br />경도 ${e(current.longitude.toFixed(5))}</div>`
               : `<h2>${vehicle?.freshness === "WAITING" ? "차량 정보를 기다리고 있어요." : "최신 정보를 확인하고 있어요."}</h2><p>${vehicle?.freshness === "WAITING" ? "차량에서 정보를 보내면<br />도착 예정 시간을 확인할 수 있어요." : "지난 위치와 도착 시간은 표시하지 않아요."}</p>`
     }</div>
+    ${status === "ACTIVE" ? arrivalPushCard() : ""}
     ${placeCard()}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : "마지막으로 서버에 저장된 상태예요."}</small></div>
     <div class="button-pair">${button("준비 중", "preparing", snapshot.participant.readiness !== "PREPARING", !online)}${button("준비 완료", "ready", snapshot.participant.readiness !== "READY", !online)}</div>
     ${pendingReadiness && online ? button("선택한 상태 다시 보내기", "retry-readiness", true) : ""}
@@ -415,6 +466,10 @@ root.addEventListener("click", async (event) => {
   const target = event.target.closest("[data-action]");
   if (!target || busy || target.disabled) return;
   const action = target.dataset.action;
+  if (action === "push-on" || action === "push-off") {
+    await toggleArrivalPush(action === "push-on");
+    return;
+  }
   if (action === "prepare" && !developmentToolsEnabled) return;
   if (["home", "prepare"].includes(action)) {
     finished = null;
@@ -561,6 +616,7 @@ void fetch("/api/v1/config", {
   if (response.ok) {
     const configuration = await response.json();
     developmentToolsEnabled = configuration.developmentToolsEnabled === true;
+    pushKey = typeof configuration.webPushPublicKey === "string" ? configuration.webPushPublicKey : null;
     render();
   }
 }).catch(() => { /* Invitation access remains available without development tools. */ });

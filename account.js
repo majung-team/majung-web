@@ -1,5 +1,6 @@
 import { createAccountClient, AccountError } from "./account-api.js";
 import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, etaText, ageText } from "./model.js";
+import { browserPushEnvironment, pushState, pushCard, pushErrorText, enableArrivalPush, disableBrowserPush, pushFlag, setPushFlag } from "./push.js";
 
 const root = document.querySelector("#account-app");
 const api = createAccountClient();
@@ -55,8 +56,13 @@ function rideRow(source) {
   const labels={INVITED:"운전자가 보낸 초대 · 내 응답 대기",PENDING:"운전자 응답 대기",QUEUED:"수락됨 · 픽업 대기",ACTIVE:"내 픽업 진행 중",COMPLETED:"탑승 완료",CANCELLED:"취소됨",REJECTED:"거절됨",EXPIRED:"만료됨"};
   const current=tracking.get(item.requestId);
   const waiting=item.status==="QUEUED" ? `<p>내 앞에 ${Number(item.peopleAhead)||0}건이 있어요.</p><p class="hint">${item.currentPickupRemainingSeconds == null ? "현재 진행 중인 픽업의 남은 시간은 아직 확인할 수 없어요." : `현재 진행 중인 픽업 장소까지 약 ${Math.max(1,Math.ceil(item.currentPickupRemainingSeconds/60))}분 남았어요.`}<br />${item.currentPickupRemainingSeconds == null ? "내 장소 도착 예정 시간도 아직 정해지지 않았어요." : "위 시간은 내 장소 도착 예정 시간이 아니에요. 실제 탑승 시간에 따라 더 걸릴 수 있어요."}</p>` : "";
-  const active=current ? `<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p><p>내 준비 상태 · ${e(current.pickup.participant.readiness==="READY"?"준비 완료":"준비 중")}</p>${button("준비 완료","ride-ready",`data-id="${e(item.requestId)}"`)}${button("준비 중","ride-preparing",`data-id="${e(item.requestId)}"`,true)}` : "";
+  const active=current ? `<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>${current.pickup.status==="ACTIVE"?ridePushCard(item.requestId):""}<p>내 준비 상태 · ${e(current.pickup.participant.readiness==="READY"?"준비 완료":"준비 중")}</p>${button("준비 완료","ride-ready",`data-id="${e(item.requestId)}"`)}${button("준비 중","ride-preparing",`data-id="${e(item.requestId)}"`,true)}` : "";
   return `<li class="person-row ride-row">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong><p>${item.driverInvitation?"운전자가 제안한 장소":"내가 요청한 장소"} · ${e(item.place.label)}</p>${waiting}${active}${item.status==="INVITED"?`<p>이 장소에서 탈까요? 수락해도 내 픽업이 시작되기 전에는 차량 위치가 공유되지 않아요.</p><p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답해주세요.</p>${button("이 장소에서 탈게요","invitation-accept",`data-id="${e(item.requestId)}"`)}${button("초대 거절","invitation-reject",`data-id="${e(item.requestId)}"`,true)}`:""}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
+}
+let pushKey=null, pushBusyId=null, pushMessageFor=null, pushMessage="";
+function ridePushCard(requestId) {
+  const state=pushState({publicKey:pushKey,...browserPushEnvironment(),subscribed:pushFlag(requestId)});
+  return pushCard(state,{busy:pushBusyId===requestId,message:pushMessageFor===requestId?pushMessage:"",attributes:`data-id="${e(requestId)}"`});
 }
 function rideEtaText(current) {
   if (current.pickup.status==="ARRIVED") return "차가 도착했어요.";
@@ -187,6 +193,7 @@ root.addEventListener("click", event => {
     rideTarget=results.find(item=>item.memberId===target.dataset.id); ridePlace=null; rideLabel=""; rideRequestId=crypto.randomUUID(); render(); root.querySelector(".confirmation")?.scrollIntoView({block:"center"}); return;
   }
   if (action === "ride-dismiss") { rideTarget=null; ridePlace=null; render(); return; }
+  if (action === "push-on" || action === "push-off") { toggleRidePush(target.dataset.id, action === "push-on"); return; }
   if (action.startsWith("confirm-") && action !== "confirm-action") {
     const item = connections.find(item => item.connectionId === target.dataset.id);
     if (!item) return;
@@ -274,3 +281,26 @@ setInterval(()=>{
   for (const item of rides) if (item.currentPickupRemainingSeconds!=null && performance.now()>=item._etaUntil) { item.currentPickupRemainingSeconds=null; expired=true; }
   if (expired && !busy && !rideTarget && document.activeElement?.tagName!=="INPUT") render();
 },1000);
+
+async function toggleRidePush(requestId, turnOn) {
+  if (pushBusyId || !requestId) return;
+  pushBusyId=requestId; pushMessageFor=requestId; pushMessage=""; render();
+  try {
+    if (turnOn) {
+      const endpoint=await enableArrivalPush(pushKey);
+      await api(`/ride-requests/${requestId}/arrival-push`,{method:"PUT",body:{endpoint}});
+      setPushFlag(requestId,true);
+    } else {
+      await api(`/ride-requests/${requestId}/arrival-push`,{method:"DELETE"});
+      setPushFlag(requestId,false);
+      await disableBrowserPush();
+    }
+  } catch (failure) { pushMessage=pushErrorText(failure); }
+  finally { pushBusyId=null; render(); }
+}
+
+// Start without push: a failed configuration read keeps the page working and hides the notice card.
+void fetch("/api/v1/config", { cache: "no-store", credentials: "omit", redirect: "error", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(8000) })
+  .then(response => response.ok ? response.json() : null)
+  .then(configuration => { pushKey = typeof configuration?.webPushPublicKey === "string" ? configuration.webPushPublicKey : null; if (pushKey && tracking.size && !busy) render(); })
+  .catch(() => { });
