@@ -53,7 +53,7 @@ let pendingReadiness = null;
 let manualLink = false;
 let renderedMarkup = "";
 let developmentToolsEnabled = false;
-const draft = { name: "", label: "", latitude: "", longitude: "" };
+const draft = { label: "", latitude: "", longitude: "" };
 const readinessText = {
   WAITING: "아직 준비 중이에요",
   PREPARING: "출발을 준비하고 있어요",
@@ -103,7 +103,7 @@ function home() {
   return `<section class="intro"><p class="eyebrow">만나는 순간까지, 연락은 간단하게.</p>
     <h1>기다림을<br />같은 약속으로.</h1><p>초대 링크를 열면 만날 장소와 도착 정보를 확인하고,<br class="desktop" /> 준비 상태를 운전자에게 전할 수 있어요.</p></section>
     <section class="card"><span class="badge">탑승자 안내</span><h2>초대 링크로 참여해요.</h2>
-    <p>운전자에게 받은 링크를 열어주세요.<br />참여 요청을 확인한 뒤 위치 공유가 시작돼요.</p></section>
+    <p>운전자에게 받은 링크를 열어주세요.<br />참여하면 바로 연결돼서 차량 위치를 볼 수 있어요.</p></section>
     ${developmentToolsEnabled ? `<section class="dev-card"><h2>운전자 확인 화면</h2><p>차량 없이 API를 확인하는 개발용 화면이에요.<br />이 브라우저에서 약속을 만들고 탑승자 참여를 확인할 수 있어요.</p>
     ${button("픽업 준비하기", "prepare", true)}</section>` : ""}`;
 }
@@ -130,10 +130,9 @@ function createForm() {
 function joinForm() {
   if (!invitation)
     return `<section class="card"><h1>초대가 필요해요.</h1><p>운전자에게 받은 링크를 다시 열어주세요.</p>${button("처음으로", "home", true)}</section>`;
-  return `<section class="intro small"><p class="eyebrow">마중 약속 초대</p><h1>함께 만날 약속에<br />참여할까요?</h1><p>운전자가 확인하면 만날 장소와<br />차량의 도착 정보를 볼 수 있어요.</p></section>
-    <form id="join-form" class="card"><label for="display-name">운전자가 알아볼 이름<input id="display-name" name="name" required maxlength="12" autocomplete="nickname" value="${e(draft.name)}" placeholder="이름 또는 별명" /></label>
-    <p class="hint">휴대전화 위치나 연락처는 요청하지 않아요.</p>
-    <button class="primary" ${busy ? "disabled" : ""}>${busy ? "참여를 요청하고 있어요…" : "약속에 참여하기"}</button></form>`;
+  return `<section class="intro small"><p class="eyebrow">마중 약속 초대</p><h1>함께 만날 약속에<br />참여할까요?</h1><p>참여하면 바로 연결돼서 만날 장소와<br />차량의 도착 정보를 볼 수 있어요.</p></section>
+    <form id="join-form" class="card"><p class="hint">이름이나 가입 없이 참여해요. 이 링크는 한 사람만 쓸 수 있고, 휴대전화 위치나 연락처는 요청하지 않아요.</p>
+    <button class="primary" ${busy ? "disabled" : ""}>${busy ? "연결하고 있어요…" : "약속에 참여하기"}</button></form>`;
 }
 
 function placeCard() {
@@ -168,13 +167,14 @@ function driver() {
   if (status === "WAITING_APPROVAL")
     content = `<span class="badge">참여 요청</span><h1>${e(guest.displayName)} 님이<br />참여했어요.</h1><p>초대한 사람이 맞는지 확인해주세요.<br />확인하면 이번 픽업 동안 위치를 공유해요.</p>${placeCard()}${button("확인하고 공유 시작", "approve", false, !online)}`;
   if (status === "INVITE_EXPIRED")
-    content = `<span class="badge">초대 만료</span><h1>다시 초대해주세요.</h1><p>참여·승인 기한이 지났어요.<br />새 초대를 만들면 이전 링크와 참여 요청은 취소돼요.</p>${placeCard()}`;
+    content = `<span class="badge">초대 만료</span><h1>다시 초대해주세요.</h1><p>참여 기한이 지났어요.<br />새 초대를 만들면 이전 링크는 쓸 수 없게 돼요.</p>${placeCard()}`;
   if (["ACTIVE", "ARRIVED"].includes(status))
     content = `<span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
     <h1>${status === "ARRIVED" ? "함께 만났나요?" : "출발 준비를<br />확인해요."}</h1>
     <div class="readiness"><span>${e(guest.displayName)} 님</span><strong>${e(readinessText[guest.readiness])}</strong><small>${online ? "서버에 저장된 준비 상태예요." : "마지막으로 확인한 준비 상태예요."}</small></div>${placeCard()}
     <p class="hint">이 웹에서 만든 픽업에는 차량 앱이 연결되어 있지 않아요.</p>
-    ${button(status === "ARRIVED" ? "탑승 확인 · 픽업 완료" : "도착 알리기", status === "ARRIVED" ? "complete" : "arrive", false, !online)}`;
+    ${button(status === "ARRIVED" ? "탑승 확인 · 픽업 완료" : "도착 알리기", status === "ARRIVED" ? "complete" : "arrive", false, !online)}
+    ${button("탑승자 끊기", "disconnect", true, !online)}`;
   return `${connection()}<section class="card driver"><p class="eyebrow">운전자 확인 화면</p>${content}
     ${["INVITING", "WAITING_APPROVAL", "INVITE_EXPIRED"].includes(status) ? button("새 초대 만들기", "rotate", true, !online) : ""}
     ${button("픽업 취소", "cancel", true, !online)}</section>
@@ -255,7 +255,7 @@ function handleError(error) {
     invitation = null;
     page = "home";
     message =
-      "이 약속에 접근할 수 없어요. 초대가 다시 발급됐거나 세션이 만료됐을 수 있어요.";
+      "이 약속에 접근할 수 없어요. 운전자가 연결을 끊었거나 초대가 다시 발급됐을 수 있어요.";
     return;
   }
   message =
@@ -379,20 +379,11 @@ root.addEventListener("submit", async (event) => {
       storeSession();
     });
   } else if (form.id === "join-form" && invitation) {
-    draft.name = fields.get("name").trim();
-    if (!draft.name) {
-      message = "운전자가 알아볼 이름을 입력해주세요.";
-      render();
-      return;
-    }
     const invite = invitation;
     await mutate(async () => {
       const joined = await request(`/${invite.pickupId}/participants`, {
         method: "POST",
-        body: {
-          inviteToken: invite.inviteToken,
-          displayName: draft.name,
-        },
+        body: { inviteToken: invite.inviteToken },
       });
       session = {
         role: "guest",
@@ -496,7 +487,8 @@ root.addEventListener("click", async (event) => {
   }
   if (!session || session.role !== "driver" || !online) return;
   const confirmations = {
-    rotate: "새 초대를 만들까요? 이전 링크와 참여 요청은 취소돼요.",
+    rotate: "새 초대를 만들까요? 이전 링크는 쓸 수 없게 돼요.",
+    disconnect: "연결된 탑승자를 끊을까요? 이 탑승자는 더 이상 위치를 볼 수 없고 새 초대가 만들어져요.",
     cancel: "픽업을 취소할까요? 차량 위치 공유도 종료돼요.",
     complete: "탑승을 확인했나요? 픽업을 완료하면 위치 공유가 종료돼요.",
   };
@@ -507,21 +499,22 @@ root.addEventListener("click", async (event) => {
     complete: "/completion",
     cancel: "/cancellation",
     rotate: "/invitations",
+    disconnect: "/participant",
   };
   if (!paths[action]) return;
   await mutate(async () => {
     const result = await request(`/${session.pickupId}${paths[action]}`, {
-      method: "POST",
+      method: action === "disconnect" ? "DELETE" : "POST",
       token: session.token,
     });
-    if (action === "rotate") {
+    if (action === "rotate" || action === "disconnect") {
       session.invite = {
         token: result.inviteToken,
         expiresAt: result.expiresAt,
       };
       storeSession();
       manualLink = false;
-      notice = "새 초대를 만들었어요.";
+      notice = action === "disconnect" ? "탑승자를 끊고 새 초대를 만들었어요." : "새 초대를 만들었어요.";
     } else {
       snapshot = result;
       if (terminalStatuses.has(result.status)) finish(result);
