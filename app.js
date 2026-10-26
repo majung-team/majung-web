@@ -24,6 +24,7 @@ import {
   setPushFlag,
 } from "./push.js";
 import { loadKakaoMaps, createPickupMap } from "./map.js";
+import { proposalBlock, createProposalPanel } from "./proposal.js";
 
 const root = document.querySelector("#app");
 const storageKey = "majung.pickup.session.v1";
@@ -52,6 +53,7 @@ let vehicle = null;
 let deadline = 0;
 let timing = null;
 let pickupMap = null;
+let picking = false;
 let online = false;
 let busy = false;
 let refreshing = false;
@@ -76,6 +78,12 @@ const readinessText = {
   READY: "준비가 끝났어요",
 };
 
+const proposalPanel = createProposalPanel({
+  onSubmit: (place) => void sendProposal(place),
+  onCancel: () => { picking = false; proposalPanel.reset(); render(); },
+  onBlur: () => render(),
+});
+
 function storeSession() {
   try {
     if (session) sessionStorage.setItem(storageKey, JSON.stringify(session));
@@ -93,6 +101,8 @@ function forgetSession() {
   deadline = 0;
   timing = null;
   pendingReadiness = null;
+  picking = false;
+  proposalPanel.reset();
   online = false;
   manualLink = false;
   storeSession();
@@ -174,6 +184,14 @@ function invitationCard() {
     <p class="hint">한 번만 참여할 수 있어요. 이 링크를 가진 사람에게만 전달해주세요.</p></div>`;
 }
 
+function driverProposal() {
+  const proposal = snapshot.placeProposal;
+  if (!proposal) return "";
+  return `<div class="proposal"><span>${proposal.proposedBy === "DRIVER" ? "운전자가 제안한 장소" : "탑승자가 제안한 장소"}</span><strong>${e(proposal.place.label)}</strong>
+    <small>위도 ${e(proposal.place.latitude.toFixed(5))} · 경도 ${e(proposal.place.longitude.toFixed(5))} · 확정 장소는 그대로예요.</small>
+    ${button("제안 지우기", "propose-clear", true, !online)}</div>`;
+}
+
 function driver() {
   const status = snapshot.status;
   const guest = snapshot.participant;
@@ -188,7 +206,7 @@ function driver() {
     content = `<span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
     <h1>${status === "ARRIVED" ? "함께 만났나요?" : "출발 준비를<br />확인해요."}</h1>
     <div class="readiness"><span>${e(guest.displayName)} 님</span><strong>${e(readinessText[guest.readiness])}</strong><small>${online ? "서버에 저장된 준비 상태예요." : "마지막으로 확인한 준비 상태예요."}</small></div>${placeCard()}
-    <p class="hint">이 웹에서 만든 픽업에는 차량 앱이 연결되어 있지 않아요.</p>
+    ${driverProposal()}<p class="hint">이 웹에서 만든 픽업에는 차량 앱이 연결되어 있지 않아요.</p>
     ${button(status === "ARRIVED" ? "탑승 확인 · 픽업 완료" : "도착 알리기", status === "ARRIVED" ? "complete" : "arrive", false, !online)}
     ${button("탑승자 끊기", "disconnect", true, !online)}`;
   return `${connection()}<section class="card driver"><p class="eyebrow">운전자 확인 화면</p>${content}
@@ -264,13 +282,19 @@ function guest() {
     }</div>
     ${status === "ACTIVE" ? arrivalPushCard() : ""}
     ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : ""}
-    ${placeCard()}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : e(readinessDeliveryText(snapshot.participant, online))}</small></div>
+    ${placeCard()}${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : e(readinessDeliveryText(snapshot.participant, online))}</small></div>
     <div class="button-pair">${button("준비 중", "preparing", snapshot.participant.readiness !== "PREPARING", !online)}${button("준비 완료", "ready", snapshot.participant.readiness !== "READY", !online)}</div>
     ${pendingReadiness && online ? button("선택한 상태 다시 보내기", "retry-readiness", true) : ""}
     <p class="hint">준비 상태를 바꾸면 새 상태의 전달 여부를 다시 확인해요.</p></section>`;
 }
 
 function render() {
+  // Typing a place description must not be interrupted by the periodic redraw.
+  if (picking && proposalPanel.hasFocus()) return;
+  if (picking && snapshot?.status !== "ACTIVE") {
+    picking = false;
+    proposalPanel.reset();
+  }
   let content;
   if (finished)
     content = `<section class="card end"><span class="end-mark">✓</span><span class="badge">위치 공유 종료</span><h1>${{ COMPLETED: "잘 만났어요!", CANCELLED: "약속이 취소됐어요.", EXPIRED: "약속 시간이 지났어요." }[finished.status]}</h1><p>차량 위치와 도착 예정 시간은<br />더 이상 볼 수 없어요.</p>${button("처음으로", "home", true)}</section>`;
@@ -300,7 +324,12 @@ function render() {
     pickupMap.update(
       snapshot.place,
       vehicleView(vehicle, timing, deadline, performance.now(), online, snapshot.status),
+      snapshot.placeProposal?.place,
     );
+    if (picking) {
+      proposalPanel.attach(root.querySelector("[data-proposal-slot]"));
+      pickupMap.startPicking((point) => proposalPanel.setPoint(point));
+    } else pickupMap.stopPicking();
   }
   document.title = session
     ? `마중 · ${session.role === "driver" ? "운전자 확인" : "나의 약속"}`
@@ -459,6 +488,19 @@ root.addEventListener("submit", async (event) => {
   }
 });
 
+async function sendProposal(place) {
+  await mutate(async () => {
+    snapshot = await request(`/${session.pickupId}/place-proposal`, {
+      method: "PUT",
+      token: session.token,
+      body: { place },
+    });
+    picking = false;
+    proposalPanel.reset();
+    notice = "장소를 제안했어요. 운전자가 확인할 때까지 약속 장소는 그대로예요.";
+  });
+}
+
 async function sendReadiness(value) {
   pendingReadiness = value;
   await mutate(async () => {
@@ -479,6 +521,18 @@ root.addEventListener("click", async (event) => {
   const action = target.dataset.action;
   if (action === "push-on" || action === "push-off") {
     await toggleArrivalPush(action === "push-on");
+    return;
+  }
+  if (action === "propose-start" && session?.role === "guest") {
+    picking = true;
+    render();
+    return;
+  }
+  if (action === "propose-withdraw" && session?.role === "guest" && online) {
+    await mutate(async () => {
+      snapshot = await request(`/${session.pickupId}/place-proposal`, { method: "DELETE", token: session.token });
+      notice = "장소 제안을 취소했어요.";
+    });
     return;
   }
   if (action === "prepare" && !developmentToolsEnabled) return;
@@ -566,11 +620,12 @@ root.addEventListener("click", async (event) => {
     cancel: "/cancellation",
     rotate: "/invitations",
     disconnect: "/participant",
+    "propose-clear": "/place-proposal",
   };
   if (!paths[action]) return;
   await mutate(async () => {
     const result = await request(`/${session.pickupId}${paths[action]}`, {
-      method: action === "disconnect" ? "DELETE" : "POST",
+      method: ["disconnect", "propose-clear"].includes(action) ? "DELETE" : "POST",
       token: session.token,
     });
     if (action === "rotate" || action === "disconnect") {

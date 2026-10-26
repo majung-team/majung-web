@@ -42,12 +42,27 @@ export function createPickupMap(maps) {
   let placeMarker = null;
   let carOverlay = null;
   let fittedFor = null;
+  // Suggested place and the pin being placed use their own markers; the confirmed place is never moved.
+  const proposalElement = markerElement("proposal-marker", "제안");
+  const pinElement = markerElement("pin-marker", "여기");
+  let proposalOverlay = null;
+  let pinOverlay = null;
+  let onPick = null;
 
   function ensureMap(center) {
     if (map) return;
     map = new maps.Map(element, { center, level: 4 });
     placeMarker = new maps.Marker({ position: center });
     carOverlay = new maps.CustomOverlay({ content: carElement, yAnchor: 0.5 });
+    proposalOverlay = new maps.CustomOverlay({ content: proposalElement, yAnchor: 0.5 });
+    pinOverlay = new maps.CustomOverlay({ content: pinElement, yAnchor: 0.5 });
+    maps.event.addListener(map, "click", (event) => {
+      if (!onPick) return;
+      const position = event.latLng;
+      pinOverlay.setPosition(position);
+      pinOverlay.setMap(map);
+      onPick({ latitude: position.getLat(), longitude: position.getLng() });
+    });
   }
 
   return {
@@ -56,7 +71,7 @@ export function createPickupMap(maps) {
       if (slot !== element) slot.replaceWith(element);
       map?.relayout();
     },
-    update(place, view) {
+    update(place, view, proposal = null) {
       if (!element.isConnected || !place) return;
       const placePosition = new maps.LatLng(place.latitude, place.longitude);
       ensureMap(placePosition);
@@ -68,6 +83,10 @@ export function createPickupMap(maps) {
         carOverlay.setMap(map);
         carElement.classList.toggle("stale", view.kind === "stale");
       } else carOverlay.setMap(null);
+      if (proposal) {
+        proposalOverlay.setPosition(new maps.LatLng(proposal.latitude, proposal.longitude));
+        proposalOverlay.setMap(map);
+      } else proposalOverlay.setMap(null);
       // Fit once when the car appears or disappears; later updates leave the viewer's panning alone.
       const fitKey = `${place.latitude},${place.longitude},${hasCar}`;
       if (fittedFor === fitKey) return;
@@ -80,6 +99,16 @@ export function createPickupMap(maps) {
       bounds.extend(placePosition);
       bounds.extend(carOverlay.getPosition());
       map.setBounds(bounds, 48, 48, 48, 48);
+    },
+    // Tapping the map places one pin and reports its coordinates; stopPicking removes the pin.
+    startPicking(callback) {
+      onPick = callback;
+      element.classList.add("picking");
+    },
+    stopPicking() {
+      onPick = null;
+      element.classList.remove("picking");
+      pinOverlay?.setMap(null);
     },
   };
 }
@@ -187,4 +216,11 @@ export async function searchPickupPlaces(maps, query, page = 1) {
   const partial = results.some(result => result.status === "rejected");
   if (partial && !items.length) throw new Error("PLACE_SEARCH_FAILED");
   return {items, hasNext:page<3 && hasNext, partial};
+}
+
+function markerElement(className, text) {
+  const element = document.createElement("div");
+  element.className = className;
+  element.textContent = text;
+  return element;
 }
