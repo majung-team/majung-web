@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import * as model from "./model.js";
 import * as push from "./push.js";
+import * as maps from "./map.js";
 import { AccountError } from "./account-api.js";
 
 // Execute the real account entry point with an isolated DOM shell and controlled API clock.
@@ -24,7 +25,7 @@ async function screen() {
     throw new Error(`Unexpected test route ${path}`);
   };
   const context = vm.createContext({
-    ...model, ...push, e: model.escapeHtml, AccountError, createAccountClient: () => api,
+    ...model, ...push, ...maps, e: model.escapeHtml, AccountError, createAccountClient: () => api,
     document: { querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; } },
     window: { addEventListener() {} }, location: { href: "https://test.invalid/account", hash: "", search: "", pathname: "/account" },
     history: { replaceState() {} }, sessionStorage: { getItem: () => null, removeItem() {} },
