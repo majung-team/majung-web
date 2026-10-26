@@ -12,6 +12,7 @@ import {
   terminalStatuses,
   escapeHtml as e,
 } from "./model.js";
+import { loadKakaoMaps, createPickupMap } from "./map.js";
 
 const root = document.querySelector("#app");
 const storageKey = "majung.pickup.session.v1";
@@ -39,6 +40,7 @@ let snapshot = null;
 let vehicle = null;
 let deadline = 0;
 let timing = null;
+let pickupMap = null;
 let online = false;
 let busy = false;
 let refreshing = false;
@@ -206,9 +208,10 @@ function guest() {
           : current?.kind === "lost"
             ? `<h2>위치 확인 중</h2><p>마지막 갱신 ${e(ageText(current.ageMillis))}<br />차량에서 새 정보를 보내면 다시 표시할게요.</p>`
             : current
-              ? `<span>도착까지</span><strong>${current.remainingSeconds > 0 ? `약 ${Math.ceil(current.remainingSeconds / 60)}<small>분</small>` : "곧 도착"}</strong><p>${current.kind === "stale" ? `마지막 갱신 ${e(ageText(current.ageMillis))} · 남은 시간을 이어서 세고 있어요.` : `차량 정보 수신 시각 ${e(new Date(vehicle.receivedAt).toLocaleTimeString("ko-KR"))}`}</p><div class="coordinates">차량 위치 · 위도 ${e(current.latitude.toFixed(5))}<br />경도 ${e(current.longitude.toFixed(5))}</div>`
+              ? `<span>도착까지</span><strong>${current.remainingSeconds > 0 ? `약 ${Math.ceil(current.remainingSeconds / 60)}<small>분</small>` : "곧 도착"}</strong><p>${current.kind === "stale" ? `마지막 갱신 ${e(ageText(current.ageMillis))} · 남은 시간을 이어서 세고 있어요.` : `차량 정보 수신 시각 ${e(new Date(vehicle.receivedAt).toLocaleTimeString("ko-KR"))}`}</p>${pickupMap ? "" : `<div class="coordinates">차량 위치 · 위도 ${e(current.latitude.toFixed(5))}<br />경도 ${e(current.longitude.toFixed(5))}</div>`}`
               : `<h2>${vehicle?.freshness === "WAITING" ? "차량 정보를 기다리고 있어요." : "최신 정보를 확인하고 있어요."}</h2><p>${vehicle?.freshness === "WAITING" ? "차량에서 정보를 보내면<br />도착 예정 시간을 확인할 수 있어요." : "지난 위치와 도착 시간은 표시하지 않아요."}</p>`
     }</div>
+    ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : ""}
     ${placeCard()}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : "마지막으로 서버에 저장된 상태예요."}</small></div>
     <div class="button-pair">${button("준비 중", "preparing", snapshot.participant.readiness !== "PREPARING", !online)}${button("준비 완료", "ready", snapshot.participant.readiness !== "READY", !online)}</div>
     ${pendingReadiness && online ? button("선택한 상태 다시 보내기", "retry-readiness", true) : ""}
@@ -239,6 +242,13 @@ function render() {
         ? root.querySelector(`[data-action="${CSS.escape(focusAction)}"]`)
         : null;
     nextFocus?.focus({ preventScroll: true });
+  }
+  if (pickupMap && session?.role === "guest" && snapshot) {
+    pickupMap.attach(root.querySelector("#map-slot"));
+    pickupMap.update(
+      snapshot.place,
+      vehicleView(vehicle, timing, deadline, performance.now(), online, snapshot.status),
+    );
   }
   document.title = session
     ? `마중 · ${session.role === "driver" ? "운전자 확인" : "나의 약속"}`
@@ -569,5 +579,12 @@ void fetch("/api/v1/config", {
     const configuration = await response.json();
     developmentToolsEnabled = configuration.developmentToolsEnabled === true;
     render();
+    void loadKakaoMaps(configuration.kakaoMapJavaScriptKey)
+      .then((maps) => {
+        if (!maps) return;
+        pickupMap = createPickupMap(maps);
+        render();
+      })
+      .catch(() => { /* Without the map the screen keeps the text-only layout. */ });
   }
 }).catch(() => { /* Invitation access remains available without development tools. */ });
