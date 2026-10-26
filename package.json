@@ -4,7 +4,7 @@
   "scripts": {
     "prepare": "husky",
     "lint:commit": "commitlint",
-    "test": "node --test model.test.js account-api.test.js account-refresh.test.js map.test.js push.test.js proposal.test.js",
+    "test": "node --test model.test.js account-api.test.js account-refresh.test.js map.test.js push.test.js proposal.test.js stream.test.js",
     "start": "node dev-server.mjs"
   },
   "devDependencies": {

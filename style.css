@@ -468,3 +468,34 @@ input {
 .proposal-panel {
   margin-top: 12px;
 }
+
+/* Shared service palette and readable phone dimensions. */
+:root {--ink:#20282e;--muted:#626d75;--green:#244f73;--line:#d7dedf;--paper:#ffffff;background:#f7f8f7}
+.topbar {max-width:680px;padding:20px 24px}
+.brand .mark {background:#244f73;color:#fff}
+main {max-width:620px;margin-top:28px}
+.card {border-radius:18px;padding:24px;box-shadow:none}
+.primary {background:#244f73}
+.footer {font-size:12px;color:#78838b;max-width:620px;margin:32px auto 0}
+.pickup-live.card {border:0;background:transparent;padding:0 2px}
+.pickup-live.card>h1 {font-size:30px;margin:12px 0 16px}
+.pickup-live .arrival {border:0;background:none;padding:0;margin:20px 0}
+.pickup-live .arrival strong {font-size:50px;letter-spacing:-2px}
+.pickup-live .arrival p {font-size:13px;margin-bottom:0}
+.pickup-live .pickup-map {height:280px;border-radius:16px;margin:18px 0 24px}
+.pickup-live .button-pair {display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pickup-live .button-pair button {min-height:58px;margin:0;padding:14px 8px}
+.pickup-live .readiness {margin-top:22px}
+.pickup-live .readiness small {line-height:1.6}
+.pickup-live .place {border:0;padding:14px 0}
+.pickup-live .coordinates {display:none}
+@media(max-width:500px) {main{margin-top:20px;padding:0 20px}.card{padding:22px 20px}.topbar{padding:18px 20px}.pickup-live.card{padding:0}.pickup-live .pickup-map{height:260px}}
+.service-intro {padding:20px 4px 24px}
+.service-intro h1 {font-size:clamp(32px,7vw,44px);letter-spacing:-1.5px}
+.service-start {display:block;text-align:center;text-decoration:none;border-radius:12px;padding:18px 24px;font-weight:700;color:white;margin-top:28px}
+.service-guide ol {list-style:none;padding:0;margin:22px 0 0;counter-reset:steps}
+.service-guide li {counter-increment:steps;position:relative;padding:0 0 26px 42px;display:flex;flex-direction:column;gap:8px}
+.service-guide li::before {content:counter(steps);position:absolute;left:0;top:0;width:26px;height:26px;display:grid;place-items:center;background:#e7eef3;border-radius:50%;color:#244f73;font-size:13px;font-weight:700}
+.service-guide li:last-child {padding-bottom:0}
+.service-guide span {font-size:14px;color:#626d75;line-height:1.75}
+.dev-card summary {cursor:pointer;color:#626d75;font-size:13px}

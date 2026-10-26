@@ -26,13 +26,13 @@ jobs:
         run: |
           npm ci
           npm test
-          for file in app.js api.js model.js map.js push.js proposal.js sw.js account.js account-api.js; do
+          for file in app.js api.js model.js map.js push.js proposal.js stream.js sw.js account.js account-api.js; do
             if [[ -f "$file" ]]; then node --check "$file"; fi
           done
           bash -n deploy/workflow.sh
           mkdir -p build/release
           FILES=(index.html style.css app.js api.js model.js)
-          for file in map.js push.js proposal.js sw.js manifest.webmanifest account.html account.css account.js account-api.js; do
+          for file in map.js push.js proposal.js stream.js sw.js manifest.webmanifest account.html account.css account.js account-api.js; do
             if [[ -f "$file" ]]; then FILES+=("$file"); fi
           done
           tar -czf build/release/web.tar.gz "${FILES[@]}"

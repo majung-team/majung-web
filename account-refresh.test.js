@@ -13,6 +13,7 @@ async function screen() {
   let now = 0, seconds = 420, fail = false, authenticated = true, trackingReads = 0;
   let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
   const timers = [], events = {}, rootEvents = {}, writes = [];
+  let streamCallbacks=null, streamClosed=false;
   const root = { innerHTML: "", setAttribute() {}, addEventListener(name, callback) { rootEvents[name] = callback; }, contains: () => false, querySelector: () => null };
   const api = async (path, options = {}) => {
     if (path === "/ride-requests" && options.method === "POST") { writes.push(options.body); return {}; }
@@ -28,6 +29,7 @@ async function screen() {
     throw new Error(`Unexpected test route ${path}`);
   };
   const context = vm.createContext({
+    openPickupStream: callbacks => { streamCallbacks=callbacks; return {close(){streamClosed=true;callbacks.onState(false);}}; },
     ...model, ...push, ...maps, ...proposal, e: model.escapeHtml, AccountError, createAccountClient: () => api,
     document: { querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; }, createElement: () => ({ innerHTML: "", setAttribute(){}, remove(){}, addEventListener() {}, contains: () => false, querySelector: () => ({ addEventListener() {}, hidden: false, value: "", textContent: "" }) }) },
     window: { addEventListener() {} }, location: { href: "https://test.invalid/account", hash: "", search: "", pathname: "/account" },
@@ -41,6 +43,7 @@ async function screen() {
   await settle();
   return {
     root, context, events, rootEvents, writes,
+    stream: () => streamCallbacks, closed: () => streamClosed,
     reads: () => trackingReads,
     proposal: value => { placeProposal = value; },
     receipt: (sequence, received) => { readinessSequence = sequence; readinessReceivedSequence = received; },
@@ -165,4 +168,37 @@ test("통합 계정 화면은 준비 상태 수신 확인과 별도 제안을 �
   assert.match(app.root.innerHTML,/내가 제안한 장소/);
   assert.match(app.root.innerHTML,/시험 제안 장소/);
   assert.match(app.root.innerHTML,/운전자가 확인할 때까지 약속 장소는 그대로/);
+});
+
+test("SSE 연결 중에는 변경 신호로 조회하고 끊기면 3초 조회로 복귀",async()=>{
+  const app=await screen();
+  app.stream().onState(true);
+  await app.tick(1000);
+  const reads=app.reads();
+  app.seconds(600);
+  await app.tick(5000);
+  assert.equal(app.reads(),reads);
+  app.stream().onChange();
+  await app.tick(5100);
+  assert.match(app.root.innerHTML,/약 10분/);
+  app.stream().onFallback();
+  app.seconds(180); await app.tick(5200);
+  assert.match(app.root.innerHTML,/약 3분/);
+  app.context.document.hidden=true;app.events.visibilitychange();
+  assert.equal(app.closed(),true);
+});
+
+test("픽업·사람 찾기·내 정보를 나누고 요청을 열면 픽업으로 이동",async()=>{
+  const app=await screen();
+  const click=action=>app.rootEvents.click({target:{closest:()=>({dataset:{action},disabled:false})}});
+  assert.match(app.root.innerHTML,/data-ride-eta/);
+  assert.doesNotMatch(app.root.innerHTML,/id="nickname-form"/);
+  click("tab-people");
+  assert.match(app.root.innerHTML,/id="search-form"/);
+  assert.doesNotMatch(app.root.innerHTML,/data-ride-eta/);
+  click("tab-settings");
+  assert.match(app.root.innerHTML,/id="nickname-form"/);
+  assert.match(app.root.innerHTML,/내 차량/);
+  click("tab-pickup");
+  assert.match(app.root.innerHTML,/data-ride-eta/);
 });
