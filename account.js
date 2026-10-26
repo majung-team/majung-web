@@ -120,6 +120,7 @@ function render() {
     ${pendingAction ? `<section class="card confirmation" role="region" aria-label="연결 변경 확인"><h2>${e(pendingAction.label)}할까요?</h2><p>${e(pendingAction.nickname)} · ${e(pendingAction.majungId)}</p><div class="row-actions">${button("확인", "confirm-action")}${button("돌아가기", "dismiss-action", "", true)}</div></section>` : ""}`;
 }
 async function refresh() {
+  try {
   info = await api("/auth/session");
   if (info.authenticated) {
     if (!nickname) nickname = info.member.profileReady ? info.member.nickname : "";
@@ -146,6 +147,11 @@ async function refresh() {
       } catch (failure) { if ([404,410].includes(failure.status)) { if (generation===pairingGeneration) clearVehiclePair(); } else throw failure; }
     }
   } else { connections = []; results = []; rides = []; tracking.clear(); linkedVehicles = []; searchDone = false; pendingAction = null; }
+  } catch (failure) {
+    tracking.clear();
+    for (const ride of rides) ride.currentPickupRemainingSeconds=null;
+    throw failure;
+  }
 }
 async function search() {
   results = await api(`/accounts/search?query=${encodeURIComponent(searchedQuery)}&page=${searchPage}`);

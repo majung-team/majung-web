@@ -80,3 +80,11 @@ test("숨긴 화면에서는 조회하지 않고 다시 열면 새로 확인", a
   await app.tick(6100);
   assert.equal(app.reads(), reads + 1);
 });
+
+test("직접 새로 확인에 실패해도 이전 위치와 ETA를 숨김", async () => {
+  const app = await screen();
+  assert.match(app.root.innerHTML, /data-ride-eta/);
+  app.failure(true);
+  await vm.runInContext("run(refresh)", app.context);
+  assert.doesNotMatch(app.root.innerHTML, /data-ride-eta/);
+});
