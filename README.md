@@ -58,3 +58,5 @@ Node.js 22 이상에서 `npm ci`, `npm test`, `npm start`를 실행한다.
 차량에서 받은 초대의 수락·거절은 [직접 초대 안내](docs/direct-invitation.md)를 참고한다.
 
 [남은 시간 갱신과 SSE 검토](docs/eta-updates.md): 진행 중 계정 픽업의 3초 조회, 실패 후 이전 정보 숨김, SSE 인증·재연결 설계안.
+
+[준비 상태 전달 확인](docs/readiness-receipt.md)

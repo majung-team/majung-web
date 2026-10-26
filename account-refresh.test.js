@@ -10,6 +10,7 @@ import { AccountError } from "./account-api.js";
 // Execute the real account entry point with an isolated DOM shell and controlled API clock.
 async function screen() {
   let now = 0, seconds = 420, fail = false, authenticated = true, trackingReads = 0;
+  let readinessSequence = 1, readinessReceivedSequence = 0;
   const timers = [], events = {};
   const root = { innerHTML: "", setAttribute() {}, addEventListener() {}, contains: () => false, querySelector: () => null };
   const api = async path => {
@@ -20,7 +21,7 @@ async function screen() {
     if (path === "/ride-requests") return { requests: [{ requestId: "test-ride", status: "ACTIVE", nickname: "시험 운전자", majungId: "driver", place: { label: "시험 장소" } }] };
     if (path.endsWith("/tracking")) {
       trackingReads++;
-      return { pickup: { status: "ACTIVE", participant: { readiness: "READY" } }, vehicle: { freshness: "FRESH", durationSeconds: seconds, latitude: 37, longitude: 127, ageMillis: 0, validForMillis: 30000 } };
+      return { pickup: { status: "ACTIVE", participant: { readiness: "READY", readinessSequence, readinessReceivedSequence } }, vehicle: { freshness: "FRESH", durationSeconds: seconds, latitude: 37, longitude: 127, ageMillis: 0, validForMillis: 30000 } };
     }
     throw new Error(`Unexpected test route ${path}`);
   };
@@ -39,6 +40,7 @@ async function screen() {
   return {
     root, context, events,
     reads: () => trackingReads,
+    receipt: (sequence, received) => { readinessSequence = sequence; readinessReceivedSequence = received; },
     seconds: value => { seconds = value; },
     failure: value => { fail = value; },
     authenticated: value => { authenticated = value; },
@@ -88,4 +90,17 @@ test("직접 새로 확인에 실패해도 이전 위치와 ETA를 숨김", asyn
   app.failure(true);
   await vm.runInContext("run(refresh)", app.context);
   assert.doesNotMatch(app.root.innerHTML, /data-ride-eta/);
+});
+
+test("계정 화면은 차량 수신 후 전달 완료로 바꾸고 새 선택은 다시 대기", async () => {
+  const app = await screen();
+  assert.match(app.root.innerHTML, /차량 앱으로 전달을 기다리고/);
+  await app.tick(1000);
+  app.receipt(1, 1);
+  await app.tick(4000);
+  assert.match(app.root.innerHTML, /차량 앱에 전달됐어요/);
+  app.receipt(2, 1);
+  await app.tick(7000);
+  assert.doesNotMatch(app.root.innerHTML, /차량 앱에 전달됐어요/);
+  assert.match(app.root.innerHTML, /차량 앱으로 전달을 기다리고/);
 });

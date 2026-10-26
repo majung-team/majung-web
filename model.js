@@ -133,3 +133,15 @@ export function escapeHtml(value) {
       ],
   );
 }
+
+// The receipt confirms the vehicle app received this sequence, not that the driver read it.
+export function readinessDeliveryText(participant, online = true) {
+  if (!online) return "연결이 끊겨 차량 전달 여부를 확인하지 못했어요.";
+  const sequence = participant?.readinessSequence;
+  const received = participant?.readinessReceivedSequence;
+  if (!Number.isSafeInteger(sequence) || sequence <= 0) return "준비 상태를 선택하면 차량에 전달해요.";
+  if (!Number.isSafeInteger(received)) return "서버에 저장했어요. 차량 전달 여부는 아직 확인되지 않았어요.";
+  return received >= sequence
+    ? "차량 앱에 전달됐어요. 운전자가 읽었는지는 확인할 수 없어요."
+    : "서버에 저장했어요. 차량 앱으로 전달을 기다리고 있어요.";
+}
