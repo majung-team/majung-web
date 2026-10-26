@@ -304,7 +304,10 @@ input {
   background: #eef0ec;
 }
 .arrival.stale > strong,
-.arrival.stale .pickup-map {
+.arrival.stale .coordinates {
+  opacity: 0.45;
+}
+.pickup-map {
   height: 220px;
   border-radius: 18px;
   overflow: hidden;
@@ -325,9 +328,6 @@ input {
   box-shadow: 0 2px 6px rgb(0 0 0 / 25%);
 }
 .car-marker.stale {
-  opacity: 0.45;
-}
-.coordinates {
   opacity: 0.45;
 }
 .coordinates {
