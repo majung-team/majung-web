@@ -25,7 +25,7 @@ import {
   pushFlag,
   setPushFlag,
 } from "./push.js";
-import { loadKakaoMaps, createPickupMap } from "./map.js";
+import { loadKakaoMaps, createPickupMap, searchPickupPlaces } from "./map.js";
 import { proposalBlock, createProposalPanel } from "./proposal.js";
 
 const root = document.querySelector("#app");
@@ -80,7 +80,10 @@ const readinessText = {
   READY: "준비가 끝났어요",
 };
 
+let proposalMaps=null;
 const proposalPanel = createProposalPanel({
+  searchPlaces: (keyword,page) => searchPickupPlaces(proposalMaps,keyword,page),
+  onSelectPoint: place => pickupMap?.selectPickingPoint(place) ?? false,
   onSubmit: (place) => void sendProposal(place),
   onCancel: () => { picking = false; proposalPanel.reset(); render(); },
   onBlur: () => render(),
@@ -707,6 +710,7 @@ void fetch("/api/v1/config", {
     void loadKakaoMaps(configuration.kakaoMapJavaScriptKey)
       .then((maps) => {
         if (!maps) return;
+        proposalMaps=maps;
         pickupMap = createPickupMap(maps);
         render();
       })

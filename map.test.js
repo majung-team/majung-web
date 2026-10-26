@@ -155,11 +155,16 @@ test('지도를 눌러 핀을 놓고 제안 위치는 확정 장소와 따로 �
     click({latLng:new LatLng(37.4,127.4)});
     assert.deepEqual(picked,[{latitude:37.4,longitude:127.4}]);
     assert.ok(pin.map);
+    assert.equal(pickup.selectPickingPoint({latitude:37.5,longitude:127.5}),true);
+    assert.equal(pin.position.latitude,37.5);
+    assert.equal(picked.length,2);
+    assert.equal(pickup.selectPickingPoint({latitude:0,longitude:0}),false);
     pickup.stopPicking();
+    assert.equal(pickup.selectPickingPoint({latitude:37.6,longitude:127.6}),false);
     assert.equal(pin.map,null);
     assert.ok(!classes.has('picking'));
     click({latLng:new LatLng(5,6)});
-    assert.equal(picked.length,1);
+    assert.equal(picked.length,2);
     assert.ok(!car.map);
   } finally { globalThis.document=previous; }
 });

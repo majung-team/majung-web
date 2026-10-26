@@ -105,6 +105,13 @@ export function createPickupMap(maps) {
       onPick = callback;
       element.classList.add("picking");
     },
+    selectPickingPoint(point) {
+      if (!map || !onPick || !Number.isFinite(point?.latitude) || !Number.isFinite(point?.longitude) ||
+          Math.abs(point.latitude)>90 || Math.abs(point.longitude)>180 || (point.latitude===0 && point.longitude===0)) return false;
+      const position=new maps.LatLng(point.latitude,point.longitude);
+      pinOverlay.setPosition(position);pinOverlay.setMap(map);map.setCenter(position);
+      onPick({latitude:point.latitude,longitude:point.longitude});return true;
+    },
     stopPicking() {
       onPick = null;
       element.classList.remove("picking");

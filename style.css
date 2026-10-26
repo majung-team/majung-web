@@ -499,3 +499,13 @@ main {max-width:620px;margin-top:28px}
 .service-guide li:last-child {padding-bottom:0}
 .service-guide span {font-size:14px;color:#626d75;line-height:1.75}
 .dev-card summary {cursor:pointer;color:#626d75;font-size:13px}
+
+/* Shared proposal search works in both account and invitation pickup screens. */
+.proposal-panel .place-search-form {margin:16px 0 8px}
+.proposal-panel .place-results {list-style:none;padding:0;margin:12px 0;max-height:280px;overflow:auto;border:1px solid #dce3e8;border-radius:12px}
+.proposal-panel .place-results li+li {border-top:1px solid #dce3e8}
+.proposal-panel .place-results button {display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%;margin:0;padding:14px;min-height:64px;border:0;border-radius:0;background:white;color:#20282e;text-align:left}
+.proposal-panel .place-results button:hover {background:#edf2f6}
+.proposal-panel .place-results span {font-size:.85rem;font-weight:400;color:#626d75;overflow-wrap:anywhere}
+.proposal-panel .pager {display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0}
+.proposal-panel .pager button {width:auto;margin:0;padding:12px;font-size:.85rem}
