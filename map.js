@@ -1,4 +1,4 @@
-// Kakao Maps is display-only: no route calculation, and Kakao place IDs are never sent to the vehicle.
+// Kakao Maps displays positions and selects places. Route calculation stays in the vehicle SDK.
 let loading = null;
 
 export function loadKakaoMaps(key) {
@@ -15,7 +15,7 @@ export function loadKakaoMaps(key) {
       if (error) { script.remove(); reject(error); }
       else resolve(window.kakao.maps);
     }
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(key)}&autoload=false`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(key)}&autoload=false&libraries=services`;
     script.onload = () => {
       if (settled) return;
       try {
@@ -90,6 +90,7 @@ export function createPlacePicker(maps, onSelect) {
   element.className = "pickup-map";
   element.setAttribute("role", "group");
   element.setAttribute("aria-label", "만날 장소 선택 지도");
+  element.setAttribute("data-place-picker", "");
   let map = null, marker = null, enabled = true, selectionKey = null;
   const valid = point => Number.isFinite(point?.latitude) && Number.isFinite(point?.longitude) &&
     Math.abs(point.latitude) <= 90 && Math.abs(point.longitude) <= 180 &&
@@ -132,4 +133,57 @@ export function createPlacePicker(maps, onSelect) {
       map = null; marker = null;
     },
   };
+}
+
+// Search is explicit (never per keystroke). Provider IDs are discarded at the boundary.
+export async function searchPickupPlaces(maps, query, page = 1) {
+  const keyword = String(query ?? "").trim();
+  if (!keyword || keyword.length > 80 || !Number.isInteger(page) || page < 1 || page > 3) {
+    throw new Error("PLACE_SEARCH_INPUT");
+  }
+  const services = maps?.services;
+  if (!services?.Places || !services?.Geocoder) throw new Error("PLACE_SEARCH_UNAVAILABLE");
+  function request(client, method) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const timeout = setTimeout(() => finish(new Error("PLACE_SEARCH_TIMEOUT")), 8000);
+      function finish(error, value) {
+        if (settled) return;
+        settled = true; clearTimeout(timeout);
+        if (error) reject(error); else resolve(value);
+      }
+      try {
+        client[method](keyword, (items, status, pagination) => {
+          if (status === services.Status.ZERO_RESULT) finish(null, {items:[], hasNext:false});
+          else if (status === services.Status.OK && Array.isArray(items)) {
+            finish(null, {items, hasNext:pagination?.hasNextPage === true});
+          } else finish(new Error("PLACE_SEARCH_FAILED"));
+        }, {page, size:5});
+      } catch { finish(new Error("PLACE_SEARCH_FAILED")); }
+    });
+  }
+  const results = await Promise.allSettled([
+    request(new services.Places(), "keywordSearch"),
+    request(new services.Geocoder(), "addressSearch"),
+  ]);
+  const items = [], seen = new Set();
+  let hasNext = false;
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+    hasNext ||= result.value.hasNext;
+    for (const source of result.value.items) {
+      const latitude = Number(source.y), longitude = Number(source.x);
+      const label = String(source.place_name || source.address_name || "").trim().slice(0,120);
+      if (!label || !String(source.y ?? "").trim() || !String(source.x ?? "").trim() ||
+          !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude)>90 ||
+          Math.abs(longitude)>180 || (latitude===0 && longitude===0)) continue;
+      const address = String(source.road_address_name || source.road_address?.address_name || source.address_name || "").slice(0,200);
+      const key = `${label}:${latitude}:${longitude}`;
+      if (seen.has(key)) continue;
+      seen.add(key); items.push({label, address, latitude, longitude});
+    }
+  }
+  const partial = results.some(result => result.status === "rejected");
+  if (partial && !items.length) throw new Error("PLACE_SEARCH_FAILED");
+  return {items, hasNext:page<3 && hasNext, partial};
 }

@@ -80,3 +80,46 @@ test('장소 선택 지도는 열기만으로 선택하지 않고 명시적 클�
     assert.equal(listeners.size,0);
   } finally {globalThis.document=previous;}
 });
+
+test('장소명·주소 검색 결과를 합치고 공급자 ID와 잘못된 좌표를 제외', async () => {
+  const {searchPickupPlaces}=await import('./map.js');
+  const calls=[];
+  const place={id:'provider-only',place_name:'시험 정문',road_address_name:'시험 도로 10',x:'127.3',y:'37.3'};
+  const maps={services:{Status:{OK:'OK',ZERO_RESULT:'ZERO_RESULT'},
+    Places:class {keywordSearch(query,callback,options){calls.push({query,...options});callback([place,place,{place_name:'좌표 없음',x:'',y:''},{place_name:'잘못된 점',x:'0',y:'0'}],'OK',{hasNextPage:true});}},
+    Geocoder:class {addressSearch(query,callback,options){calls.push({query,...options});callback([{address_name:'시험 도로 20',road_address:{address_name:'시험 도로 20'},x:'127.4',y:'37.4'}],'OK',{hasNextPage:false});}}}};
+  const result=await searchPickupPlaces(maps,'  시험  ');
+  assert.equal(result.items.length,2);
+  assert.deepEqual(result.items[0],{label:'시험 정문',address:'시험 도로 10',latitude:37.3,longitude:127.3});
+  assert.equal(result.hasNext,true); assert.equal(result.partial,false);
+  assert.equal(calls[0].query,'시험'); assert.equal(calls[0].size,5);
+  assert.equal((await searchPickupPlaces(maps,'시험',3)).hasNext,false);
+  await assert.rejects(searchPickupPlaces(maps,' '),/INPUT/);
+  await assert.rejects(searchPickupPlaces(maps,'시험',4),/INPUT/);
+});
+
+test('검색 결과 없음과 서비스 실패를 구분하고 일부 성공은 안내와 함께 유지', async () => {
+  const {searchPickupPlaces}=await import('./map.js');
+  const Status={OK:'OK',ZERO_RESULT:'ZERO_RESULT'};
+  const empty=class {keywordSearch(query,callback){callback([],'ZERO_RESULT');}addressSearch(query,callback){callback([],'ZERO_RESULT');}};
+  assert.deepEqual(await searchPickupPlaces({services:{Status,Places:empty,Geocoder:empty}},'시험'),{items:[],hasNext:false,partial:false});
+  const fail=class {keywordSearch(query,callback){callback([],'ERROR');}};
+  const address=class {addressSearch(query,callback){callback([{address_name:'시험 주소',x:'127',y:'37'}],'OK');}};
+  const partial=await searchPickupPlaces({services:{Status,Places:fail,Geocoder:address}},'시험');
+  assert.equal(partial.items.length,1); assert.equal(partial.partial,true);
+  await assert.rejects(searchPickupPlaces({services:{Status,Places:fail,Geocoder:empty}},'시험'),/FAILED/);
+  await assert.rejects(searchPickupPlaces({},'시험'),/UNAVAILABLE/);
+});
+
+test('응답 없는 장소 검색은 제한 시간 후 실패하며 늦은 콜백을 반영하지 않음', async () => {
+  const {searchPickupPlaces}=await import('./map.js');
+  const previousSet=globalThis.setTimeout, previousClear=globalThis.clearTimeout;
+  const callbacks=[];
+  globalThis.setTimeout=callback=>{queueMicrotask(callback);return 1;};
+  globalThis.clearTimeout=()=>{};
+  const client=class {keywordSearch(query,callback){callbacks.push(callback);}addressSearch(query,callback){callbacks.push(callback);}};
+  try {
+    await assert.rejects(searchPickupPlaces({services:{Status:{OK:'OK'},Places:client,Geocoder:client}},'시험'),/FAILED/);
+    for (const callback of callbacks) callback([{place_name:'늦은 결과',x:'127',y:'37'}],'OK');
+  } finally {globalThis.setTimeout=previousSet;globalThis.clearTimeout=previousClear;}
+});
