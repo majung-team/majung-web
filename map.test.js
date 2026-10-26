@@ -45,3 +45,38 @@ test('SDK 응답이 잘못되면 실패 처리하고 다음 로딩을 다시 허
     assert.equal(scripts.length,2);
   } finally { globalThis.document=previousDocument;globalThis.window=previousWindow; }
 });
+
+test('장소 선택 지도는 열기만으로 선택하지 않고 명시적 클릭·중심 선택만 반영', async () => {
+  const {createPlacePicker}=await import('./map.js');
+  const previous=globalThis.document;
+  const listeners=new Set(), created=[], selected=[];
+  globalThis.document={createElement:()=>({setAttribute(){},remove(){this.removed=true;}})};
+  class LatLng {constructor(lat,lng){this.lat=lat;this.lng=lng;}getLat(){return this.lat;}getLng(){return this.lng;}}
+  class Map {constructor(element,options){this.center=options.center;created.push(this);}relayout(){}setCenter(point){this.center=point;}getCenter(){return this.center;}}
+  class Marker {setPosition(point){this.position=point;}setMap(map){this.map=map;}}
+  const maps={Map,Marker,LatLng,event:{addListener(map,name,listener){listeners.add(listener);},removeListener(map,name,listener){listeners.delete(listener);}}};
+  try {
+    const picker=createPlacePicker(maps,point=>selected.push(point));
+    const slot={replaceWith(){}};
+    picker.attach(slot,null);
+    assert.equal(selected.length,0);
+    picker.chooseCenter();
+    assert.deepEqual(selected[0],{latitude:37.5665,longitude:126.978});
+    const selectedPoint={latitude:37.3,longitude:127.3};
+    picker.attach(slot,selectedPoint);
+    assert.equal(created.length,1);
+    assert.equal(selected.length,1); // Programmatic marker moves are not user selection.
+    const click=[...listeners][0];
+    click({latLng:new LatLng(37.31,127.31)});
+    assert.deepEqual(selected[1],{latitude:37.31,longitude:127.31});
+    picker.attach(slot,selectedPoint,false);
+    click({latLng:new LatLng(37.4,127.4)});
+    picker.chooseCenter();
+    assert.equal(selected.length,2);
+    picker.attach(slot,selectedPoint,true);
+    click({latLng:new LatLng(0,0)});
+    assert.equal(selected.length,2);
+    picker.destroy();
+    assert.equal(listeners.size,0);
+  } finally {globalThis.document=previous;}
+});

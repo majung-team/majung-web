@@ -1,7 +1,7 @@
 import { createAccountClient, AccountError } from "./account-api.js";
 import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, etaText, ageText, readinessDeliveryText } from "./model.js";
 import { browserPushEnvironment, pushState, pushCard, pushErrorText, enableArrivalPush, disableBrowserPush, pushFlag, setPushFlag } from "./push.js";
-import { loadKakaoMaps, createPickupMap } from "./map.js";
+import { loadKakaoMaps, createPickupMap, createPlacePicker } from "./map.js";
 
 const root = document.querySelector("#account-app");
 const api = createAccountClient();
@@ -66,6 +66,23 @@ function ridePushCard(requestId) {
   return pushCard(state,{busy:pushBusyId===requestId,message:pushMessageFor===requestId?pushMessage:"",attributes:`data-id="${e(requestId)}"`});
 }
 let pickupMap = null;
+let placeMaps = null, placePicker = null;
+function clearPlacePicker() { placePicker?.destroy(); placePicker = null; }
+function updatePlacePicker() {
+  if (!rideTarget) { clearPlacePicker(); return; }
+  if (!placeMaps) return;
+  placePicker ??= createPlacePicker(placeMaps, point => {
+    if (!rideTarget || busy) return;
+    ridePlace = {...point, source:"map", at:Date.now()};
+    render();
+  });
+  placePicker.attach(root.querySelector("[data-place-picker]"), ridePlace, !busy);
+}
+function selectedPlaceText() {
+  if (!ridePlace) return "아직 장소를 고르지 않았어요. 지도에서 만날 지점을 누르거나 현재 위치를 선택해주세요.";
+  return ridePlace.source === "map" ? "지도에서 고른 장소예요. 핀 위치와 아래 설명을 확인해주세요."
+    : `현재 위치를 선택했어요 · 정확도 약 ${Math.ceil(ridePlace.accuracy)}m. 지도에서 핀을 옮길 수도 있어요.`;
+}
 // One passenger has at most one ACTIVE ride, so a single map follows that ride.
 function updateRideMap() {
   if (!pickupMap) return;
@@ -82,7 +99,7 @@ function rideEtaText(current) {
   return view.kind==="stale" ? `${eta} · 마지막 갱신 ${ageText(view.ageMillis)}` : eta;
 }
 function rideSections() {
-  const form=rideTarget?`<section class="card confirmation"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>지금 있는 위치에서 만나는 요청이에요. 차량 QR이나 기존 연결은 필요하지 않아요.</p>${button(ridePlace?"현재 위치 다시 선택":"현재 위치 선택","ride-location","",true)}<p class="hint">${ridePlace?`위치를 선택했어요 · 정확도 약 ${Math.ceil(ridePlace.accuracy)}m` : "위치 권한을 허용한 뒤 만날 장소 설명을 적어주세요."}</p><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><button class="primary" ${busy||!ridePlace?"disabled":""}>이 장소로 마중 요청</button></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
+  const form=rideTarget?`<section class="card confirmation"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>지도에서 만날 지점을 고르거나 현재 위치를 선택해주세요. 차량 QR이나 기존 연결은 필요하지 않아요.</p>${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 불러오지 못하면 현재 위치로 요청할 수 있어요.</p>'}<p class="hint" aria-live="polite">${e(selectedPlaceText())}</p><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><button class="primary" ${busy||!ridePlace?"disabled":""}>이 장소로 마중 요청</button></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
   const pair=vehiclePair||vehicleRequest?`<section class="card"><h2>내 계정과 차량 연결</h2><p>운전자 본인의 차량에서 연 QR인지 확인해주세요. 탑승자는 이 연결을 할 필요가 없어요.</p>${vehicleRequest?`<p>차량에서 ${e(info.member.nickname)} 님의 연결을 승인해주세요.</p>${button("연결 상태 확인","refresh","",true)}`:button("이 계정으로 차량 연결 요청","vehicle-claim")}${button("차량 연결 요청 닫기","vehicle-dismiss","",true)}</section>`:"";
   return `${pair}<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>${form}<section class="card"><div class="section-heading"><h2>받은 초대와 내 마중 요청</h2>${button("새로 확인","refresh","",true)}</div><p class="hint">운전자가 보낸 초대를 여기서 수락하거나 거절할 수 있어요. 직접 운전자를 찾아 마중을 요청할 수도 있어요.</p><p class="hint">픽업 진행 중에는 약 3초마다, 그 외에는 약 10초마다 새로 확인해요. 웹을 닫은 동안에는 초대 알림이 오지 않아요.</p>${rides.length?`<ul class="person-list">${rides.map(rideRow).join("")}</ul>`:"<p>받은 초대나 보낸 마중 요청이 없어요.</p>"}</section>`;
 }
@@ -103,6 +120,7 @@ function connectionRow(item) {
   return `<li class="person-row">${person(item.nickname, item.majungId)}<span class="connection-state">${status}</span><div class="row-actions">${controls}</div></li>`;
 }
 function render() {
+  if (!info?.authenticated) clearPlacePicker();
   root.setAttribute("aria-busy", String(busy));
   const alerts = `${error ? `<div class="alert" role="alert">${e(error)}</div>` : ""}${notice ? `<p class="notice" role="status">${e(notice)}</p>` : ""}`;
   if (info === null) {
@@ -128,6 +146,7 @@ function render() {
     ${ready ? rideSections() : ""}
     ${pendingAction ? `<section class="card confirmation" role="region" aria-label="연결 변경 확인"><h2>${e(pendingAction.label)}할까요?</h2><p>${e(pendingAction.nickname)} · ${e(pendingAction.majungId)}</p><div class="row-actions">${button("확인", "confirm-action")}${button("돌아가기", "dismiss-action", "", true)}</div></section>` : ""}`;
   updateRideMap();
+  updatePlacePicker();
 }
 async function refresh() {
   try {
@@ -191,7 +210,7 @@ root.addEventListener("submit", event => {
   run(async () => {
     if (type === "ride-form") {
       if (!rideTarget || !ridePlace || !rideLabel.trim()) return;
-      if (Date.now()-ridePlace.at>120000) throw new AccountError(400,"LOCATION_OLD","현재 위치를 다시 선택해주세요.");
+      if (ridePlace.source !== "map" && Date.now()-ridePlace.at>120000) throw new AccountError(400,"LOCATION_OLD","현재 위치를 다시 선택해주세요.");
       await api("/ride-requests",{method:"POST",body:{driverId:rideTarget.memberId,requestId:rideRequestId,place:{label:rideLabel.trim(),latitude:ridePlace.latitude,longitude:ridePlace.longitude}}});
       rideTarget=null; ridePlace=null; rideLabel=""; rideRequestId=null;
       await refresh(); notice="운전자에게 마중을 요청했어요. 수락하면 픽업 대기에 들어가요.";
@@ -206,8 +225,9 @@ root.addEventListener("click", event => {
   if (!target || busy) return;
   const action = target.dataset.action;
   if (action === "ride-open") {
-    rideTarget=results.find(item=>item.memberId===target.dataset.id); ridePlace=null; rideLabel=""; rideRequestId=crypto.randomUUID(); render(); root.querySelector(".confirmation")?.scrollIntoView({block:"center"}); return;
+    clearPlacePicker(); rideTarget=results.find(item=>item.memberId===target.dataset.id); ridePlace=null; rideLabel=""; rideRequestId=crypto.randomUUID(); render(); root.querySelector(".confirmation")?.scrollIntoView({block:"center"}); return;
   }
+  if (action === "ride-map-center") { placePicker?.chooseCenter(); return; }
   if (action === "ride-dismiss") { rideTarget=null; ridePlace=null; render(); return; }
   if (action === "push-on" || action === "push-off") { toggleRidePush(target.dataset.id, action === "push-on"); return; }
   if (action.startsWith("confirm-") && action !== "confirm-action") {
@@ -222,7 +242,7 @@ root.addEventListener("click", event => {
       if (!navigator.geolocation) throw new AccountError(400,"LOCATION_UNAVAILABLE","이 브라우저에서 위치를 사용할 수 없어요.");
       const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,()=>reject(new AccountError(400,"LOCATION_UNAVAILABLE","위치 권한과 휴대전화 GPS를 확인한 뒤 다시 선택해주세요.")),{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
       if (position.coords.accuracy>300) throw new AccountError(400,"LOCATION_INACCURATE","위치 오차가 커요. GPS가 잘 잡히는 곳에서 다시 선택해주세요.");
-      ridePlace={latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy,at:Date.now()};
+      ridePlace={latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy,source:"gps",at:Date.now()};
     } else if (action === "invitation-accept" || action === "invitation-reject") {
       const invite=rides.find(item=>item.requestId===target.dataset.id && item.status==="INVITED");
       if (!invite) return;
@@ -335,5 +355,5 @@ async function toggleRidePush(requestId, turnOn) {
 void fetch("/api/v1/config", { cache: "no-store", credentials: "omit", redirect: "error", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(8000) })
   .then(response => response.ok ? response.json() : null)
   .then(configuration => { pushKey = typeof configuration?.webPushPublicKey === "string" ? configuration.webPushPublicKey : null; if (pushKey && tracking.size && !busy) render(); return loadKakaoMaps(configuration?.kakaoMapJavaScriptKey); })
-  .then(maps => { if (!maps) return; pickupMap=createPickupMap(maps); if (tracking.size && !busy) render(); })
+  .then(maps => { if (!maps) return; placeMaps=maps; pickupMap=createPickupMap(maps); if ((tracking.size || rideTarget) && !busy) render(); })
   .catch(() => { });
