@@ -13,14 +13,14 @@
 ## 배포 전 준비
 
 1. 서버 [카카오맵 키 설정](https://github.com/majung-team/majung-backend/blob/main/docs/kakao-map.md)에 따라 JavaScript 키와 Web 플랫폼 도메인을 등록한다.
-2. `deploy/Caddyfile`의 CSP에 `https://dapi.kakao.com`·`https://t1.daumcdn.net`·`https://t1.kakaocdn.net`(스크립트), `https://*.daumcdn.net`(지도 이미지)을 추가했다. Caddy 설정은 CI가 바꾸지 않으므로 서버에 직접 반영한다.
+2. `deploy/Caddyfile`의 CSP에 `https://dapi.kakao.com`·`https://t1.daumcdn.net`·`https://t1.kakaocdn.net`(스크립트), `https://*.daumcdn.net`·`https://t1.kakaocdn.net`·`https://mts.kakaocdn.net`(지도 이미지)을 추가했다. Caddy 설정은 CI가 바꾸지 않으므로 서버에 직접 반영한다.
 3. 새 파일 `map.js`를 서버 배포 스크립트의 웹 파일 목록에 추가했다(서버 PR). 설치된 `/usr/local/sbin/majung-deploy`를 갱신한 뒤 웹을 배포한다. 갱신 전에 배포하면 알 수 없는 파일로 거절된다.
 
 ## 확인 범위
 
 - 로컬 서버·개발 웹·헤드리스 Chrome: 지도 키가 없을 때 기존 화면 유지, 30초 경과 흐림·"마지막 갱신 35초 전", 2분 경과 "위치 확인 중", 콘솔 오류 없음.
 - 카카오 SDK 대역 객체로 `map.js` 호출 순서 확인: 장소·차량 표시 → 두 지점 맞춤 → 이동 시 재맞춤 없음 → 좌표 없으면 차량 제거.
-- 실제 카카오맵 키로 지도를 띄운 결과, CSP에서 추가로 막히는 주소가 있는지, 실제 휴대전화 화면은 아직 확인하지 않았다.
+- 실제 카카오 SDK와 운영 HTTPS에서 타일·마커 로딩을 확인했다. 실제 휴대전화 화면과 실차 위치는 아직 확인하지 않았다.
 
 
 ## 운영 연결 · 2026-10-26
@@ -36,4 +36,8 @@
 지도 이미지는 실제 카카오 SDK이고 픽업·좌표·계정은 시험 데이터다.
 
 
-운영 확인 중 SDK가 `t1.kakaocdn.net`의 4.5.29 스크립트를 추가로 불러오는 것을 확인했다. 기존 `t1.daumcdn.net` 허용만으로는 로딩이 끝나지 않아, 실제 CDN 한 곳을 CSP에 추가했다. 운영 Caddy 문법 검증과 reload 후 공개 HTTPS 화면에서 다시 확인한다.
+운영 확인 중 SDK가 `t1.kakaocdn.net`의 4.5.29 스크립트를 추가로 불러오는 것을 확인했다. 기존 `t1.daumcdn.net` 허용만으로는 로딩이 끝나지 않아, 실제 CDN 한 곳을 CSP에 추가했다. 지도 타일·아이콘도 `mts.kakaocdn.net`·`t1.kakaocdn.net`으로 바뀌어 이미지 허용 목록에 두 호스트를 추가했다. 운영 Caddy 문법 검증과 reload 후 공개 HTTPS 화면에서 지도 타일·마커·로고 이미지가 실제로 로드되는 것까지 확인했다.
+
+![공개 HTTPS 지도 시험](media/passenger-map-production.png)
+
+공개 서버의 가상 시험 픽업이다. 실제 사용자 위치가 아니다.
