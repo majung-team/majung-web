@@ -157,3 +157,15 @@ test("준비 상태의 서버 저장과 차량 수신을 구분", async () => {
   assert.match(readinessDeliveryText({readinessSequence: 3, readinessReceivedSequence: 2}), /기다리고/);
   assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 2}, false), /확인하지 못/);
 });
+
+import { vehicleForPlace } from "./model.js";
+test("place changes hide telemetry from either side of a split read", () => {
+  const old = { ...vehicle, placeVersion: 1 };
+  const next = { ...vehicle, placeVersion: 2 };
+  assert.equal(vehicleForPlace({ placeVersion: 2 }, old), null);
+  assert.equal(vehicleForPlace({ placeVersion: 1 }, next), null);
+  assert.equal(vehicleForPlace({ placeVersion: 2 }, next), next);
+  assert.equal(vehicleForPlace({}, vehicle), vehicle);
+  assert.equal(vehicleForPlace({ placeVersion: 2 }, vehicle), null);
+  assert.equal(vehicleForPlace({ placeVersion: -1 }, old), null);
+});

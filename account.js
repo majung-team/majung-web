@@ -1,5 +1,5 @@
 import { createAccountClient, AccountError } from "./account-api.js";
-import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, etaText, ageText, readinessDeliveryText } from "./model.js";
+import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, vehicleForPlace, etaText, ageText, readinessDeliveryText } from "./model.js";
 import { browserPushEnvironment, pushState, pushCard, pushErrorText, enableArrivalPush, disableBrowserPush, pushFlag, setPushFlag } from "./push.js";
 import { loadKakaoMaps, createPickupMap, createPlacePicker, searchPickupPlaces } from "./map.js";
 import { proposalBlock, createProposalPanel } from "./proposal.js";
@@ -139,7 +139,7 @@ function updateRideMap() {
   if (!pickupMap) return;
   pickupMap.attach(root.querySelector("[data-ride-map]"));
   const [current]=[...tracking.values()];
-  if (current) pickupMap.update(current.pickup.place,vehicleView(current.vehicle,current.timing,current.deadline,performance.now(),true,current.pickup.status),current.pickup.placeProposal?.place);
+  if (current) pickupMap.update(current.pickup.place,vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),true,current.pickup.status),current.pickup.placeProposal?.place);
   if (pickingRide && current && tracking.has(pickingRide) && current.pickup.status==="ACTIVE") {
     proposalPanel.attach(root.querySelector("[data-proposal-slot]"));
     pickupMap.startPicking(point => proposalPanel.setPoint(point));
@@ -150,7 +150,7 @@ function updateRideMap() {
 }
 function rideEtaText(current) {
   if (current.pickup.status==="ARRIVED") return "차가 도착했어요.";
-  const view=vehicleView(current.vehicle,current.timing,current.deadline,performance.now(),true,current.pickup.status);
+  const view=vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),true,current.pickup.status);
   if (!view) return "차량의 새 위치와 시간을 기다리고 있어요.";
   if (view.kind==="lost") return `위치 확인 중 · 마지막 갱신 ${ageText(view.ageMillis)}`;
   const eta=`내 장소까지 ${etaText(view)}`;

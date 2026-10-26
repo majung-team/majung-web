@@ -145,3 +145,11 @@ export function readinessDeliveryText(participant, online = true) {
     ? "차량 앱에 전달됐어요. 운전자가 읽었는지는 확인할 수 없어요."
     : "서버에 저장했어요. 차량 앱으로 전달을 기다리고 있어요.";
 }
+
+// Snapshot and telemetry may be fetched across a place change. Never mix their versions.
+export function vehicleForPlace(pickup, vehicle) {
+  const placeVersion = pickup?.placeVersion ?? 1;
+  const vehicleVersion = vehicle?.placeVersion ?? 1;
+  return Number.isSafeInteger(placeVersion) && placeVersion > 0 &&
+    placeVersion === vehicleVersion ? vehicle : null;
+}
