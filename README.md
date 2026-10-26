@@ -43,6 +43,8 @@ Node.js 22 이상에서 `npm ci`, `npm test`, `npm start`를 실행한다.
 
 서버 설정에 카카오맵 JavaScript 키가 있으면 약속 장소와 차량 위치를 지도에 표시한다. 키가 없으면 기존 화면을 유지한다. [동작과 배포 전 준비](docs/passenger-map.md)를 참고한다.
 
+지도에서 핀을 놓아 다른 만남 장소를 제안할 수 있다. 제안은 확정 장소를 바꾸지 않는다. [화면과 배포 전 준비](docs/place-proposal.md)를 참고한다.
+
 ## GitHub Actions
 
 [웹 테스트와 배포](docs/github-actions.md)에서 CI·main 배포 조건과 확인한 범위를 설명한다. 실제 Actions 배포를 확인한 뒤 자동 배포를 켠다.
