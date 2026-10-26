@@ -28,6 +28,10 @@ Node.js 22 이상에서 `npm ci`, `npm test`, `npm start`를 실행한다.
 
 [공개 HTTPS 시험 기록](docs/evidence/)에는 실제 서버·에뮬레이터 연결 결과를 두었다. 실차 주행 및 실제 휴대전화 시험 결과와는 구분한다. 도착 상태에서는 이전 남은 시간을 표시하지 않는다.
 
+## 차량 정보 끊김 표시
+
+30초가 지나면 마지막 위치와 남은 시간을 흐리게 보여주고, 2분이 지나면 위치 확인 중으로 바꾼다. [표시 기준과 확인 범위](docs/vehicle-freshness.md)를 참고한다.
+
 ## GitHub Actions
 
 [웹 테스트와 배포](docs/github-actions.md)에서 CI·main 배포 조건과 확인한 범위를 설명한다. 실제 Actions 배포를 확인한 뒤 자동 배포를 켠다.

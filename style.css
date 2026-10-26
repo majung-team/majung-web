@@ -300,6 +300,13 @@ input {
 .arrival h2 {
   font-size: 20px;
 }
+.arrival.stale {
+  background: #eef0ec;
+}
+.arrival.stale > strong,
+.arrival.stale .coordinates {
+  opacity: 0.45;
+}
 .coordinates {
   font-size: 12px;
   line-height: 1.8;

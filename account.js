@@ -1,5 +1,5 @@
 import { createAccountClient, AccountError } from "./account-api.js";
-import { escapeHtml as e } from "./model.js";
+import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, etaText, ageText } from "./model.js";
 
 const root = document.querySelector("#account-app");
 const api = createAccountClient();
@@ -54,10 +54,17 @@ function rideRow(source) {
   if (performance.now()>=item._etaUntil) item.currentPickupRemainingSeconds=null;
   const labels={INVITED:"운전자가 보낸 초대 · 내 응답 대기",PENDING:"운전자 응답 대기",QUEUED:"수락됨 · 픽업 대기",ACTIVE:"내 픽업 진행 중",COMPLETED:"탑승 완료",CANCELLED:"취소됨",REJECTED:"거절됨",EXPIRED:"만료됨"};
   const current=tracking.get(item.requestId);
-  const fresh=current?.vehicle.freshness==="FRESH" && performance.now()<current.validUntil;
   const waiting=item.status==="QUEUED" ? `<p>내 앞에 ${Number(item.peopleAhead)||0}건이 있어요.</p><p class="hint">${item.currentPickupRemainingSeconds == null ? "현재 진행 중인 픽업의 남은 시간은 아직 확인할 수 없어요." : `현재 진행 중인 픽업 장소까지 약 ${Math.max(1,Math.ceil(item.currentPickupRemainingSeconds/60))}분 남았어요.`}<br />${item.currentPickupRemainingSeconds == null ? "내 장소 도착 예정 시간도 아직 정해지지 않았어요." : "위 시간은 내 장소 도착 예정 시간이 아니에요. 실제 탑승 시간에 따라 더 걸릴 수 있어요."}</p>` : "";
-  const active=current ? `<p data-ride-eta="${e(item.requestId)}">${current.pickup.status==="ARRIVED"?"차가 도착했어요.":fresh?`내 장소까지 약 ${Math.max(1,Math.ceil(current.vehicle.durationSeconds/60))}분` : "차량의 새 위치와 시간을 기다리고 있어요."}</p><p>내 준비 상태 · ${e(current.pickup.participant.readiness==="READY"?"준비 완료":"준비 중")}</p>${button("준비 완료","ride-ready",`data-id="${e(item.requestId)}"`)}${button("준비 중","ride-preparing",`data-id="${e(item.requestId)}"`,true)}` : "";
+  const active=current ? `<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p><p>내 준비 상태 · ${e(current.pickup.participant.readiness==="READY"?"준비 완료":"준비 중")}</p>${button("준비 완료","ride-ready",`data-id="${e(item.requestId)}"`)}${button("준비 중","ride-preparing",`data-id="${e(item.requestId)}"`,true)}` : "";
   return `<li class="person-row ride-row">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong><p>${item.driverInvitation?"운전자가 제안한 장소":"내가 요청한 장소"} · ${e(item.place.label)}</p>${waiting}${active}${item.status==="INVITED"?`<p>이 장소에서 탈까요? 수락해도 내 픽업이 시작되기 전에는 차량 위치가 공유되지 않아요.</p><p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답해주세요.</p>${button("이 장소에서 탈게요","invitation-accept",`data-id="${e(item.requestId)}"`)}${button("초대 거절","invitation-reject",`data-id="${e(item.requestId)}"`,true)}`:""}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
+}
+function rideEtaText(current) {
+  if (current.pickup.status==="ARRIVED") return "차가 도착했어요.";
+  const view=vehicleView(current.vehicle,current.timing,current.deadline,performance.now(),true,current.pickup.status);
+  if (!view) return "차량의 새 위치와 시간을 기다리고 있어요.";
+  if (view.kind==="lost") return `위치 확인 중 · 마지막 갱신 ${ageText(view.ageMillis)}`;
+  const eta=`내 장소까지 ${etaText(view)}`;
+  return view.kind==="stale" ? `${eta} · 마지막 갱신 ${ageText(view.ageMillis)}` : eta;
 }
 function rideSections() {
   const form=rideTarget?`<section class="card confirmation"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>지금 있는 위치에서 만나는 요청이에요. 차량 QR이나 기존 연결은 필요하지 않아요.</p>${button(ridePlace?"현재 위치 다시 선택":"현재 위치 선택","ride-location","",true)}<p class="hint">${ridePlace?`위치를 선택했어요 · 정확도 약 ${Math.ceil(ridePlace.accuracy)}m` : "위치 권한을 허용한 뒤 만날 장소 설명을 적어주세요."}</p><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><button class="primary" ${busy||!ridePlace?"disabled":""}>이 장소로 마중 요청</button></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
@@ -119,7 +126,8 @@ async function refresh() {
       try {
         const requestedAt=performance.now();
         const data=await api(`/ride-requests/${ride.requestId}/tracking`);
-        tracking.set(ride.requestId,{...data,validUntil:requestedAt+Number(data.vehicle.validForMillis||0)});
+        const receivedAt=performance.now();
+        tracking.set(ride.requestId,{...data,deadline:vehicleDeadline(data.vehicle,requestedAt,receivedAt),timing:vehicleTiming(data.vehicle,requestedAt,receivedAt)});
       }
       catch (failure) { if (![403,404,410].includes(failure.status)) throw failure; }
     }
@@ -246,7 +254,7 @@ run(async () => {
 // Pause while the user enters a form; mutations are never retried by polling.
 setInterval(() => {
   if (document.hidden || busy || !info?.authenticated || rideTarget || root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") return;
-  const visible=()=>JSON.stringify({member:info?.member,authenticated:info?.authenticated,connections,rides:rides.map(({_etaUntil,...item})=>item),linkedVehicles,vehicleRequest,tracking:[...tracking].map(([id,{validUntil,...data}])=>[id,data])});
+  const visible=()=>JSON.stringify({member:info?.member,authenticated:info?.authenticated,connections,rides:rides.map(({_etaUntil,...item})=>item),linkedVehicles,vehicleRequest,tracking:[...tracking].map(([id,{deadline,timing,...data}])=>[id,data])});
   const before=visible(); busy=true;
   refresh().then(()=>{ busy=false; if (visible()!==before) render(); }).catch(failure=>{
     busy=false;
@@ -257,17 +265,12 @@ setInterval(() => {
 
 setInterval(()=>{
   let expired=false;
-  for (const current of tracking.values()) if (current.vehicle.freshness==="FRESH" && performance.now()>=current.validUntil) {
-    current.vehicle={...current.vehicle,freshness:"STALE",latitude:null,longitude:null,durationSeconds:null}; expired=true;
+  // Update the countdown text in place; a full render would interrupt typing.
+  for (const [id,current] of tracking) {
+    const node=root.querySelector(`[data-ride-eta="${CSS.escape(id)}"]`);
+    const text=rideEtaText(current);
+    if (node && node.textContent!==text) node.textContent=text;
   }
   for (const item of rides) if (item.currentPickupRemainingSeconds!=null && performance.now()>=item._etaUntil) { item.currentPickupRemainingSeconds=null; expired=true; }
-  if (expired) {
-    for (const [id,current] of tracking) {
-      if (current.vehicle.freshness!=="FRESH" && current.pickup.status!=="ARRIVED") {
-        const node=root.querySelector(`[data-ride-eta="${CSS.escape(id)}"]`);
-        if(node) node.textContent="차량의 새 위치와 시간을 기다리고 있어요.";
-      }
-    }
-    if (!busy && !rideTarget && document.activeElement?.tagName!=="INPUT") render();
-  }
+  if (expired && !busy && !rideTarget && document.activeElement?.tagName!=="INPUT") render();
 },1000);

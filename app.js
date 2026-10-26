@@ -6,7 +6,9 @@ import {
   invitationUrl,
   nextSequence,
   vehicleDeadline,
-  visibleVehicle,
+  vehicleTiming,
+  vehicleView,
+  ageText,
   terminalStatuses,
   escapeHtml as e,
 } from "./model.js";
@@ -36,6 +38,7 @@ try {
 let snapshot = null;
 let vehicle = null;
 let deadline = 0;
+let timing = null;
 let online = false;
 let busy = false;
 let refreshing = false;
@@ -48,7 +51,6 @@ let notice = "";
 let finished = null;
 let pendingReadiness = null;
 let manualLink = false;
-let showedVehicle = false;
 let renderedMarkup = "";
 let developmentToolsEnabled = false;
 const draft = { name: "", label: "", latitude: "", longitude: "" };
@@ -73,6 +75,7 @@ function forgetSession() {
   snapshot = null;
   vehicle = null;
   deadline = 0;
+  timing = null;
   pendingReadiness = null;
   online = false;
   manualLink = false;
@@ -184,27 +187,27 @@ function guest() {
     return `${connection()}<section class="card"><span class="badge">${status === "INVITE_EXPIRED" ? "참여 기한 만료" : "참여 요청 완료"}</span>
     <h1>${status === "INVITE_EXPIRED" ? "새 초대를<br />받아주세요." : "운전자 확인을<br />기다리고 있어요."}</h1><p>${status === "INVITE_EXPIRED" ? "운전자에게 새 링크를 요청해주세요." : "확인되면 이 화면에서<br />약속 장소와 도착 정보를 볼 수 있어요."}</p>
     <div class="empty-state">아직 차량 위치를 공유하지 않아요.</div></section>`;
-  const current = visibleVehicle(
+  const current = vehicleView(
     vehicle,
+    timing,
     deadline,
     performance.now(),
     online,
     status,
   );
-  const eta = current
-    ? `${Math.max(1, Math.ceil(current.durationSeconds / 60))}`
-    : null;
   return `${connection()}<section class="card"><span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
     <h1>${status === "ARRIVED" ? "차량이 도착했어요." : "만나는 시간을<br />맞춰볼까요?"}</h1>
     ${status === "ARRIVED" ? "<p>확정된 약속 장소에서 만나세요.<br />탑승 확인 후 공유가 종료돼요.</p>" : ""}
-    <div class="arrival" id="arrival-info">${
+    <div class="arrival${current?.kind === "stale" ? " stale" : ""}" id="arrival-info">${
       !online
-        ? "<h2>연결을 확인하고 있어요.</h2><p>지난 위치와 도착 시간을 숨겼어요.<br />연결이 돌아오면 다시 확인할게요.</p>"
+        ? "<h2>인터넷 연결을 확인하세요.</h2><p>지난 위치와 도착 시간을 숨겼어요.<br />연결이 돌아오면 다시 확인할게요.</p>"
         : status === "ARRIVED"
           ? "<h2>약속 장소에 도착했어요.</h2><p>탑승한 뒤 운전자에게 픽업 완료를 확인해주세요.</p>"
-          : current
-          ? `<span>도착까지</span><strong>약 ${eta}<small>분</small></strong><p>차량 정보 수신 시각 ${e(new Date(current.receivedAt).toLocaleTimeString("ko-KR"))}</p><div class="coordinates">차량 위치 · 위도 ${e(current.latitude.toFixed(5))}<br />경도 ${e(current.longitude.toFixed(5))}</div>`
-          : `<h2>${vehicle?.freshness === "WAITING" ? "차량 정보를 기다리고 있어요." : "최신 정보를 확인하고 있어요."}</h2><p>${vehicle?.freshness === "WAITING" ? "차량에서 정보를 보내면<br />도착 예정 시간을 확인할 수 있어요." : "지난 위치와 도착 시간은 표시하지 않아요."}</p>`
+          : current?.kind === "lost"
+            ? `<h2>위치 확인 중</h2><p>마지막 갱신 ${e(ageText(current.ageMillis))}<br />차량에서 새 정보를 보내면 다시 표시할게요.</p>`
+            : current
+              ? `<span>도착까지</span><strong>${current.remainingSeconds > 0 ? `약 ${Math.ceil(current.remainingSeconds / 60)}<small>분</small>` : "곧 도착"}</strong><p>${current.kind === "stale" ? `마지막 갱신 ${e(ageText(current.ageMillis))} · 남은 시간을 이어서 세고 있어요.` : `차량 정보 수신 시각 ${e(new Date(vehicle.receivedAt).toLocaleTimeString("ko-KR"))}`}</p><div class="coordinates">차량 위치 · 위도 ${e(current.latitude.toFixed(5))}<br />경도 ${e(current.longitude.toFixed(5))}</div>`
+              : `<h2>${vehicle?.freshness === "WAITING" ? "차량 정보를 기다리고 있어요." : "최신 정보를 확인하고 있어요."}</h2><p>${vehicle?.freshness === "WAITING" ? "차량에서 정보를 보내면<br />도착 예정 시간을 확인할 수 있어요." : "지난 위치와 도착 시간은 표시하지 않아요."}</p>`
     }</div>
     ${placeCard()}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : "마지막으로 서버에 저장된 상태예요."}</small></div>
     <div class="button-pair">${button("준비 중", "preparing", snapshot.participant.readiness !== "PREPARING", !online)}${button("준비 완료", "ready", snapshot.participant.readiness !== "READY", !online)}</div>
@@ -213,15 +216,6 @@ function guest() {
 }
 
 function render() {
-  showedVehicle = Boolean(
-    visibleVehicle(
-      vehicle,
-      deadline,
-      performance.now(),
-      online,
-      snapshot?.status,
-    ),
-  );
   let content;
   if (finished)
     content = `<section class="card end"><span class="end-mark">✓</span><span class="badge">위치 공유 종료</span><h1>${{ COMPLETED: "잘 만났어요!", CANCELLED: "약속이 취소됐어요.", EXPIRED: "약속 시간이 지났어요." }[finished.status]}</h1><p>차량 위치와 도착 예정 시간은<br />더 이상 볼 수 없어요.</p>${button("처음으로", "home", true)}</section>`;
@@ -272,6 +266,7 @@ function handleError(error) {
     online = false;
     vehicle = null;
     deadline = 0;
+    timing = null;
   }
 }
 
@@ -305,11 +300,14 @@ async function refresh() {
         );
         if (generation !== epoch || currentSession !== session || busy) return;
         vehicle = state;
-        deadline = vehicleDeadline(state, started, performance.now());
+        const received = performance.now();
+        deadline = vehicleDeadline(state, started, received);
+        timing = vehicleTiming(state, started, received);
       }
     } else {
       vehicle = null;
       deadline = 0;
+    timing = null;
     }
   } catch (error) {
     if (generation !== epoch || currentSession !== session || busy) return;
@@ -317,6 +315,7 @@ async function refresh() {
     online = false;
     vehicle = null;
     deadline = 0;
+    timing = null;
     handleError(error);
   } finally {
     refreshing = false;
@@ -533,6 +532,7 @@ root.addEventListener("click", async (event) => {
 document.addEventListener("visibilitychange", () => {
   vehicle = null;
   deadline = 0;
+  timing = null;
   if (!document.hidden) {
     render();
     void refresh();
@@ -542,24 +542,16 @@ window.addEventListener("offline", () => {
   online = false;
   vehicle = null;
   deadline = 0;
+  timing = null;
   render();
 });
 window.addEventListener("online", () => {
   void refresh();
 });
+// Re-render each second so the countdown and "N초 전" stay current; render() skips unchanged markup.
 setInterval(() => {
-  const showing = Boolean(
-    visibleVehicle(
-      vehicle,
-      deadline,
-      performance.now(),
-      online,
-      snapshot?.status,
-    ),
-  );
-  if (showedVehicle && !showing && !document.hidden) render();
-  showedVehicle = showing;
-}, 250);
+  if (session?.role === "guest" && snapshot && !document.hidden) render();
+}, 1000);
 setInterval(() => {
   void refresh();
 }, 3000);
