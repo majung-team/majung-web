@@ -11,9 +11,10 @@ import { AccountError } from "./account-api.js";
 async function screen() {
   let now = 0, seconds = 420, fail = false, authenticated = true, trackingReads = 0;
   let readinessSequence = 1, readinessReceivedSequence = 0;
-  const timers = [], events = {};
-  const root = { innerHTML: "", setAttribute() {}, addEventListener() {}, contains: () => false, querySelector: () => null };
-  const api = async path => {
+  const timers = [], events = {}, rootEvents = {}, writes = [];
+  const root = { innerHTML: "", setAttribute() {}, addEventListener(name, callback) { rootEvents[name] = callback; }, contains: () => false, querySelector: () => null };
+  const api = async (path, options = {}) => {
+    if (path === "/ride-requests" && options.method === "POST") { writes.push(options.body); return {}; }
     if (fail) throw new Error("test network outage");
     if (path === "/auth/session") return { authenticated, member: { nickname: "시험 탑승자", majungId: "test", profileReady: true } };
     if (path === "/connections" || path.startsWith("/connections?")) return [];
@@ -38,7 +39,7 @@ async function screen() {
   const settle = () => new Promise(resolve => setImmediate(resolve));
   await settle();
   return {
-    root, context, events,
+    root, context, events, rootEvents, writes,
     reads: () => trackingReads,
     receipt: (sequence, received) => { readinessSequence = sequence; readinessReceivedSequence = received; },
     seconds: value => { seconds = value; },
@@ -103,4 +104,26 @@ test("계정 화면은 차량 수신 후 전달 완료로 바꾸고 새 선택�
   await app.tick(7000);
   assert.doesNotMatch(app.root.innerHTML, /차량 앱에 전달됐어요/);
   assert.match(app.root.innerHTML, /차량 앱으로 전달을 기다리고/);
+});
+
+test("지도에서 명시적으로 고른 지점만 장소 설명과 함께 요청", async () => {
+  const app = await screen();
+  vm.runInContext('rideTarget={memberId:"driver"}; rideLabel="시험 정문"; rideRequestId="test-request";', app.context);
+  app.rootEvents.submit({preventDefault(){}, target:{id:"ride-form"}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.writes.length,0); // Merely opening the form is not a location selection.
+  vm.runInContext('ridePlace={latitude:37.3,longitude:127.3,source:"map",at:0};', app.context);
+  app.rootEvents.submit({preventDefault(){}, target:{id:"ride-form"}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.writes.length,1);
+  assert.deepEqual({...app.writes[0].place},{label:"시험 정문",latitude:37.3,longitude:127.3});
+});
+
+test("오래된 GPS 선택은 지도 핀과 달리 다시 선택해야 요청 가능", async () => {
+  const app = await screen();
+  vm.runInContext('rideTarget={memberId:"driver"}; rideLabel="시험 정문"; ridePlace={latitude:37.3,longitude:127.3,source:"gps",at:0};', app.context);
+  app.rootEvents.submit({preventDefault(){}, target:{id:"ride-form"}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.writes.length,0);
+  assert.match(app.root.innerHTML,/현재 위치를 다시 선택/);
 });
