@@ -28,7 +28,7 @@ async function screen() {
   };
   const context = vm.createContext({
     ...model, ...push, ...maps, e: model.escapeHtml, AccountError, createAccountClient: () => api,
-    document: { querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; } },
+    document: { createElement: () => ({setAttribute(){},remove(){}}), querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; } },
     window: { addEventListener() {} }, location: { href: "https://test.invalid/account", hash: "", search: "", pathname: "/account" },
     history: { replaceState() {} }, sessionStorage: { getItem: () => null, removeItem() {} },
     performance: { now: () => now }, URL, AbortSignal, fetch: async () => ({ ok: true, json: async () => ({}) }),
@@ -126,4 +126,29 @@ test("오래된 GPS 선택은 지도 핀과 달리 다시 선택해야 요청 �
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(app.writes.length,0);
   assert.match(app.root.innerHTML,/현재 위치를 다시 선택/);
+});
+
+test("장소 검색 후 폼을 닫으면 늦은 결과가 다음 요청에 섞이지 않음", async () => {
+  const app = await screen();
+  let finish;
+  app.context.createPlacePicker=()=>({attach(){},destroy(){}});
+  app.context.searchPickupPlaces=()=>new Promise(resolve=>{finish=resolve;});
+  vm.runInContext('placeMaps={services:{Places:class {},Geocoder:class {}}}; rideTarget={memberId:"driver"}; rideRequestId="old-request"; placeKeyword="시험";',app.context);
+  const pending=vm.runInContext('searchPlaces()',app.context);
+  vm.runInContext('rideTarget=null; clearPlacePicker(); rideTarget={memberId:"other-driver"}; rideRequestId="new-request";',app.context);
+  finish({items:[{label:"이전 요청 결과",latitude:37.3,longitude:127.3}],hasNext:false,partial:false});
+  await pending;
+  assert.equal(vm.runInContext('placeCandidates.length',app.context),0);
+  assert.equal(vm.runInContext('placeSearchBusy',app.context),false);
+});
+
+test("검색 결과 선택은 이름·좌표만 장소에 적용하고 전송은 별도 확인", async () => {
+  const app = await screen();
+  vm.runInContext('rideTarget={memberId:"driver"}; placeCandidates=[{label:"시험 정문",address:"시험 주소",latitude:37.3,longitude:127.3,id:"provider-only"}];',app.context);
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"place-select",index:"0"}})}});
+  assert.equal(app.writes.length,0);
+  assert.equal(vm.runInContext('rideLabel',app.context),'시험 정문');
+  assert.equal(vm.runInContext('ridePlace.source',app.context),'search');
+  assert.equal(vm.runInContext('ridePlace.latitude',app.context),37.3);
+  assert.equal(vm.runInContext('ridePlace.id',app.context),undefined);
 });

@@ -1,7 +1,7 @@
 import { createAccountClient, AccountError } from "./account-api.js";
 import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, etaText, ageText, readinessDeliveryText } from "./model.js";
 import { browserPushEnvironment, pushState, pushCard, pushErrorText, enableArrivalPush, disableBrowserPush, pushFlag, setPushFlag } from "./push.js";
-import { loadKakaoMaps, createPickupMap, createPlacePicker } from "./map.js";
+import { loadKakaoMaps, createPickupMap, createPlacePicker, searchPickupPlaces } from "./map.js";
 
 const root = document.querySelector("#account-app");
 const api = createAccountClient();
@@ -67,7 +67,41 @@ function ridePushCard(requestId) {
 }
 let pickupMap = null;
 let placeMaps = null, placePicker = null;
-function clearPlacePicker() { placePicker?.destroy(); placePicker = null; }
+let placeKeyword = "", placeSearchedKeyword = "", placeCandidates = [];
+let placeSearchPage = 1, placeSearchNext = false, placeSearchDone = false;
+let placeSearchBusy = false, placeSearchMessage = "", placeSearchGeneration = 0;
+function resetPlaceSearch() {
+  placeSearchGeneration++; placeSearchBusy = false; placeKeyword = "";
+  placeSearchedKeyword = ""; placeCandidates = []; placeSearchPage = 1;
+  placeSearchNext = false; placeSearchDone = false; placeSearchMessage = "";
+}
+function placeSearchPanel() {
+  if (!placeMaps?.services?.Places || !placeMaps?.services?.Geocoder) return "";
+  return `<form id="place-search-form" class="place-search-form"><label for="place-keyword">만날 장소 검색<input id="place-keyword" name="placeKeyword" value="${e(placeKeyword)}" maxlength="80" required placeholder="예: 서울역 1번 출구, 서울 중구 세종대로 110" autocomplete="off" /></label><button class="primary" ${busy||placeSearchBusy?"disabled":""}>${placeSearchBusy?"찾는 중…":"장소 찾기"}</button></form>
+    <p class="hint">검색어는 카카오에 전달돼요. 지역 이름을 함께 적으면 찾기 쉬워요.</p>
+    <div aria-live="polite">${placeSearchMessage?`<p class="hint">${e(placeSearchMessage)}</p>`:""}${placeSearchDone?`<p class="hint">‘${e(placeSearchedKeyword)}’ 검색 결과 · 이름과 주소를 확인해주세요.</p>${placeCandidates.length?`<ul class="place-results">${placeCandidates.map((place,index)=>`<li><button type="button" data-action="place-select" data-index="${index}" aria-pressed="${ridePlace?.source==="search" && ridePlace.latitude===place.latitude && ridePlace.longitude===place.longitude && ridePlace.label===place.label}" ${busy||placeSearchBusy?"disabled":""}><strong>${e(place.label)}</strong><span>${e(place.address || "주소 정보 없음 · 지도에서 위치를 확인해주세요")}</span></button></li>`).join("")}</ul><div class="pager">${button("이전 결과","place-search-previous",placeSearchPage===1||placeSearchBusy?"disabled":"",true)}<span>${placeSearchPage} 페이지</span>${button("다음 결과","place-search-next",!placeSearchNext||placeSearchBusy?"disabled":"",true)}</div>`:'<p class="hint">검색 결과가 없어요. 지역·주소를 더 적거나 지도에서 선택해주세요.</p>'}`:""}</div>`;
+}
+async function searchPlaces(page = 1) {
+  if (!rideTarget || !placeMaps || busy || placeSearchBusy) return;
+  const keyword = page===1 ? placeKeyword.trim() : placeSearchedKeyword;
+  if (!keyword) { placeSearchMessage="장소명이나 주소를 적어주세요."; render(); return; }
+  const generation=++placeSearchGeneration, requestId=rideRequestId;
+  placeSearchBusy=true; placeSearchMessage=""; placeSearchDone=false; placeCandidates=[];
+  render();
+  try {
+    const result=await searchPickupPlaces(placeMaps,keyword,page);
+    if (generation!==placeSearchGeneration || requestId!==rideRequestId || !rideTarget) return;
+    placeCandidates=result.items; placeSearchNext=result.hasNext; placeSearchPage=page;
+    placeSearchedKeyword=keyword; placeSearchDone=true;
+    if (result.partial) placeSearchMessage="일부 검색을 불러오지 못했어요. 표시된 결과를 확인하거나 다시 검색해주세요.";
+  } catch {
+    if (generation!==placeSearchGeneration || requestId!==rideRequestId || !rideTarget) return;
+    placeSearchMessage="장소 검색을 완료하지 못했어요. 다시 검색하거나 지도·현재 위치로 선택해주세요.";
+  } finally {
+    if (generation===placeSearchGeneration && requestId===rideRequestId && rideTarget) { placeSearchBusy=false; render(); }
+  }
+}
+function clearPlacePicker() { placePicker?.destroy(); placePicker = null; resetPlaceSearch(); }
 function updatePlacePicker() {
   if (!rideTarget) { clearPlacePicker(); return; }
   if (!placeMaps) return;
@@ -79,7 +113,8 @@ function updatePlacePicker() {
   placePicker.attach(root.querySelector("[data-place-picker]"), ridePlace, !busy);
 }
 function selectedPlaceText() {
-  if (!ridePlace) return "아직 장소를 고르지 않았어요. 지도에서 만날 지점을 누르거나 현재 위치를 선택해주세요.";
+  if (!ridePlace) return "아직 장소를 고르지 않았어요. 검색 결과를 선택하거나 지도·현재 위치로 골라주세요.";
+  if (ridePlace.source === "search") return `검색에서 고른 장소 · ${ridePlace.label}. 핀 위치를 확인하고 설명을 보완해주세요.`;
   return ridePlace.source === "map" ? "지도에서 고른 장소예요. 핀 위치와 아래 설명을 확인해주세요."
     : `현재 위치를 선택했어요 · 정확도 약 ${Math.ceil(ridePlace.accuracy)}m. 지도에서 핀을 옮길 수도 있어요.`;
 }
@@ -99,7 +134,7 @@ function rideEtaText(current) {
   return view.kind==="stale" ? `${eta} · 마지막 갱신 ${ageText(view.ageMillis)}` : eta;
 }
 function rideSections() {
-  const form=rideTarget?`<section class="card confirmation"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>지도에서 만날 지점을 고르거나 현재 위치를 선택해주세요. 차량 QR이나 기존 연결은 필요하지 않아요.</p>${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 불러오지 못하면 현재 위치로 요청할 수 있어요.</p>'}<p class="hint" aria-live="polite">${e(selectedPlaceText())}</p><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><button class="primary" ${busy||!ridePlace?"disabled":""}>이 장소로 마중 요청</button></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
+  const form=rideTarget?`<section class="card confirmation"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>장소명·주소로 검색한 뒤 만날 곳을 선택해주세요. 지도나 현재 위치로도 고를 수 있어요.</p>${placeSearchPanel()}${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 불러오지 못하면 현재 위치로 요청할 수 있어요.</p>'}<p class="hint" aria-live="polite">${e(selectedPlaceText())}</p><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><button class="primary" ${busy||placeSearchBusy||!ridePlace?"disabled":""}>이 장소로 마중 요청</button></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
   const pair=vehiclePair||vehicleRequest?`<section class="card"><h2>내 계정과 차량 연결</h2><p>운전자 본인의 차량에서 연 QR인지 확인해주세요. 탑승자는 이 연결을 할 필요가 없어요.</p>${vehicleRequest?`<p>차량에서 ${e(info.member.nickname)} 님의 연결을 승인해주세요.</p>${button("연결 상태 확인","refresh","",true)}`:button("이 계정으로 차량 연결 요청","vehicle-claim")}${button("차량 연결 요청 닫기","vehicle-dismiss","",true)}</section>`:"";
   return `${pair}<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>${form}<section class="card"><div class="section-heading"><h2>받은 초대와 내 마중 요청</h2>${button("새로 확인","refresh","",true)}</div><p class="hint">운전자가 보낸 초대를 여기서 수락하거나 거절할 수 있어요. 직접 운전자를 찾아 마중을 요청할 수도 있어요.</p><p class="hint">픽업 진행 중에는 약 3초마다, 그 외에는 약 10초마다 새로 확인해요. 웹을 닫은 동안에는 초대 알림이 오지 않아요.</p>${rides.length?`<ul class="person-list">${rides.map(rideRow).join("")}</ul>`:"<p>받은 초대나 보낸 마중 요청이 없어요.</p>"}</section>`;
 }
@@ -203,14 +238,16 @@ root.addEventListener("input", event => {
   if (event.target.name === "nickname") nickname = event.target.value;
   if (event.target.name === "query") query = event.target.value;
   if (event.target.name === "rideLabel") rideLabel = event.target.value;
+  if (event.target.name === "placeKeyword") placeKeyword = event.target.value;
 });
 root.addEventListener("submit", event => {
   event.preventDefault();
   const type = event.target.id;
+  if (type === "place-search-form") { void searchPlaces(); return; }
   run(async () => {
     if (type === "ride-form") {
-      if (!rideTarget || !ridePlace || !rideLabel.trim()) return;
-      if (ridePlace.source !== "map" && Date.now()-ridePlace.at>120000) throw new AccountError(400,"LOCATION_OLD","현재 위치를 다시 선택해주세요.");
+      if (!rideTarget || !ridePlace || !rideLabel.trim() || placeSearchBusy) return;
+      if (ridePlace.source === "gps" && Date.now()-ridePlace.at>120000) throw new AccountError(400,"LOCATION_OLD","현재 위치를 다시 선택해주세요.");
       await api("/ride-requests",{method:"POST",body:{driverId:rideTarget.memberId,requestId:rideRequestId,place:{label:rideLabel.trim(),latitude:ridePlace.latitude,longitude:ridePlace.longitude}}});
       rideTarget=null; ridePlace=null; rideLabel=""; rideRequestId=null;
       await refresh(); notice="운전자에게 마중을 요청했어요. 수락하면 픽업 대기에 들어가요.";
@@ -226,6 +263,19 @@ root.addEventListener("click", event => {
   const action = target.dataset.action;
   if (action === "ride-open") {
     clearPlacePicker(); rideTarget=results.find(item=>item.memberId===target.dataset.id); ridePlace=null; rideLabel=""; rideRequestId=crypto.randomUUID(); render(); root.querySelector(".confirmation")?.scrollIntoView({block:"center"}); return;
+  }
+  if (action === "place-search-previous" || action === "place-search-next") {
+    const page=placeSearchPage+(action==="place-search-next"?1:-1);
+    if (page>=1 && page<=3 && (action==="place-search-previous" || placeSearchNext)) void searchPlaces(page);
+    return;
+  }
+  if (action === "place-select") {
+    if (placeSearchBusy || !rideTarget) return;
+    const chosen=placeCandidates[Number(target.dataset.index)];
+    if (!chosen) return;
+    ridePlace={latitude:chosen.latitude,longitude:chosen.longitude,label:chosen.label,source:"search",at:Date.now()};
+    rideLabel=chosen.label;
+    render(); root.querySelector("[data-place-picker]")?.scrollIntoView({block:"center"}); return;
   }
   if (action === "ride-map-center") { placePicker?.chooseCenter(); return; }
   if (action === "ride-dismiss") { rideTarget=null; ridePlace=null; render(); return; }

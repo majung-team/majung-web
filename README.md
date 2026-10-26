@@ -61,4 +61,4 @@ Node.js 22 이상에서 `npm ci`, `npm test`, `npm start`를 실행한다.
 
 [준비 상태 전달 확인](docs/readiness-receipt.md)
 
-[마중 요청 장소 선택](docs/pickup-place-selection.md)
+[장소명·주소 검색과 지도 선택](docs/pickup-place-selection.md)
