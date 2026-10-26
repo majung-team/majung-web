@@ -426,3 +426,45 @@ input {
     display: none;
   }
 }
+.pickup-map.picking {
+  outline: 3px solid var(--green);
+}
+.proposal-marker,
+.pin-marker {
+  min-width: 36px;
+  padding: 4px 8px;
+  border-radius: 14px;
+  background: #fff;
+  border: 2px solid var(--green);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 25%);
+}
+.pin-marker {
+  background: var(--green);
+  color: #fff;
+}
+.proposal {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.proposal span {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
+.proposal strong {
+  display: block;
+  margin: 4px 0;
+}
+.proposal small {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+.proposal-panel {
+  margin-top: 12px;
+}

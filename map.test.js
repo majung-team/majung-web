@@ -16,7 +16,7 @@ test('지도 인스턴스를 재사용하고 오래된 차는 흐리게, 위치�
   class CustomOverlay extends Marker { constructor(){super();overlays.push(this);} getPosition(){return this.position;} }
   class LatLngBounds { extend(){} }
   try {
-    const pickup=createPickupMap({LatLng,Map,Marker,CustomOverlay,LatLngBounds});
+    const pickup=createPickupMap({LatLng,Map,Marker,CustomOverlay,LatLngBounds,event:{addListener(){}}});
     const slot={replaceWith(element){this.element=element;}};
     pickup.attach(slot);
     const place={latitude:37.3,longitude:127.3};
@@ -122,4 +122,44 @@ test('응답 없는 장소 검색은 제한 시간 후 실패하며 늦은 콜�
     await assert.rejects(searchPickupPlaces({services:{Status:{OK:'OK'},Places:client,Geocoder:client}},'시험'),/FAILED/);
     for (const callback of callbacks) callback([{place_name:'늦은 결과',x:'127',y:'37'}],'OK');
   } finally {globalThis.setTimeout=previousSet;globalThis.clearTimeout=previousClear;}
+});
+
+test('지도를 눌러 핀을 놓고 제안 위치는 확정 장소와 따로 표시', () => {
+  const previous=globalThis.document;
+  const classes=new Set(); const listeners=[]; const overlays=[];
+  globalThis.document={createElement:()=>{const element={isConnected:true,setAttribute(){},classList:{toggle(){},add(name){classes.add(name);},remove(name){classes.delete(name);}}};return element;}};
+  class LatLng { constructor(latitude,longitude){this.latitude=latitude;this.longitude=longitude;} getLat(){return this.latitude;} getLng(){return this.longitude;} }
+  class Map { relayout(){} setBounds(){} setCenter(){} }
+  class Marker { setPosition(value){this.position=value;} setMap(map){this.map=map;} }
+  class CustomOverlay extends Marker { constructor(){super();overlays.push(this);} getPosition(){return this.position;} }
+  class LatLngBounds { extend(){} }
+  const event={addListener:(map,name,handler)=>listeners.push([name,handler])};
+  try {
+    const pickup=createPickupMap({LatLng,Map,Marker,CustomOverlay,LatLngBounds,event});
+    pickup.attach({replaceWith(){}});
+    const place={latitude:37.3,longitude:127.3};
+    pickup.update(place,null);
+    const [car,proposal,pin]=overlays;
+    assert.equal(proposal.map,null);
+    pickup.update(place,null,{latitude:37.31,longitude:127.31});
+    assert.equal(proposal.position.latitude,37.31);
+    assert.ok(proposal.map);
+    pickup.update(place,null,null);
+    assert.equal(proposal.map,null);
+    const picked=[];
+    const click=listeners.find(([name])=>name==='click')[1];
+    click({latLng:new LatLng(1,2)});
+    assert.ok(!pin.map);
+    pickup.startPicking(point=>picked.push(point));
+    assert.ok(classes.has('picking'));
+    click({latLng:new LatLng(37.4,127.4)});
+    assert.deepEqual(picked,[{latitude:37.4,longitude:127.4}]);
+    assert.ok(pin.map);
+    pickup.stopPicking();
+    assert.equal(pin.map,null);
+    assert.ok(!classes.has('picking'));
+    click({latLng:new LatLng(5,6)});
+    assert.equal(picked.length,1);
+    assert.ok(!car.map);
+  } finally { globalThis.document=previous; }
 });
