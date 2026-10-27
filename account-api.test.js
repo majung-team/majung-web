@@ -66,3 +66,20 @@ test("마중 요청과 차량 연결은 계정 세션·CSRF로만 보내고 차�
   await assert.rejects(client("/ride-requests/abcd/accept",{method:"POST"}));
   assert.equal(calls.length,count);
 });
+
+
+test("첫 연결 요청도 로그인 세션과 CSRF를 사용하고 장치 확인 API는 차단", async () => {
+  const calls=[];
+  const client=createAccountClient(async(path,options)=>{
+    calls.push({path,options});
+    return new Response(JSON.stringify(path.endsWith("session")?{csrfToken:"fixture-csrf"}:{}),{status:200});
+  });
+  const id="12345678-1234-1234-1234-123456789abc";
+  await assert.rejects(client(`/vehicle-links/enrollments/${id}`,{method:"POST",body:{code:"Q".repeat(43)}}),e=>e.code==="CSRF_REQUIRED");
+  await client("/auth/session");
+  await client(`/vehicle-links/enrollments/${id}`,{method:"POST",body:{code:"Q".repeat(43)}});
+  assert.equal(calls.at(-1).options.headers["X-CSRF-TOKEN"],"fixture-csrf");
+  assert.equal(calls.at(-1).options.headers.Authorization,undefined);
+  await client(`/vehicle-links/enrollments/${id}/cancel`,{method:"POST"});
+  await assert.rejects(client(`/vehicles/enrollments/${id}/confirm`,{method:"POST"}));
+});
