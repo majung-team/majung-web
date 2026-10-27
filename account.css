@@ -538,3 +538,15 @@ input:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* The indicator is separate from labels, so only its background slides. */
+.account-nav { position: relative; isolation: isolate; }
+.account-tab-indicator {
+  position: absolute; pointer-events: none; z-index: 0;
+  top: 5px; bottom: 5px; left: 5px;
+  width: calc((100% - 18px) / 3);
+  transform: translateX(calc(var(--tab-index) * (100% + 4px)));
+  border-radius: 8px; background: white; box-shadow: 0 2px 6px #22384a0a;
+}
+.account-nav button { position: relative; z-index: 1; }
+.account-nav button[aria-current="page"] { background: transparent; box-shadow: none; }

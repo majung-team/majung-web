@@ -171,6 +171,37 @@ function rideSections() {
   return `${pair}${accountTab === "settings" ? `<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>` : ""}${accountTab === "pickup" ? `${form}<section class="card${rides.some(ride=>ride.status==="ACTIVE") ? " active-pickup-card" : ""}"><div class="section-heading"><h2>${rides.some(ride=>ride.status==="ACTIVE") ? "진행 중인 픽업" : "받은 초대와 내 마중 요청"}</h2>${button("새로 확인","refresh","",true)}</div>${rides.some(ride=>ride.status==="ACTIVE") ? "" : '<p class="hint">받은 초대를 확인하거나 사람 찾기에서 새 마중을 요청해보세요.</p>'}${rides.length?`<ul class="person-list">${[...rides].sort((a,b)=>({ACTIVE:0,INVITED:1,QUEUED:2,PENDING:3}[a.status]??4)-({ACTIVE:0,INVITED:1,QUEUED:2,PENDING:3}[b.status]??4)).map(rideRow).join("")}</ul>`:`<div class="empty-pickup"><strong>아직 진행 중인 픽업이 없어요</strong><p>운전자를 찾고 만날 장소를 보내주세요.<br />받은 초대도 여기에서 확인할 수 있어요.</p>${button("운전자 찾아 마중 요청", "tab-people")}</div>`}</section>` : ""}`;
 }
 let accountTab = "pickup";
+const accountTabs = ["pickup", "people", "settings"];
+let tabAnimations = [];
+function changeAccountTab(next) {
+  if (!accountTabs.includes(next) || next === accountTab) return;
+  const oldIndex = accountTabs.indexOf(accountTab);
+  const oldIndicator = root.querySelector(".account-tab-indicator")?.getBoundingClientRect();
+  const keepFocus = !!document.activeElement?.closest?.(".account-nav");
+  tabAnimations.forEach(animation => animation.cancel());
+  tabAnimations = [];
+  accountTab = next;
+  render();
+  const selected = root.querySelector('.account-nav [aria-current="page"]');
+  if (keepFocus) selected?.focus({preventScroll:true});
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  const indicator = root.querySelector(".account-tab-indicator");
+  if (indicator?.animate && oldIndicator) {
+    const target = indicator.getBoundingClientRect();
+    const finalTransform = window.getComputedStyle(indicator).transform;
+    const delta = Math.max(-target.width * 3, Math.min(target.width * 3, oldIndicator.left - target.left));
+    tabAnimations.push(indicator.animate([
+      {transform:`translateX(${delta}px) ${finalTransform}`}, {transform:finalTransform}
+    ], {duration:220,easing:"cubic-bezier(.2,.8,.2,1)"}));
+  }
+  const offset = accountTabs.indexOf(next) > oldIndex ? 20 : -20;
+  for (const panel of root.querySelectorAll?.(":scope > .card") ?? []) {
+    if (panel.animate) tabAnimations.push(panel.animate([
+      {opacity:.45,transform:`translateX(${offset}px)`}, {opacity:1,transform:"translateX(0)"}
+    ], {duration:200,easing:"cubic-bezier(.2,.8,.2,1)"}));
+  }
+}
+
 const failedLogin = new URL(location.href).searchParams.get("login") === "failed";
 if (location.search) history.replaceState(null, "", location.pathname);
 
@@ -221,7 +252,7 @@ function render() {
   const ready = profile.profileReady;
   const activePickup = accountTab === "pickup" && rides.some(ride => ride.status === "ACTIVE");
   root.innerHTML = `<section class="account-welcome account-heading${activePickup ? " compact" : ""}"><div><p class="eyebrow">마중</p><h1>${ready ? `${e(profile.nickname)} 님` : "어떤 이름으로<br />만날까요?"}</h1><p class="majung-id">내 마중 ID · ${e(profile.majungId)}</p></div></section>${alerts}
-    ${ready ? `<nav class="account-nav${activePickup ? " bottom-nav" : ""}" aria-label="마중 메뉴">${[["pickup","픽업"],["people","사람 찾기"],["settings","내 정보"]].map(([key,label])=>`<button type="button" data-action="tab-${key}" aria-current="${accountTab===key?"page":"false"}">${label}</button>`).join("")}</nav>${rides.some(ride=>ride.status==="ACTIVE") ? `<p class="live-connection" data-live-connection role="status">${accountStreamConnected ? "실시간으로 확인 중" : "연결 상태 확인 중"}</p>` : ""}` : ""}
+    ${ready ? `<nav class="account-nav${activePickup ? " bottom-nav" : ""}" aria-label="마중 메뉴"><span class="account-tab-indicator" aria-hidden="true" style="--tab-index:${accountTabs.indexOf(accountTab)}"></span>${[["pickup","픽업"],["people","사람 찾기"],["settings","내 정보"]].map(([key,label])=>`<button type="button" data-action="tab-${key}" aria-current="${accountTab===key?"page":"false"}">${label}</button>`).join("")}</nav>${rides.some(ride=>ride.status==="ACTIVE") ? `<p class="live-connection" data-live-connection role="status">${accountStreamConnected ? "실시간으로 확인 중" : "연결 상태 확인 중"}</p>` : ""}` : ""}
     ${(!ready || accountTab === "settings") ? `<section class="card"><h2>${ready ? "내 닉네임" : "먼저 닉네임을 정해주세요."}</h2><form id="nickname-form"><label for="nickname">닉네임<input id="nickname" name="nickname" value="${e(nickname)}" minlength="2" maxlength="20" required autocomplete="nickname" placeholder="2~20자" /></label><p class="hint">닉네임은 같을 수 있어요. 마중 ID는 바뀌지 않아요.</p><button class="primary" ${busy ? "disabled" : ""}>${ready ? "닉네임 저장" : "이 이름으로 시작하기"}</button></form>${ready ? button("로그아웃", "logout", "", true) : ""}</section>` : ""}
     ${ready && accountTab === "people" ? `<section class="card"><p class="eyebrow">새 마중 요청</p><h2>누구를 만날까요?</h2><form id="search-form"><label for="query">닉네임 또는 마중 ID<input id="query" name="query" value="${e(query)}" minlength="2" maxlength="32" required placeholder="찾을 사람의 닉네임" autocomplete="off" /></label><button class="primary" ${busy ? "disabled" : ""}>검색</button></form>
       ${searchDone ? results.length ? `<p class="hint">닉네임이 같다면 마중 ID까지 확인해주세요.</p><ul class="person-list">${results.map(item => `<li class="person-row">${person(item.nickname, item.majungId)}${button("마중 요청", "ride-open", `data-id="${e(item.memberId)}"`)}${button("연결만 요청", "request", `data-id="${e(item.memberId)}"`,true)}</li>`).join("")}</ul>` : '<p class="empty-account">검색 결과가 없어요. 닉네임이나 마중 ID를 다시 확인해주세요.</p>' : '<p class="hint">이름·마중 ID만 표시해요. 차량 위치와 픽업 정보는 공개하지 않아요.</p>'}
@@ -340,7 +371,7 @@ root.addEventListener("click", event => {
   if (action?.startsWith("tab-")) {
     const next=action.slice(4);
     if (!["pickup","people","settings"].includes(next)) return;
-    accountTab=next; render(); return;
+    changeAccountTab(next); return;
   }
   if (action === "ride-map-center") { placePicker?.chooseCenter(); return; }
   if (action === "propose-start") { const [id]=[...tracking.keys()]; if (!id) return; pickingRide=id; render(); return; }
