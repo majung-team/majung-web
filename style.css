@@ -509,3 +509,7 @@ main {max-width:620px;margin-top:28px}
 .proposal-panel .place-results span {font-size:.85rem;font-weight:400;color:#626d75;overflow-wrap:anywhere}
 .proposal-panel .pager {display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0}
 .proposal-panel .pager button {width:auto;margin:0;padding:12px;font-size:.85rem}
+
+.data-notice {max-width:720px;margin:24px auto;padding:16px 20px;border-top:1px solid #dce3e8;color:#626d75;font-size:.9rem;line-height:1.8}
+.data-notice summary {cursor:pointer;font-weight:600;color:#244f73;min-height:32px}
+.data-notice p {margin:12px 0}
