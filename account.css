@@ -1,80 +1,528 @@
-.account-home {color:var(--ink, #173c35);font-size:.9rem;text-decoration:none;border-bottom:1px solid #b9cec4;padding-bottom:4px}
-.account-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
-.account-heading h1 {font-size:clamp(2rem,6vw,3.4rem);overflow-wrap:anywhere}
-.account-heading .quiet {width:auto;white-space:nowrap;margin-top:20px}
-.account-steps {padding-left:24px;line-height:2.1;color:#526b63;margin-bottom:24px}
-.kakao-login {display:block;text-align:center;border-radius:12px;background:#fee500;color:#191919;padding:18px 24px;text-decoration:none;font-weight:700;margin-bottom:12px}
-.person-list {list-style:none;margin:20px 0 0;padding:0}
-.person-row {border-top:1px solid #dbe4dc;padding:20px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.person-row:last-child {padding-bottom:0}
-.person-name {flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
-.person-name strong {font-size:1.05rem}
-.majung-id {font-size:.85rem;color:#5c746b;font-variant-numeric:tabular-nums;letter-spacing:.03em}
-.connection-state {font-size:.8rem;background:#edf3e9;color:#35645a;padding:6px 10px;border-radius:8px}
-.row-actions {display:flex;gap:8px;width:100%;flex-wrap:wrap;margin-top:8px}
-.person-row button,.row-actions button {width:auto;min-height:46px;padding:12px 18px;font-size:.9rem;margin:0}
-.person-row>.primary {margin:0}
-.section-heading {display:flex;align-items:center;justify-content:space-between;gap:12px}
-.section-heading h2 {margin:0}
-.section-heading button {width:auto;padding:12px 16px;font-size:.85rem;margin:0}
-.pager {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:24px}
-.pager button {width:auto;font-size:.9rem;padding:10px 18px;margin:0}
-.pager span {font-size:.85rem;color:#5c746b}
-.empty-account {padding:24px 0;color:#5c746b;line-height:1.7}
-.confirmation {border:2px solid #b38a27}
-button:focus-visible,a:focus-visible,input:focus-visible {outline:3px solid #a98220;outline-offset:4px}
-@media (max-width:500px) {.account-heading{gap:12px}.account-heading .quiet{font-size:.8rem;padding:12px}.section-heading{align-items:flex-start}.section-heading button{white-space:nowrap}.person-row>.primary{width:100%}}
+.account-home {
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--primary-light);
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(36, 79, 115, 0.12);
+  transition: all 0.15s ease;
+}
 
-.ride-row {display:block;padding:24px 0}
-.ride-row>.person-name {margin-bottom:12px}
-.ride-row>strong {display:inline-block;color:#225d51;background:#e9f1e8;border-radius:8px;padding:6px 10px;font-size:.88rem}
-.ride-row>p {margin:12px 0;line-height:1.75}
-.ride-row>button {margin:6px 8px 0 0}
+.account-home:hover {
+  background: #dce7f0;
+}
 
-.place-search-form {margin:24px 0 8px}
-.place-results {list-style:none;margin:12px 0 20px;padding:0;max-height:360px;overflow:auto;border:1px solid #dbe4dc;border-radius:12px}
-.place-results li+li {border-top:1px solid #dbe4dc}
-.place-results button {display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;margin:0;border:0;border-radius:0;background:#fffdf8;color:#173c35;text-align:left;min-height:72px;padding:16px}
-.place-results button:hover {background:#edf3e9}
-.place-results span {font-size:.85rem;color:#526b63;font-weight:400;overflow-wrap:anywhere}
+.account-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
 
-.place-results button[aria-pressed="true"] {background:#edf3e9;box-shadow:inset 4px 0 #276457}
+.account-heading h1 {
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  overflow-wrap: anywhere;
+}
 
-/* A task-focused mobile shell: current pickup first, account controls one level away. */
-.account-welcome {padding:4px 2px 20px}
-.account-welcome h1 {font-size:28px;letter-spacing:-1px;margin:0 0 8px}
-.account-welcome .eyebrow {margin:0 0 8px}
-.account-welcome .majung-id {margin:0;font-size:12px}
-.account-nav {position:sticky;top:0;z-index:10;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px;margin:0 0 24px;background:#e9edf0;border:1px solid #dce2e6;border-radius:14px}
-.account-nav button {border:0;margin:0;min-height:48px;padding:12px 8px;border-radius:10px;background:transparent;color:#626d75;font-size:14px;font-weight:600}
-.account-nav button[aria-current="page"] {background:white;color:#244f73;box-shadow:0 2px 6px #20282e0c}
-.empty-pickup {padding:32px 8px 20px;text-align:center}
-.empty-pickup strong {font-size:21px;color:#20282e}
-.empty-pickup p {font-size:14px;margin:12px 0 24px}
-.ride-row[data-state="ACTIVE"] {padding:0;border:0}
-.ride-row[data-state="ACTIVE"]>.person-name {display:flex;margin-top:18px}
-.ride-row[data-state="ACTIVE"]>.person-name .majung-id {font-size:12px}
-.ride-row[data-state="ACTIVE"]>[data-ride-eta] {font-size:30px;font-weight:700;letter-spacing:-1px;color:#20282e;margin:16px 0}
-.ride-row .readiness-options {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0 12px}
-.ride-row .readiness-options button {width:100%;margin:0;min-height:56px}
-.ride-row .pickup-map {height:280px;border-radius:16px;margin:18px 0}
-.account-nav button:focus-visible {outline:3px solid #244f73;outline-offset:2px}
-@media(min-width:700px) {.account-welcome h1{font-size:32px}.account-nav{margin-bottom:28px}}
-.account-welcome.compact {padding-bottom:12px}
-.account-welcome.compact .eyebrow,.account-welcome.compact .majung-id {display:none}
-.account-welcome.compact h1 {font-size:16px;font-weight:500;margin:0;color:#626d75}
-.live-connection {font-size:12px;margin:-12px 0 20px;color:#626d75;display:flex;align-items:center;gap:7px}
-.live-connection::before {content:"";width:6px;height:6px;border-radius:50%;background:#244f73}
-.ride-row>strong {background:#e7eef3;color:#244f73}
-.account-welcome.compact {display:none}
-.account-nav.bottom-nav {position:fixed;top:auto;bottom:max(14px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:calc(100% - 40px);max-width:580px;background:#fff;box-shadow:0 6px 28px #20282e20;margin:0;border-radius:16px}
-.active-pickup-card {border:0;background:transparent;padding:0 2px 92px}
-.active-pickup-card>.section-heading {margin-bottom:18px;align-items:center}
-.active-pickup-card>.section-heading h2 {font-size:13px;color:#626d75;font-weight:500}
-.active-pickup-card>.section-heading button {font-size:12px;background:transparent;border:1px solid #d7dedf;padding:8px 12px}
-.active-pickup-card .person-name {flex-direction:row!important;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px!important}
-.active-pickup-card .person-name strong {font-size:18px}
-.active-pickup-card .ride-row>p {margin:12px 0;line-height:1.6}
-.active-pickup-card .ride-row>[data-ride-eta] {font-size:30px;line-height:1.35;letter-spacing:-1px;margin:20px 0}
-.active-pickup-card .pickup-map {height:240px}
-@media(max-width:500px) {.active-pickup-card{padding:0 0 92px}.active-pickup-card .pickup-map{height:230px}.account-nav.bottom-nav button{min-height:46px}}
+.account-heading .quiet {
+  width: auto;
+  white-space: nowrap;
+  margin-top: 20px;
+}
+
+.account-steps {
+  padding-left: 24px;
+  line-height: 2.1;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.kakao-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  background: #fee500;
+  color: #191919;
+  padding: 16px 24px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s ease;
+}
+
+.kakao-login:hover {
+  filter: brightness(0.96);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.person-list {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+}
+
+.person-row {
+  border-top: 1px solid var(--line);
+  padding: 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.person-row:last-child {
+  padding-bottom: 0;
+}
+
+.person-name {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.person-name strong {
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.majung-id {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+.connection-state {
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(36, 79, 115, 0.1);
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.person-row button,
+.row-actions button {
+  width: auto;
+  min-height: 46px;
+  padding: 12px 18px;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.person-row > .primary {
+  margin: 0;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.section-heading button {
+  width: auto;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  margin: 0;
+  min-height: 38px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.pager button {
+  width: auto;
+  font-size: 0.9rem;
+  padding: 10px 18px;
+  margin: 0;
+}
+
+.pager span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.empty-account {
+  padding: 28px 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.confirmation {
+  border: 2px solid var(--amber);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}
+
+@media (max-width: 500px) {
+  .account-heading {
+    gap: 12px;
+  }
+  .account-heading .quiet {
+    font-size: 0.8rem;
+    padding: 12px;
+  }
+  .section-heading {
+    align-items: flex-start;
+  }
+  .section-heading button {
+    white-space: nowrap;
+  }
+  .person-row > .primary {
+    width: 100%;
+  }
+}
+
+.ride-row {
+  display: block;
+  padding: 24px 0;
+}
+
+.ride-row > .person-name {
+  margin-bottom: 12px;
+}
+
+.ride-row > strong {
+  display: inline-block;
+  color: var(--primary);
+  background: var(--primary-light);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.88rem;
+  border: 1px solid rgba(36, 79, 115, 0.1);
+}
+
+.ride-row > p {
+  margin: 12px 0;
+  line-height: 1.75;
+}
+
+.ride-row > button {
+  margin: 6px 8px 0 0;
+}
+
+/* Place Search in Account */
+.place-search-form {
+  margin: 24px 0 8px;
+}
+
+.place-results {
+  list-style: none;
+  margin: 12px 0 20px;
+  padding: 0;
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+}
+
+.place-results li + li {
+  border-top: 1px solid var(--line);
+}
+
+.place-results button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  color: var(--ink);
+  text-align: left;
+  min-height: 72px;
+  padding: 16px;
+  transition: background-color 0.15s ease;
+}
+
+.place-results button:hover {
+  background: #f1f5f8;
+}
+
+.place-results span {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.place-results button[aria-pressed="true"] {
+  background: var(--primary-light);
+  box-shadow: inset 4px 0 var(--primary);
+}
+
+/* Mobile Shell: Active Pickup Card & Top Navigation */
+.account-welcome {
+  padding: 4px 2px 20px;
+}
+
+.account-welcome h1 {
+  font-size: 28px;
+  letter-spacing: -1px;
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.account-welcome .eyebrow {
+  margin: 0 0 8px;
+}
+
+.account-welcome .majung-id {
+  margin: 0;
+  font-size: 13px;
+}
+
+.account-nav {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 5px;
+  margin: 0 0 24px;
+  background: #e9edf1;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.account-nav button {
+  border: 0;
+  margin: 0;
+  min-height: 48px;
+  padding: 12px 8px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.account-nav button[aria-current="page"] {
+  background: #ffffff;
+  color: var(--primary);
+  box-shadow: 0 2px 6px rgba(33, 40, 46, 0.08);
+}
+
+.empty-pickup {
+  padding: 36px 8px 24px;
+  text-align: center;
+}
+
+.empty-pickup strong {
+  font-size: 21px;
+  color: var(--ink);
+}
+
+.empty-pickup p {
+  font-size: 14px;
+  margin: 12px 0 24px;
+  color: var(--muted);
+}
+
+.ride-row[data-state="ACTIVE"] {
+  padding: 0;
+  border: 0;
+}
+
+.ride-row[data-state="ACTIVE"] > .person-name {
+  display: flex;
+  margin-top: 18px;
+}
+
+.ride-row[data-state="ACTIVE"] > .person-name .majung-id {
+  font-size: 12px;
+}
+
+.ride-row[data-state="ACTIVE"] > [data-ride-eta] {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--ink);
+  margin: 16px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.ride-row .readiness-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 20px 0 12px;
+}
+
+.ride-row .readiness-options button {
+  width: 100%;
+  margin: 0;
+  min-height: 56px;
+  font-size: 15px;
+}
+
+.ride-row .pickup-map {
+  height: 280px;
+  border-radius: var(--radius-md);
+  margin: 18px 0;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.account-nav button:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (min-width: 700px) {
+  .account-welcome h1 {
+    font-size: 32px;
+  }
+  .account-nav {
+    margin-bottom: 28px;
+  }
+}
+
+.account-welcome.compact {
+  display: none;
+}
+
+.live-connection {
+  font-size: 12px;
+  margin: -12px 0 20px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-connection::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--live-green);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+/* Floating Bottom Navigation for Mobile */
+.account-nav.bottom-nav {
+  position: fixed;
+  top: auto;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 36px);
+  max-width: 580px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(222, 227, 232, 0.85);
+  box-shadow: 0 10px 32px rgba(33, 40, 46, 0.15);
+  margin: 0;
+  border-radius: var(--radius-md);
+  z-index: 30;
+}
+
+.active-pickup-card {
+  border: 0;
+  background: transparent;
+  padding: 0 2px 96px;
+  box-shadow: none;
+}
+
+.active-pickup-card > .section-heading {
+  margin-bottom: 18px;
+  align-items: center;
+}
+
+.active-pickup-card > .section-heading h2 {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.active-pickup-card > .section-heading button {
+  font-size: 12px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  padding: 8px 14px;
+  border-radius: 8px;
+}
+
+.active-pickup-card .person-name {
+  flex-direction: row !important;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px !important;
+}
+
+.active-pickup-card .person-name strong {
+  font-size: 19px;
+}
+
+.active-pickup-card .ride-row > p {
+  margin: 12px 0;
+  line-height: 1.6;
+}
+
+.active-pickup-card .ride-row > [data-ride-eta] {
+  font-size: 32px;
+  line-height: 1.35;
+  letter-spacing: -1px;
+  margin: 20px 0;
+}
+
+.active-pickup-card .pickup-map {
+  height: 250px;
+}
+
+@media (max-width: 500px) {
+  .active-pickup-card {
+    padding: 0 0 96px;
+  }
+  .active-pickup-card .pickup-map {
+    height: 240px;
+  }
+  .account-nav.bottom-nav button {
+    min-height: 48px;
+  }
+}
