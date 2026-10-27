@@ -298,10 +298,13 @@ test("메뉴 전환만 움직이고 같은 탭·자동 갱신·동작 줄이기�
   app.context.window.getComputedStyle = () => ({transform:"matrix(1, 0, 0, 1, 100, 0)"});
   vm.runInContext('changeAccountTab("people")',app.context);
   assert.equal(moves,2); assert.equal(focus,1);
+  assert.match(app.root.innerHTML,/account-tab-indicator tab-position-people/);
+  assert.doesNotMatch(app.root.innerHTML,/style="--tab-index/);
   vm.runInContext('render(); changeAccountTab("people")',app.context);
   assert.equal(moves,2);
   vm.runInContext('changeAccountTab("settings")',app.context);
   assert.equal(cancels,2); assert.equal(moves,4);
+  assert.match(app.root.innerHTML,/account-tab-indicator tab-position-settings/);
   reduced=true;
   vm.runInContext('changeAccountTab("pickup")',app.context);
   assert.equal(moves,4); assert.equal(cancels,4);
