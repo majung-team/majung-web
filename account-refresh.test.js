@@ -285,3 +285,25 @@ test("첫 연결 QR은 장치 비밀 없이 로그인 후 요청하고 차량 �
   assert.equal(app.pairStorage.has("majung.vehicleRequest"),false);
   assert.match(app.root.innerHTML,/차량 연결을 마쳤어요/);
 });
+
+test("메뉴 전환만 움직이고 같은 탭·자동 갱신·동작 줄이기는 움직이지 않는다", async () => {
+  const app = await screen();
+  let moves = 0, cancels = 0, focus = 0, reduced = false;
+  const animated = {animate() { moves++; return {cancel() { cancels++; }}; }};
+  const indicator = {...animated, getBoundingClientRect:()=>({left:20,width:100})};
+  app.root.querySelector = selector => selector === ".account-tab-indicator" ? indicator : selector.includes("aria-current") ? {focus(){focus++;}} : null;
+  app.root.querySelectorAll = () => [animated];
+  app.context.document.activeElement = {closest:()=>true};
+  app.context.window.matchMedia = () => ({matches:reduced});
+  app.context.window.getComputedStyle = () => ({transform:"matrix(1, 0, 0, 1, 100, 0)"});
+  vm.runInContext('changeAccountTab("people")',app.context);
+  assert.equal(moves,2); assert.equal(focus,1);
+  vm.runInContext('render(); changeAccountTab("people")',app.context);
+  assert.equal(moves,2);
+  vm.runInContext('changeAccountTab("settings")',app.context);
+  assert.equal(cancels,2); assert.equal(moves,4);
+  reduced=true;
+  vm.runInContext('changeAccountTab("pickup")',app.context);
+  assert.equal(moves,4); assert.equal(cancels,4);
+  assert.equal(app.writes.length,0);
+});
