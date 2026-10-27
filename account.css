@@ -550,3 +550,19 @@ input:focus-visible {
 }
 .account-nav button { position: relative; z-index: 1; }
 .account-nav button[aria-current="page"] { background: transparent; box-shadow: none; }
+
+/* 12px within a control group, 20–24px before a new action. */
+.kakao-login { margin-top: 24px; margin-bottom: 12px; min-height: 54px; }
+.card > .hint + .kakao-login { margin-top: 24px; }
+.account-steps { margin-top: 16px; margin-bottom: 20px; line-height: 1.75; }
+.account-steps li + li { margin-top: 10px; }
+.section-heading { margin-bottom: 16px; }
+.section-heading + .hint { margin-top: 0; margin-bottom: 20px; }
+.person-row { row-gap: 12px; }
+.row-actions { gap: 12px; }
+form > .hint { margin-bottom: 16px; }
+@media (max-width: 500px) {
+  .card { padding: 24px 22px; }
+  .active-pickup-card { padding: 0 0 96px; }
+  .kakao-login { margin-top: 24px; }
+}

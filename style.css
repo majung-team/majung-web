@@ -804,3 +804,15 @@ input:focus {
     display: none;
   }
 }
+
+/* Keep content spacing separate from control hit areas. */
+.card > h2:first-child { margin-top: 0; margin-bottom: 16px; }
+.card > p:last-child { margin-bottom: 0; }
+.card > .hint + .button,
+.card > .hint + button,
+.card > .hint + a,
+form > .hint + button { margin-top: 20px; }
+.card > .button-pair,
+.card > .input-pair { margin-top: 20px; }
+.data-notice { margin-top: 28px; padding: 18px 20px; }
+.data-notice p { margin: 14px 0 0; }
