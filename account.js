@@ -34,10 +34,10 @@ let vehicleRequest = null;
 let vehiclePair = null;
 let pairingGeneration = 0;
 function readVehiclePair() {
-  const match=/^#vehicle\/([a-f0-9-]{36})\/([A-Za-z0-9_-]{43})$/.exec(location.hash);
+  const match=/^#(vehicle|enroll)\/([a-f0-9-]{36})\/([A-Za-z0-9_-]{43})$/.exec(location.hash);
   if (match) {
     pairingGeneration++;
-    vehiclePair={challengeId:match[1],code:match[2],until:Date.now()+300000}; vehicleRequest=null;
+    vehiclePair={kind:match[1],challengeId:match[2],code:match[3],until:Date.now()+300000}; vehicleRequest=null;
     try { sessionStorage.setItem("majung.vehiclePair",JSON.stringify(vehiclePair)); sessionStorage.removeItem("majung.vehicleRequest"); } catch { }
   } else {
     try {
@@ -47,10 +47,13 @@ function readVehiclePair() {
       vehicleRequest=JSON.parse(sessionStorage.getItem("majung.vehicleRequest")||"null");
     } catch { }
   }
-  if (location.hash.startsWith("#vehicle/")) history.replaceState(null,"",location.pathname+location.search);
+  if (/^#(?:vehicle|enroll)\//.test(location.hash)) history.replaceState(null,"",location.pathname+location.search);
 }
 readVehiclePair();
-window.addEventListener("hashchange",()=>{ if (!location.hash.startsWith("#vehicle/")) return; readVehiclePair(); if (!busy) run(refresh); });
+window.addEventListener("hashchange",()=>{ if (!/^#(?:vehicle|enroll)\//.test(location.hash)) return; readVehiclePair(); if (!busy) run(refresh); });
+function vehicleRequestPath(request) {
+  return `/vehicle-links/${request.kind === "enroll" ? "enrollments" : "requests"}/${request.challengeId}`;
+}
 function clearVehiclePair() {
   pairingGeneration++;
   vehiclePair=null; vehicleRequest=null;
@@ -164,7 +167,7 @@ function rideEtaText(current) {
 }
 function rideSections() {
   const form=rideTarget?`<section class="card confirmation"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>장소명·주소로 검색한 뒤 만날 곳을 선택해주세요. 지도나 현재 위치로도 고를 수 있어요.</p>${placeSearchPanel()}${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 불러오지 못하면 현재 위치로 요청할 수 있어요.</p>'}<p class="hint" aria-live="polite">${e(selectedPlaceText())}</p><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><button class="primary" ${busy||placeSearchBusy||!ridePlace?"disabled":""}>이 장소로 마중 요청</button></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
-  const pair=vehiclePair||vehicleRequest?`<section class="card"><h2>내 계정과 차량 연결</h2><p>운전자 본인의 차량에서 연 QR인지 확인해주세요. 탑승자는 이 연결을 할 필요가 없어요.</p>${vehicleRequest?`<p>차량에서 ${e(info.member.nickname)} 님의 연결을 승인해주세요.</p>${button("연결 상태 확인","refresh","",true)}`:button("이 계정으로 차량 연결 요청","vehicle-claim")}${button("차량 연결 요청 닫기","vehicle-dismiss","",true)}</section>`:"";
+  const pair=vehiclePair||vehicleRequest?`<section class="card"><h2>${(vehiclePair?.kind || vehicleRequest?.kind) === "enroll" ? "차량과 운전자 처음 연결" : "내 계정과 차량 연결"}</h2><p>운전자 본인의 차량 화면에 표시된 QR인지 확인해주세요. 로그인한 계정을 차량에서 한 번 더 확인하면 연결돼요. 관리자 코드는 필요 없어요. 탑승자는 이 연결을 할 필요가 없어요.</p>${vehicleRequest?`<p>차량에서 ${e(info.member.nickname)} 님의 연결을 승인해주세요.</p>${button("연결 상태 확인","refresh","",true)}`:button("이 계정으로 차량 연결 요청","vehicle-claim")}${button("차량 연결 요청 닫기","vehicle-dismiss","",true)}</section>`:"";
   return `${pair}${accountTab === "settings" ? `<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<p>${e(vehicle.vehicleName)} ${button("계정 연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}"`,true)}</p>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>` : ""}${accountTab === "pickup" ? `${form}<section class="card${rides.some(ride=>ride.status==="ACTIVE") ? " active-pickup-card" : ""}"><div class="section-heading"><h2>${rides.some(ride=>ride.status==="ACTIVE") ? "진행 중인 픽업" : "받은 초대와 내 마중 요청"}</h2>${button("새로 확인","refresh","",true)}</div>${rides.some(ride=>ride.status==="ACTIVE") ? "" : '<p class="hint">받은 초대를 확인하거나 사람 찾기에서 새 마중을 요청해보세요.</p>'}${rides.length?`<ul class="person-list">${[...rides].sort((a,b)=>({ACTIVE:0,INVITED:1,QUEUED:2,PENDING:3}[a.status]??4)-({ACTIVE:0,INVITED:1,QUEUED:2,PENDING:3}[b.status]??4)).map(rideRow).join("")}</ul>`:`<div class="empty-pickup"><strong>다음 만남을 준비해볼까요?</strong><p>운전자를 찾아 만날 장소와 함께 요청해보세요.<br />초대받았다면 목록에 표시돼요.</p>${button("운전자 찾기", "tab-people")}</div>`}</section>` : ""}`;
 }
 let accountTab = "pickup";
@@ -255,7 +258,7 @@ async function refresh() {
     if (vehicleRequest) {
       const generation=pairingGeneration;
       try {
-        const state=await api(`/vehicle-links/requests/${vehicleRequest.challengeId}`);
+        const state=await api(vehicleRequestPath(vehicleRequest));
         if (generation!==pairingGeneration) return;
         if (state.status==="LINKED") { clearVehiclePair(); notice="차량 연결을 마쳤어요."; linkedVehicles=await api("/vehicle-links"); }
       } catch (failure) { if ([404,410].includes(failure.status)) { if (generation===pairingGeneration) clearVehiclePair(); } else throw failure; }
@@ -377,13 +380,15 @@ root.addEventListener("click", event => {
     } else if (action === "vehicle-claim") {
       if (!vehiclePair || vehiclePair.until<=Date.now()) { clearVehiclePair(); throw new AccountError(410,"QR_EXPIRED","QR이 만료됐어요. 차량에서 다시 열어주세요."); }
       const generation=pairingGeneration;
-      const claimed=await api("/vehicle-links/requests",{method:"POST",body:{challengeId:vehiclePair.challengeId,code:vehiclePair.code}});
+      const pair=vehiclePair;
+      const claimed=await api(pair.kind === "enroll" ? `/vehicle-links/enrollments/${pair.challengeId}` : "/vehicle-links/requests",
+        {method:"POST",body:pair.kind === "enroll" ? {code:pair.code} : {challengeId:pair.challengeId,code:pair.code}});
       if (generation!==pairingGeneration) return;
-      vehicleRequest=claimed;
+      vehicleRequest={...claimed,kind:pair.kind,challengeId:pair.challengeId};
       try { sessionStorage.removeItem("majung.vehiclePair"); sessionStorage.setItem("majung.vehicleRequest",JSON.stringify(vehicleRequest)); } catch { }
       vehiclePair=null; await refresh();
     } else if (action === "vehicle-dismiss") {
-      if (vehicleRequest) await api(`/vehicle-links/requests/${vehicleRequest.challengeId}/cancel`,{method:"POST"});
+      if (vehicleRequest) await api(`${vehicleRequestPath(vehicleRequest)}/cancel`,{method:"POST"});
       clearVehiclePair();
     } else if (action === "vehicle-detach") {
       if (!window.confirm("차량에서 이 운전자 계정 연결을 해제할까요?")) return;

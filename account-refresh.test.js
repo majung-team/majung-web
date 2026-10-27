@@ -9,10 +9,12 @@ import * as proposal from "./proposal.js";
 import { AccountError } from "./account-api.js";
 
 // Execute the real account entry point with an isolated DOM shell and controlled API clock.
-async function screen() {
+async function screen({pairHash = ""} = {}) {
   let now = 0, seconds = 420, fail = false, authenticated = true, trackingReads = 0;
   let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
   const timers = [], events = {}, windowEvents = {}, rootEvents = {}, writes = [];
+  const pairStorage = new Map();
+  let enrollmentLinked = false;
   let streamCallbacks=null, streamClosed=false;
   let pauseTracking=false, finishTracking=null;
   const root = { innerHTML: "", setAttribute() {}, addEventListener(name, callback) { rootEvents[name] = callback; }, contains: () => false, querySelector: () => null };
@@ -22,6 +24,10 @@ async function screen() {
     if (path === "/auth/session") return { authenticated, member: { nickname: "시험 탑승자", majungId: "test", profileReady: true } };
     if (path === "/connections" || path.startsWith("/connections?")) return [];
     if (path === "/vehicle-links") return [];
+    if (path.startsWith("/vehicle-links/enrollments/")) {
+      if (options.method === "POST") writes.push({path, body:options.body});
+      return {status:enrollmentLinked ? "LINKED" : "AWAITING_VEHICLE_CONFIRMATION",enrollmentId:path.split("/")[3]};
+    }
     if (path === "/ride-requests") return { requests: [{ requestId: "test-ride", status: "ACTIVE", nickname: "시험 운전자", majungId: "driver", place: { label: "시험 장소" } }] };
     if (path.endsWith("/tracking")) {
       trackingReads++;
@@ -35,8 +41,8 @@ async function screen() {
     openPickupStream: callbacks => { streamCallbacks=callbacks; return {close(){streamClosed=true;callbacks.onState(false);}}; },
     ...model, ...push, ...maps, ...proposal, e: model.escapeHtml, AccountError, createAccountClient: () => api,
     document: { querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; }, createElement: () => ({ innerHTML: "", setAttribute(){}, remove(){}, addEventListener() {}, contains: () => false, querySelector: () => ({ addEventListener() {}, hidden: false, value: "", textContent: "" }) }) },
-    window: { addEventListener(name,callback) {windowEvents[name]=callback;} }, location: { href: "https://test.invalid/account", hash: "", search: "", pathname: "/account" },
-    history: { replaceState() {} }, sessionStorage: { getItem: () => null, removeItem() {} },
+    window: { addEventListener(name,callback) {windowEvents[name]=callback;} }, location: { href: "https://test.invalid/account", hash: pairHash, search: "", pathname: "/account" },
+    history: { replaceState() {} }, sessionStorage: { getItem: key => pairStorage.get(key) || null, setItem(key,value) {pairStorage.set(key,value);}, removeItem(key) {pairStorage.delete(key);} },
     performance: { now: () => now }, URL, AbortSignal, fetch: async () => ({ ok: true, json: async () => ({}) }),
     setInterval: callback => timers.push(callback), CSS: { escape: value => value },
   });
@@ -45,7 +51,8 @@ async function screen() {
   const settle = () => new Promise(resolve => setImmediate(resolve));
   await settle();
   return {
-    root, context, events, windowEvents, rootEvents, writes,
+    root, context, events, windowEvents, rootEvents, writes, pairStorage,
+    enrollmentLinked: value => {enrollmentLinked=value;},
     stream: () => streamCallbacks, closed: () => streamClosed,
     reads: () => trackingReads,
     pauseNextTracking: () => {pauseTracking=true;},
@@ -255,4 +262,26 @@ test("새 요청을 작성하다 끊겨도 선택 장소와 설명을 보존하�
   assert.equal(vm.runInContext('ridePlace.latitude',app.context),37.3);
   app.windowEvents.online();await app.tick(1000);
   assert.equal(app.writes.length,0);
+});
+
+
+test("첫 연결 QR은 장치 비밀 없이 로그인 후 요청하고 차량 승인 전 대기", async () => {
+  const id="12345678-1234-1234-1234-123456789abc";
+  const app=await screen({pairHash:`#enroll/${id}/${"Q".repeat(43)}`});
+  assert.match(app.root.innerHTML,/차량과 운전자 처음 연결/);
+  assert.equal(app.writes.length,0);
+  assert.equal(JSON.parse(app.pairStorage.get("majung.vehiclePair")).kind,"enroll");
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"vehicle-claim"}})}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.writes.length,1);
+  assert.equal(app.writes[0].path,`/vehicle-links/enrollments/${id}`);
+  assert.deepEqual(Object.keys(app.writes[0].body),["code"]);
+  assert.match(app.root.innerHTML,/차량에서/);
+  assert.equal(JSON.parse(app.pairStorage.get("majung.vehicleRequest")).kind,"enroll");
+  await vm.runInContext("run(refresh)",app.context);
+  assert.equal(app.writes.length,1);
+  app.enrollmentLinked(true);
+  await vm.runInContext("run(refresh)",app.context);
+  assert.equal(app.pairStorage.has("majung.vehicleRequest"),false);
+  assert.match(app.root.innerHTML,/차량 연결을 마쳤어요/);
 });
