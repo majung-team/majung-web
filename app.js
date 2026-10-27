@@ -162,7 +162,7 @@ function joinForm() {
   if (!invitation)
     return `<section class="card"><h1>초대가 필요해요.</h1><p>운전자에게 받은 링크를 다시 열어주세요.</p>${button("처음으로", "home", true)}</section>`;
   return `<section class="intro small"><p class="eyebrow">마중 약속 초대</p><h1>함께 만날 약속에<br />참여할까요?</h1><p>참여하면 바로 연결돼서 만날 장소와<br />차량의 도착 정보를 볼 수 있어요.</p></section>
-    <form id="join-form" class="card"><p class="hint">이름이나 가입 없이 참여해요. 이 링크는 한 사람만 쓸 수 있고, 휴대전화 위치나 연락처는 요청하지 않아요.</p>
+    <form id="join-form" class="card"><p class="hint">이름이나 가입 없이 참여해요. 이 링크는 한 사람만 쓸 수 있어요. 참여하면 만날 장소·차량 위치·도착 시간과 내 준비 상태를 공유해요. 휴대전화의 이동 위치나 연락처는 요청하지 않아요.</p>
     <button class="primary" ${busy ? "disabled" : ""}>${busy ? "연결하고 있어요…" : "약속에 참여하기"}</button></form>`;
 }
 
