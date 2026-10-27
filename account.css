@@ -526,3 +526,15 @@ input:focus-visible {
     min-height: 48px;
   }
 }
+
+/* Keep primary actions distinct from account navigation and background refresh. */
+.empty-pickup { padding: 36px 8px 12px; }
+.empty-pickup strong { font-size: 1.35rem; line-height: 1.5; letter-spacing: -0.04em; }
+.empty-pickup p { margin: 16px 0 28px; line-height: 1.8; }
+.account-nav { border: 0; padding: 5px; background: #eaf0f6; }
+.account-nav button { font-size: 0.95rem; }
+.account-nav button[aria-current="page"] { color: #1e5fcf; box-shadow: 0 2px 6px #22384a0a; }
+.account-home { border: 0; min-height: 44px; display: inline-flex; align-items: center; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
