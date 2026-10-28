@@ -579,3 +579,35 @@ form > .hint { margin-bottom: 16px; }
 
 /* Keep entering panels outside the viewport from creating a horizontal scrollbar. */
 body { overflow-x: clip; }
+
+/* Vehicle identity and its destructive action stay visually separate. */
+.linked-vehicle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+}
+.linked-vehicle-row:last-child { padding-bottom: 0; }
+.linked-vehicle-details {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.linked-vehicle-details span { color: var(--muted); font-size: 0.85rem; }
+.linked-vehicle-row button {
+  flex-shrink: 0;
+  width: auto;
+  min-height: 48px;
+  margin: 0;
+  padding: 12px 18px;
+  background: #fff1f0;
+  color: #b42318;
+}
+.linked-vehicle-row button:hover { background: #fee4e2; }
+@media (max-width: 400px) {
+  .linked-vehicle-row { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .linked-vehicle-row button { align-self: flex-end; }
+}
