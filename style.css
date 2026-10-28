@@ -112,7 +112,7 @@ a {
   padding: 6px 14px;
   border-radius: 20px;
   border: 1px solid rgba(36, 79, 115, 0.12);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .tag:hover {
@@ -238,7 +238,7 @@ button,
   justify-content: center;
   text-decoration: none;
   line-height: 1.5;
-  transition: all 0.15s ease-in-out;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .primary {
@@ -254,7 +254,7 @@ button,
 }
 
 .primary:active:not(:disabled) {
-  transform: scale(0.99);
+  background: var(--primary-hover);
 }
 
 .quiet {
@@ -661,7 +661,7 @@ input:focus {
   color: #ffffff;
   background: var(--primary);
   margin-top: 28px;
-  box-shadow: 0 4px 14px rgba(36, 79, 115, 0.25);
+  box-shadow: none;
 }
 
 .service-start:hover {
@@ -816,3 +816,14 @@ form > .hint + button { margin-top: 20px; }
 .card > .input-pair { margin-top: 20px; }
 .data-notice { margin-top: 28px; padding: 18px 20px; }
 .data-notice p { margin: 14px 0 0; }
+
+/* Keep control outlines stable when pressed and when labels wrap. */
+button, .button {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  -webkit-tap-highlight-color: transparent;
+}
+.quiet { border-color: transparent; box-shadow: none; }
+.card:hover { box-shadow: var(--shadow-sm); }

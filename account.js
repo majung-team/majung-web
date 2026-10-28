@@ -194,11 +194,11 @@ function changeAccountTab(next) {
       {transform:`translateX(${delta}px) ${finalTransform}`}, {transform:finalTransform}
     ], {duration:220,easing:"cubic-bezier(.2,.8,.2,1)"}));
   }
-  const offset = accountTabs.indexOf(next) > oldIndex ? 20 : -20;
+  const offset = accountTabs.indexOf(next) > oldIndex ? 48 : -48;
   for (const panel of root.querySelectorAll?.(":scope > .card") ?? []) {
     if (panel.animate) tabAnimations.push(panel.animate([
       {opacity:.45,transform:`translateX(${offset}px)`}, {opacity:1,transform:"translateX(0)"}
-    ], {duration:200,easing:"cubic-bezier(.2,.8,.2,1)"}));
+    ], {duration:240,easing:"cubic-bezier(.2,.8,.2,1)"}));
   }
 }
 
