@@ -14,13 +14,16 @@ let query = "";
 let searchedQuery = "";
 let nickname = "";
 let busy = false;
+let backgroundRefresh = null;
 let error = "";
 let notice = "";
 let searchDone = false;
 let searchPage = 0;
 let connectionPage = 0;
+let openingConnection = null;
 let pendingAction = null;
 let rideTarget = null;
+let rideReturnTab = "people";
 let ridePlace = null;
 let rideLabel = "";
 let rideRequestId = null;
@@ -180,6 +183,7 @@ function changeAccountTab(next) {
   const keepFocus = !!document.activeElement?.closest?.(".account-nav");
   tabAnimations.forEach(animation => animation.cancel());
   tabAnimations = [];
+  pendingAction = null;
   accountTab = next;
   render();
   const selected = root.querySelector('.account-nav [aria-current="page"]');
@@ -212,7 +216,7 @@ function person(name, id) { return `<div class="person-name"><strong>${e(name)}<
 function connectionRow(item) {
   const status = item.status === "ACCEPTED" ? "연결됨" : item.direction === "INCOMING" ? "받은 연결 요청" : "상대의 확인을 기다리고 있어요";
   const controls = item.status === "ACCEPTED"
-    ? button("연결 해제", "confirm-disconnect", `data-id="${e(item.connectionId)}"`, true)
+    ? button(openingConnection===item.connectionId?"사람 확인 중…":"마중 요청", "connected-ride-open", `data-id="${e(item.connectionId)}" aria-label="${e(item.nickname)} 님께 마중 요청"`) + button("연결 해제", "confirm-disconnect", `data-id="${e(item.connectionId)}"`, true)
     : item.direction === "INCOMING"
       ? button("연결 수락", "accept", `data-id="${e(item.connectionId)}"`) + button("거절", "confirm-reject", `data-id="${e(item.connectionId)}"`, true)
       : button("요청 취소", "confirm-cancel", `data-id="${e(item.connectionId)}"`, true);
@@ -260,7 +264,7 @@ function render() {
       <section class="card"><div class="section-heading"><h2>연결 목록</h2>${button("새로 확인", "refresh", "", true)}</div><p class="hint">연결 요청은 받은 사람이 수락해야 연결돼요.<br />마중 요청·픽업 승인은 별도로 진행해요.</p>
       ${connections.length ? `<ul class="person-list">${connections.map(connectionRow).join("")}</ul>` : '<p class="empty-account">이 페이지에 표시할 연결이 없어요.</p>'}${pager("connections", connectionPage, connections.length)}</section>` : ""}
     ${ready ? rideSections() : ""}
-    ${pendingAction ? `<section class="card confirmation" role="region" aria-label="연결 변경 확인"><h2>${e(pendingAction.label)}할까요?</h2><p>${e(pendingAction.nickname)} · ${e(pendingAction.majungId)}</p><div class="row-actions">${button("확인", "confirm-action")}${button("돌아가기", "dismiss-action", "", true)}</div></section>` : ""}`;
+    ${pendingAction ? `<section class="card confirmation" role="region" aria-label="${e(pendingAction.label)} 확인"><h2>${e(pendingAction.label)}할까요?</h2><p>${e(pendingAction.nickname)}${pendingAction.majungId ? ` · ${e(pendingAction.majungId)}` : ""}</p>${pendingAction.place ? `<p>만날 장소 · ${e(pendingAction.place)}</p>` : ""}${pendingAction.note ? `<p class="hint">${e(pendingAction.note)}</p>` : ""}<div class="row-actions">${button(e(pendingAction.label), "confirm-action")}${button("돌아가기", "dismiss-action", "", true)}</div></section>` : ""}`;
   updateRideMap();
   updatePlacePicker();
 }
@@ -315,7 +319,11 @@ async function search() {
 async function run(work) {
   if (busy) return;
   busy = true; error = ""; notice = ""; render();
-  try { await work(); }
+  try {
+    // Finish an older read before a mutation so it cannot overwrite the mutation's response.
+    await backgroundRefresh;
+    await work();
+  }
   catch (failure) {
     error = failure instanceof AccountError ? failure.message : "화면을 불러오지 못했어요. 잠시 후 다시 확인해주세요.";
     if (failure.status === 401) { rides=[]; linkedVehicles=[]; tracking.clear(); rideTarget=null; ridePlace=null; info = null; connections = []; results = []; searchDone = false; pendingAction = null; }
@@ -324,6 +332,25 @@ async function run(work) {
       try { info = await api("/auth/session"); } catch { info = null; }
     }
   } finally { busy = false; render(); }
+}
+function beginRideRequest(person) {
+  clearPlacePicker();
+  pendingAction = null;
+  rideReturnTab = accountTab;
+  accountTab = "pickup";
+  rideTarget = person;
+  ridePlace = null; rideLabel = ""; rideRequestId = crypto.randomUUID();
+}
+function focusRideRequest() {
+  if (!rideTarget) return;
+  root.querySelector(".confirmation")?.scrollIntoView({block:"start"});
+  root.querySelector('[name="placeKeyword"]')?.focus({preventScroll:true});
+}
+function focusConfirmation() {
+  const panel=root.querySelector('[aria-label$=" 확인"].confirmation');
+  panel?.setAttribute("tabindex","-1");
+  panel?.scrollIntoView({block:"center"});
+  panel?.focus({preventScroll:true});
 }
 root.addEventListener("input", event => {
   if (event.target.name === "nickname") nickname = event.target.value;
@@ -353,7 +380,25 @@ root.addEventListener("click", event => {
   if (!target || busy) return;
   const action = target.dataset.action;
   if (action === "ride-open") {
-    clearPlacePicker(); accountTab="pickup"; rideTarget=results.find(item=>item.memberId===target.dataset.id); ridePlace=null; rideLabel=""; rideRequestId=crypto.randomUUID(); render(); root.querySelector(".confirmation")?.scrollIntoView({block:"center"}); return;
+    const person = results.find(item=>item.memberId===target.dataset.id);
+    if (!person) return;
+    beginRideRequest(person); render(); focusRideRequest(); return;
+  }
+  if (action === "connected-ride-open") {
+    const connection = connections.find(item=>item.connectionId===target.dataset.id && item.status==="ACCEPTED");
+    if (!connection) return;
+    openingConnection=connection.connectionId;
+    void run(async () => {
+      // The connection list exposes a public ID, not the member ID accepted by the request API.
+      // Resolve that exact ID; a duplicate nickname must never choose a different person.
+      try {
+        const people = await api(`/accounts/search?query=${encodeURIComponent(connection.majungId)}&page=0`);
+        const matches = people.filter(person=>person.majungId===connection.majungId && person.memberId);
+        if (matches.length!==1) throw new AccountError(404,"ACCOUNT_NOT_FOUND","이 사람을 확인하지 못했어요. 연결 목록을 새로 확인한 뒤 다시 요청해주세요.");
+        beginRideRequest(matches[0]);
+      } finally { openingConnection=null; }
+    }).then(focusRideRequest);
+    return;
   }
   if (action === "place-search-previous" || action === "place-search-next") {
     const page=placeSearchPage+(action==="place-search-next"?1:-1);
@@ -380,13 +425,28 @@ root.addEventListener("click", event => {
     run(async () => { await api(`/ride-requests/${id}/place-proposal`,{method:"DELETE"}); await refresh(); notice="장소 제안을 취소했어요."; });
     return;
   }
-  if (action === "ride-dismiss") { rideTarget=null; ridePlace=null; render(); return; }
+  if (action === "ride-dismiss") { clearPlacePicker(); rideTarget=null; ridePlace=null; accountTab=rideReturnTab; render(); return; }
+  if (["invitation-accept","invitation-reject","ride-cancel"].includes(action)) {
+    const ride=rides.find(item=>item.requestId===target.dataset.id);
+    if (!ride || (action!=="ride-cancel" ? ride.status!=="INVITED" : !["PENDING","QUEUED","ACTIVE"].includes(ride.status))) return;
+    pendingAction={kind:"ride",requestId:ride.requestId,action,nickname:ride.nickname,majungId:ride.majungId,place:ride.place.label,
+      label:action==="invitation-accept"?"초대 수락":action==="invitation-reject"?"초대 거절":"마중 요청 취소",
+      note:action==="invitation-accept"?"수락하면 픽업 대기에 들어가요. 내 픽업이 시작되기 전에는 차량 위치가 보이지 않아요.":"처리한 뒤에는 이 요청으로 픽업을 진행할 수 없어요."};
+    render(); focusConfirmation(); return;
+  }
+  if (action === "vehicle-detach") {
+    const vehicle=linkedVehicles.find(item=>item.vehicleId===target.dataset.id);
+    if (!vehicle) return;
+    pendingAction={kind:"vehicle",vehicleId:vehicle.vehicleId,nickname:vehicle.vehicleName,label:"차량 연결 해제",
+      note:"이 차량에서 운전자 계정을 사용할 수 없게 돼요. 다시 사용하려면 차량의 QR로 연결해주세요."};
+    render(); focusConfirmation(); return;
+  }
   if (action === "push-on" || action === "push-off") { toggleRidePush(target.dataset.id, action === "push-on"); return; }
   if (action.startsWith("confirm-") && action !== "confirm-action") {
     const item = connections.find(item => item.connectionId === target.dataset.id);
     if (!item) return;
     pendingAction = {...item, action: action.slice(8), label: {disconnect: "연결 해제", reject: "요청 거절", cancel: "요청 취소"}[action.slice(8)]};
-    render(); root.querySelector(".confirmation")?.scrollIntoView({block: "center"}); return;
+    render(); focusConfirmation(); return;
   }
   if (action === "dismiss-action") { pendingAction = null; render(); return; }
   run(async () => {
@@ -395,16 +455,17 @@ root.addEventListener("click", event => {
       const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,()=>reject(new AccountError(400,"LOCATION_UNAVAILABLE","위치 권한과 휴대전화 GPS를 확인한 뒤 다시 선택해주세요.")),{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
       if (position.coords.accuracy>300) throw new AccountError(400,"LOCATION_INACCURATE","위치 오차가 커요. GPS가 잘 잡히는 곳에서 다시 선택해주세요.");
       ridePlace={latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy,source:"gps",at:Date.now()};
-    } else if (action === "invitation-accept" || action === "invitation-reject") {
-      const invite=rides.find(item=>item.requestId===target.dataset.id && item.status==="INVITED");
-      if (!invite) return;
-      const accepting=action==="invitation-accept";
-      if (!window.confirm(`${invite.nickname} 님의 초대를 ${accepting?"수락":"거절"}할까요?\n만날 장소 · ${invite.place.label}`)) return;
-      await api(`/ride-requests/${invite.requestId}/${accepting?"accept":"reject"}-invitation`,{method:"POST"});
-      await refresh(); notice=accepting?"초대를 수락했어요. 운전자가 내 픽업을 시작하면 위치를 확인할 수 있어요.":"초대를 거절했어요.";
-    } else if (action === "ride-cancel") {
-      if (!window.confirm("이 마중 요청을 취소할까요?")) return;
-      await api(`/ride-requests/${target.dataset.id}/cancel`,{method:"POST"}); await refresh();
+    } else if (action === "confirm-action" && pendingAction?.kind === "ride") {
+      const decision=pendingAction;
+      const ride=rides.find(item=>item.requestId===decision.requestId);
+      if (!ride || (decision.action!=="ride-cancel" ? ride.status!=="INVITED" : !["PENDING","QUEUED","ACTIVE"].includes(ride.status))) {
+        pendingAction=null; notice="요청 상태가 바뀌었어요. 최신 목록을 확인해주세요."; return;
+      }
+      const accepting=decision.action==="invitation-accept";
+      const endpoint=decision.action==="ride-cancel"?"cancel":accepting?"accept-invitation":"reject-invitation";
+      await api(`/ride-requests/${ride.requestId}/${endpoint}`,{method:"POST"});
+      pendingAction=null; await refresh();
+      notice=decision.action==="ride-cancel"?"마중 요청을 취소했어요.":accepting?"초대를 수락했어요. 운전자가 내 픽업을 시작하면 위치를 확인할 수 있어요.":"초대를 거절했어요.";
     } else if (action === "ride-ready" || action === "ride-preparing") {
       const current=tracking.get(target.dataset.id); if (!current) return;
       await api(`/ride-requests/${target.dataset.id}/readiness`,{method:"PUT",body:{readiness:action==="ride-ready"?"READY":"PREPARING",sequence:current.pickup.participant.readinessSequence+1}}); await refresh();
@@ -421,9 +482,10 @@ root.addEventListener("click", event => {
     } else if (action === "vehicle-dismiss") {
       if (vehicleRequest) await api(`${vehicleRequestPath(vehicleRequest)}/cancel`,{method:"POST"});
       clearVehiclePair();
-    } else if (action === "vehicle-detach") {
-      if (!window.confirm("차량에서 이 운전자 계정 연결을 해제할까요?")) return;
-      await api(`/vehicle-links/${target.dataset.id}`,{method:"DELETE"}); await refresh();
+    } else if (action === "confirm-action" && pendingAction?.kind === "vehicle") {
+      const id=pendingAction.vehicleId;
+      if (!linkedVehicles.some(item=>item.vehicleId===id)) { pendingAction=null; return; }
+      await api(`/vehicle-links/${id}`,{method:"DELETE"}); pendingAction=null; await refresh();
     } else if (action === "refresh") { await refresh(); notice = "최신 상태를 확인했어요."; }
     else if (action === "logout") {
       await api("/auth/logout", {method: "POST"}); clearVehiclePair(); rideTarget=null; ridePlace=null; rides=[]; tracking.clear(); info = null; nickname = ""; connections = []; results = []; pendingAction = null;
@@ -463,23 +525,23 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden) nextRefreshAt = 0;
 });
 setInterval(() => {
-  if (!networkAvailable || document.hidden || busy || !info?.authenticated || rideTarget || root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") return;
+  if (!networkAvailable || document.hidden || busy || backgroundRefresh || !info?.authenticated || rideTarget || root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") return;
   if (performance.now() < nextRefreshAt) return;
   const visible=()=>JSON.stringify({recoveringNetwork,member:info?.member,authenticated:info?.authenticated,connections,rides:rides.map(({_etaUntil,...item})=>item),linkedVehicles,vehicleRequest,tracking:[...tracking].map(([id,{deadline,timing,...data}])=>[id,data])});
-  const before=visible(); const previousError=error; const revisionAtStart=streamRevision; busy=true;
-  refresh().then(()=>{
-    busy=false;
+  const before=visible(); const previousError=error; const revisionAtStart=streamRevision;
+  const editing=()=>rideTarget || root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT";
+  backgroundRefresh=refresh().then(()=>{
     if (error === "상태를 새로 확인하지 못했어요. 새로 확인을 눌러주세요.") error="";
-    if (visible()!==before || error!==previousError) render();
+    if (!busy && (!editing() || !info?.authenticated) && (visible()!==before || error!==previousError)) render();
   }).catch(failure=>{
-    busy=false;
     // A failed account read must not leave the previous vehicle position or countdown visible.
     tracking.clear();
     for (const ride of rides) ride.currentPickupRemainingSeconds=null;
     if (failure.status===401) { info=null; rides=[]; linkedVehicles=[]; rideTarget=null; ridePlace=null; }
     else error="상태를 새로 확인하지 못했어요. 새로 확인을 눌러주세요.";
-    render();
+    if (!busy && (!editing() || failure.status===401)) render();
   }).finally(()=>{
+    backgroundRefresh=null;
     // A change arriving while this read is in flight still needs its own refresh.
     nextRefreshAt=streamRevision!==revisionAtStart ? 0 : performance.now()+(accountStreamConnected?30000:rides.some(ride=>ride.status==="ACTIVE")?3000:10000);
   });

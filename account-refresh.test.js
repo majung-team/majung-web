@@ -9,7 +9,7 @@ import * as proposal from "./proposal.js";
 import { AccountError } from "./account-api.js";
 
 // Execute the real account entry point with an isolated DOM shell and controlled API clock.
-async function screen({pairHash = ""} = {}) {
+async function screen({pairHash = "", contacts = [], searchResults = [], requests, vehicles = []} = {}) {
   let now = 0, seconds = 420, fail = false, authenticated = true, trackingReads = 0;
   let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
   const timers = [], events = {}, windowEvents = {}, rootEvents = {}, writes = [];
@@ -20,15 +20,18 @@ async function screen({pairHash = ""} = {}) {
   const root = { innerHTML: "", setAttribute() {}, addEventListener(name, callback) { rootEvents[name] = callback; }, contains: () => false, querySelector: () => null };
   const api = async (path, options = {}) => {
     if (path === "/ride-requests" && options.method === "POST") { writes.push(options.body); return {}; }
+    if (/^\/ride-requests\/[^/]+\/(accept-invitation|reject-invitation|cancel)$/.test(path) && options.method==="POST") { writes.push({path}); return {}; }
     if (fail) throw new Error("test network outage");
     if (path === "/auth/session") return { authenticated, member: { nickname: "시험 탑승자", majungId: "test", profileReady: true } };
-    if (path === "/connections" || path.startsWith("/connections?")) return [];
-    if (path === "/vehicle-links") return [];
+    if (path === "/connections" || path.startsWith("/connections?")) return contacts;
+    if (path.startsWith("/accounts/search?")) return searchResults;
+    if (path === "/vehicle-links") return vehicles;
+    if (path.startsWith("/vehicle-links/") && options.method==="DELETE") { writes.push({path}); return {}; }
     if (path.startsWith("/vehicle-links/enrollments/")) {
       if (options.method === "POST") writes.push({path, body:options.body});
       return {status:enrollmentLinked ? "LINKED" : "AWAITING_VEHICLE_CONFIRMATION",enrollmentId:path.split("/")[3]};
     }
-    if (path === "/ride-requests") return { requests: [{ requestId: "test-ride", status: "ACTIVE", nickname: "시험 운전자", majungId: "driver", place: { label: "시험 장소" } }] };
+    if (path === "/ride-requests") return { requests: requests ?? [{ requestId: "test-ride", status: "ACTIVE", nickname: "시험 운전자", majungId: "driver", place: { label: "시험 장소" } }] };
     if (path.endsWith("/tracking")) {
       trackingReads++;
       const response = { pickup: { status: "ACTIVE", placeProposal, participant: { readiness: "READY", readinessSequence, readinessReceivedSequence } }, vehicle: { freshness: "FRESH", durationSeconds: seconds, latitude: 37, longitude: 127, ageMillis: 0, validForMillis: 30000 } };
@@ -43,7 +46,7 @@ async function screen({pairHash = ""} = {}) {
     document: { querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; }, createElement: () => ({ innerHTML: "", setAttribute(){}, remove(){}, addEventListener() {}, contains: () => false, querySelector: () => ({ addEventListener() {}, hidden: false, value: "", textContent: "" }) }) },
     window: { addEventListener(name,callback) {windowEvents[name]=callback;} }, location: { href: "https://test.invalid/account", hash: pairHash, search: "", pathname: "/account" },
     history: { replaceState() {} }, sessionStorage: { getItem: key => pairStorage.get(key) || null, setItem(key,value) {pairStorage.set(key,value);}, removeItem(key) {pairStorage.delete(key);} },
-    performance: { now: () => now }, URL, AbortSignal, fetch: async () => ({ ok: true, json: async () => ({}) }),
+    performance: { now: () => now }, URL, AbortSignal, crypto: {randomUUID:()=>"test-request-id"}, fetch: async () => ({ ok: true, json: async () => ({}) }),
     setInterval: callback => timers.push(callback), CSS: { escape: value => value },
   });
   const source = (await readFile(new URL("./account.js", import.meta.url), "utf8")).replace(/^import .*;\n/gm, "");
@@ -309,4 +312,85 @@ test("메뉴 전환만 움직이고 같은 탭·자동 갱신·동작 줄이기�
   vm.runInContext('changeAccountTab("pickup")',app.context);
   assert.equal(moves,4); assert.equal(cancels,4);
   assert.equal(app.writes.length,0);
+});
+
+test("연결된 사람은 닉네임이 같아도 고유 ID로 골라 장소 요청을 시작", async () => {
+  const app=await screen({contacts:[{connectionId:"connected",status:"ACCEPTED",nickname:"같은이름",majungId:"MJ-EXACT"}],
+    searchResults:[{memberId:"wrong",nickname:"같은이름",majungId:"MJ-OTHER"},{memberId:"driver",nickname:"같은이름",majungId:"MJ-EXACT"}]});
+  vm.runInContext('accountTab="people"; render();',app.context);
+  assert.match(app.root.innerHTML,/data-action="connected-ride-open"/);
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"connected-ride-open",id:"connected"}})}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(vm.runInContext('rideTarget.memberId',app.context),"driver");
+  assert.equal(app.writes.length,0);
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"ride-dismiss"}})}});
+  assert.equal(vm.runInContext('accountTab',app.context),"people");
+});
+
+test("연결된 사람 조회가 모호하면 요청 화면을 열거나 전송하지 않음", async () => {
+  const app=await screen({contacts:[{connectionId:"connected",status:"ACCEPTED",nickname:"시험",majungId:"MJ-EXACT"}],
+    searchResults:[{memberId:"wrong",nickname:"시험",majungId:"MJ-OTHER"}]});
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"connected-ride-open",id:"connected"}})}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(vm.runInContext('rideTarget',app.context),null);
+  assert.match(app.root.innerHTML,/이 사람을 확인하지 못했어요/);
+  assert.equal(app.writes.length,0);
+});
+
+test("자동 조회 중에도 탭은 바로 이동하고 명시적 작업은 이전 조회 뒤 한 번만 실행", async () => {
+  const app=await screen();
+  app.pauseNextTracking();
+  await app.tick(1000);
+  assert.equal(vm.runInContext('busy',app.context),false);
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"tab-people"}})}});
+  assert.equal(vm.runInContext('accountTab',app.context),"people");
+  let calls=0;
+  app.context.work=()=>{calls++;};
+  const action=vm.runInContext('run(work)',app.context);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(calls,0);
+  app.finishTracking();
+  await action;
+  assert.equal(calls,1);
+  assert.equal(vm.runInContext('busy',app.context),false);
+});
+
+test("초대 수락은 사람과 장소를 확인하고 확정할 때 한 번만 전송", async () => {
+  const app=await screen({requests:[{requestId:"invited",status:"INVITED",nickname:"시험 운전자",majungId:"MJ-DRIVER",place:{label:"시험 정문"}}]});
+  const click=action=>app.rootEvents.click({target:{closest:()=>({dataset:{action,id:"invited"}})}});
+  click("invitation-accept");
+  assert.match(app.root.innerHTML,/aria-label="초대 수락 확인"/);
+  assert.match(app.root.innerHTML,/만날 장소 · 시험 정문/);
+  assert.equal(app.writes.length,0);
+  click("dismiss-action");
+  assert.equal(app.writes.length,0);
+  click("invitation-accept");
+  click("confirm-action"); click("confirm-action");
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(app.writes,[{path:"/ride-requests/invited/accept-invitation"}]);
+});
+
+test("초대 확인 중 상태가 바뀌면 수락을 전송하지 않음", async () => {
+  const app=await screen({requests:[{requestId:"invited",status:"INVITED",nickname:"시험 운전자",place:{label:"시험 정문"}}]});
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"invitation-accept",id:"invited"}})}});
+  vm.runInContext('rides[0].status="EXPIRED";',app.context);
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"confirm-action"}})}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.writes.length,0);
+  assert.match(app.root.innerHTML,/요청 상태가 바뀌었어요/);
+});
+
+test("차량 연결 해제도 차량 이름을 확인한 뒤 한 번만 전송", async () => {
+  const app=await screen({requests:[],vehicles:[{vehicleId:"test-vehicle",vehicleName:"시험 차량"}]});
+  const click=action=>app.rootEvents.click({target:{closest:()=>({dataset:{action,id:"test-vehicle"}})}});
+  click("vehicle-detach");
+  assert.match(app.root.innerHTML,/aria-label="차량 연결 해제 확인"/);
+  assert.match(app.root.innerHTML,/시험 차량/);
+  assert.equal(app.writes.length,0);
+  click("dismiss-action");
+  assert.equal(app.writes.length,0);
+  click("vehicle-detach");
+  click("confirm-action"); click("confirm-action");
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(app.writes,[{path:"/vehicle-links/test-vehicle"}]);
 });
