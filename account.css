@@ -7,7 +7,7 @@
   padding: 6px 14px;
   border-radius: 20px;
   border: 1px solid rgba(36, 79, 115, 0.12);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .account-home:hover {
@@ -54,7 +54,7 @@
   font-size: 15px;
   margin-bottom: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .kakao-login:hover {
@@ -336,7 +336,7 @@ input:focus-visible {
   color: var(--muted);
   font-size: 14px;
   font-weight: 600;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .account-nav button[aria-current="page"] {
@@ -540,7 +540,7 @@ input:focus-visible {
 }
 
 /* The indicator is separate from labels, so only its background slides. */
-.account-nav { position: relative; isolation: isolate; }
+.account-nav { position: sticky; isolation: isolate; }
 .account-tab-indicator {
   position: absolute; pointer-events: none; z-index: 0;
   top: 5px; bottom: 5px; left: 5px;
@@ -569,3 +569,13 @@ form > .hint { margin-bottom: 16px; }
 
 .account-tab-indicator.tab-position-people { transform: translateX(calc(100% + 4px)); }
 .account-tab-indicator.tab-position-settings { transform: translateX(calc(200% + 8px)); }
+
+.section-heading { flex-wrap: wrap; }
+.section-heading h2 { min-width: 0; overflow-wrap: anywhere; }
+.section-heading button { min-height: 44px; flex-shrink: 0; }
+.person-name { min-width: min(180px, 100%); }
+.row-actions button { flex: 1 1 132px; }
+.account-nav button { transition: color 0.15s ease, background-color 0.15s ease; }
+
+/* Keep entering panels outside the viewport from creating a horizontal scrollbar. */
+body { overflow-x: clip; }
