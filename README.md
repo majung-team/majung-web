@@ -1,34 +1,45 @@
 # majung-web
 
-**마중(Majung) 서비스의 탑승자 및 운전자 공유용 모바일 반응형 웹 클라이언트 저장소입니다.**
+운전자와 탑승자가 휴대전화에서 사용하는 마중 웹이다. 별도 앱 설치 없이 로그인·사람 찾기·마중 요청·초대 수락을 하고,
+픽업이 시작되면 차량 위치·남은 시간·준비 상태를 확인한다. HTML·CSS·JavaScript로 구성하며 현재 React를 사용하지 않는다.
 
-탑승자가 별도의 앱을 설치하지 않아도 모바일 브라우저를 통해 차량의 실시간 위치와 도착 예정 시간(ETA)을 확인하고, 원클릭으로 외출 준비 상태를 차량에 알릴 수 있습니다.
+- 접속: https://majung.cloud/account
+- 초대·참여: https://majung.cloud (받은 초대 링크로 접속)
+- [전체 사용 안내 Wiki](https://github.com/majung-team/majung/wiki)
+- [개발 현황·실제 PR·담당](https://github.com/majung-team/majung/blob/main/docs/development-status.md)
 
-- **서비스 통합 안내**: [majung 메인 저장소](https://github.com/majung-team/majung)
-- **웹 서비스 주소**: https://majung.cloud
-- **내 연결 및 계정 관리**: https://majung.cloud/account
+## 로컬 실행
 
-## 개발 환경 및 실행 방법
+Node.js 22 이상을 사용한다.
 
-- **요구사항**: Node.js 22 이상
-- **의존성 설치**: `npm ci`
-- **테스트 실행**: `npm test`
-- **로컬 개발 서버 실행**: `npm start`
-  - 개발 서버(`127.0.0.1:4173`) 실행 시 `/api/` 요청은 로컬 백엔드 서버(`127.0.0.1:8080`)로 자동 프록시됩니다.
-  - 프로덕션 배포 시 Caddy 리버스 프록시를 통해 웹과 API가 단일 도메인(HTTPS)으로 서비스됩니다.
+```sh
+npm ci
+npm test
+npm start
+```
 
-## 핵심 기능 및 상세 문서
+웹은 `127.0.0.1:4173`, API는 `127.0.0.1:8080`을 사용한다. 로컬 백엔드도 실행해야 로그인·조회가 동작한다.
+`MAJUNG_WEB_PORT`·`MAJUNG_API_PORT`로 로컬 포트를 바꿀 수 있다.
+운영에서는 Caddy가 웹을 제공하고 `/api/`를 백엔드로 전달한다.
 
-- **[HTTPS 배포 및 초대 전달 구조](docs/evidence/)**: Caddy 기반의 안전한 웹-API 단일 오리진 구성 및 프래그먼트(#) 기반 일회용 초대 토큰 전달
-- **[카카오맵 연동 실시간 지도](docs/passenger-map.md)**: 실시간 차량 위치 마커 표시 및 부드러운 경로 시각화
-- **[픽업 장소 제안 및 핀 선택](docs/place-proposal.md)**: 탑승자가 지도를 움직여 원하는 픽업 장소를 운전자에게 직관적으로 제안
-- **[도착 임박 브라우저 푸시 알림](docs/arrival-push.md)**: Web Push API(VAPID)를 활용한 도착 3분 전 백그라운드 푸시 알림
-- **[통신 지연 시 시각적 피드백](docs/vehicle-freshness.md)**: 네트워크 음영 구역 진입 시 데이터 신선도 표시 (30초 경과 시 흐림 처리, 2분 경과 시 확인 중 안내)
-- **[계정 연동 및 닉네임 검색](docs/account-connections.md)**: 카카오 소셜 로그인, 닉네임 검색을 통한 운전자-탑승자 직접 연결 요청
-- **[자동 세션 참여](docs/auto-connect.md)**: 초대 링크 접속 시 불필요한 입력 없이 원클릭 자동 세션 연결
-- **[CI/CD 배포 파이프라인](docs/github-actions.md)**: GitHub Actions를 통한 정적 자산 테스트 및 무중단 배포
+## 화면·동작
 
-## 협업 규칙
+| 문서 | 내용 |
+| --- | --- |
+| [서비스 화면](docs/service-screens.md) | 픽업·사람 찾기·내 정보 |
+| [지도](docs/passenger-map.md) | 차량·만날 장소 마커. 내비 경로 원본을 웹이 계산하지 않음 |
+| [장소 제안](docs/place-proposal.md) | 장소명·주소 검색, 지도 지점 선택, 운전자 제안 |
+| [사람 찾기](docs/account-connections.md) | 카카오 로그인·닉네임·마중 ID·사람 연결 |
+| [초대 참여](docs/auto-connect.md) | 링크로 들어온 탑승자의 자동 참여 |
+| [최신성](docs/vehicle-freshness.md) | 오래되거나 끊긴 위치·ETA 표시 구분 |
+| [도착 알림](docs/arrival-push.md) | 브라우저 구독과 알림 조건 |
+| [차량 해제 버튼](docs/vehicle-detach-layout.md) | 내 차량 정보·연결 해제 배치 |
+| [Actions 배포](docs/github-actions.md) | 테스트와 정적 파일 배포 |
 
-`npm ci`를 통해 커밋 훅을 설치하여 코드 품질을 유지합니다.  
-화면별 상세 플로우와 작업 진행 상황은 [개정 명세 대조 및 작업 순서](docs/revised-plan.md)를 참고해 주시기 바랍니다.
+연결 이력이 없는 탑승자도 운전자를 검색해 장소와 함께 요청할 수 있다.
+초대 링크 자동 참여와 계정 요청 수락은 서로 다른 흐름이다.
+SSE는 변경 신호를 전달하고 API로 상태를 다시 읽는다. 연결이 끊기거나 유효 시간이 지나면 이전 위치·ETA를 현재 값처럼 표시하지 않는다.
+
+웹 테스트와 브라우저 시험은 실제 휴대전화 GPS·푸시 배너·LTE 전환 검증과 구분한다.
+백엔드 배포 재시작 때는 연결이 끊기거나 재로그인이 필요할 수 있다.
+[현재 개발 기준](docs/revised-plan.md) · [기여 규칙](CONTRIBUTING.md)

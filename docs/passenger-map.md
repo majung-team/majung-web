@@ -10,13 +10,13 @@
 - 차량이 처음 보이거나 사라질 때만 두 지점에 맞춰 지도를 이동한다. 이후 갱신에서는 사용자가 옮긴 지도 위치를 유지한다.
 - 화면을 다시 그려도 지도 요소를 새로 만들지 않고 같은 지도를 옮겨 붙인다.
 
-## 배포 전 준비
+## 배포 설정 (반영된 구성)
 
 1. 서버 [카카오맵 키 설정](https://github.com/majung-team/majung-backend/blob/main/docs/kakao-map.md)에 따라 JavaScript 키와 Web 플랫폼 도메인을 등록한다.
 2. `deploy/Caddyfile`의 CSP에 `https://dapi.kakao.com`·`https://t1.daumcdn.net`·`https://t1.kakaocdn.net`(스크립트), `https://*.daumcdn.net`·`https://t1.kakaocdn.net`·`https://mts.kakaocdn.net`(지도 이미지)을 추가했다. Caddy 설정은 CI가 바꾸지 않으므로 서버에 직접 반영한다.
 3. 새 파일 `map.js`를 서버 배포 스크립트의 웹 파일 목록에 추가했다(서버 PR). 설치된 `/usr/local/sbin/majung-deploy`를 갱신한 뒤 웹을 배포한다. 갱신 전에 배포하면 알 수 없는 파일로 거절된다.
 
-## 확인 범위
+## 초기 시험 범위
 
 - 로컬 서버·개발 웹·헤드리스 Chrome: 지도 키가 없을 때 기존 화면 유지, 30초 경과 흐림·"마지막 갱신 35초 전", 2분 경과 "위치 확인 중", 콘솔 오류 없음.
 - 카카오 SDK 대역 객체로 `map.js` 호출 순서 확인: 장소·차량 표시 → 두 지점 맞춤 → 이동 시 재맞춤 없음 → 좌표 없으면 차량 제거.
