@@ -46,7 +46,13 @@ let session = null;
 let storageAvailable = true;
 try {
   const restored = JSON.parse(sessionStorage.getItem(storageKey) || "null");
-  if (!invitation && !hostInvitation && !invalidInvitation && validSession(restored)) session = restored;
+  if (!hostInvitation && !invalidInvitation && validSession(restored) &&
+      (!invitation || (restored.role === "guest" && restored.pickupId === invitation.pickupId))) {
+    session = restored;
+    // Reopening an already used invitation resumes its existing participant authority.
+    // The server still decides whether that authority is active, ended or revoked.
+    if (invitation) invitation = null;
+  }
 } catch {
   storageAvailable = false;
 }
@@ -719,4 +725,13 @@ void fetch("/api/v1/config", {
 }).catch(() => { /* Invitation access remains available without development tools. */ });
 
 window.addEventListener("pagehide",()=>{pickupStream?.close();pickupStream=null;streamSession=null;});
+window.addEventListener("pageshow", event => {
+  if (!event.persisted) return;
+  online = false;
+  vehicle = null;
+  deadline = 0;
+  timing = null;
+  render();
+  void refresh();
+});
 document.addEventListener("visibilitychange",()=>{syncPickupStream();if(!document.hidden)streamRefreshPending=true;});
