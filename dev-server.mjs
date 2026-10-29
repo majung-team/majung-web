@@ -11,6 +11,7 @@ const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ...['app.js', 'api.js', 'model.js', 'push.js', 'proposal.js', 'stream.js', 'map.js', 'account.js', 'account-api.js'].map(f => ['/' + f, [f, 'text/javascript; charset=utf-8']]),
   ['/account', ['account.html', 'text/html; charset=utf-8']],
+  ['/privacy', ['privacy.html', 'text/html; charset=utf-8']],
   ['/account.css', ['account.css', 'text/css; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
   ...['favicon.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'].map(f => ['/' + f, [f, 'image/png']]),

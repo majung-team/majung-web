@@ -247,7 +247,7 @@ function render() {
   if (!info.authenticated) {
     root.innerHTML = `<section class="intro small"><p class="eyebrow">내 연결</p><h1>찾아두면,<br />다음 만남이 편해져요.</h1><p>닉네임으로 운전자를 찾아 마중을 요청하세요.<br />같은 닉네임은 마중 ID로 구분할 수 있어요.</p></section>${alerts}
       <section class="card"><h2>마중 시작하기</h2><ol class="account-steps"><li>카카오로 로그인해요.</li><li>마중에서 쓸 닉네임을 정해요.</li><li>운전자를 찾아 만날 장소와 함께 요청해요.</li></ol>
-      <p class="hint">로그인에는 카카오 회원번호를 사용하고 마중 ID와 닉네임을 관리해요. 이메일·사진·친구 목록은 요청하지 않아요. 아래 ‘위치 공유·보관 안내’를 확인해주세요.</p>
+      <p class="hint">로그인에는 카카오 회원번호를 사용하고 마중 ID와 닉네임을 관리해요. 이메일·사진·친구 목록은 요청하지 않아요. 시작 전에 개인정보 처리방침과 위치 공유·보관 안내를 확인해주세요.</p>
       ${info?.loginEnabled ? '<a class="kakao-login" href="/api/v1/auth/login">카카오로 시작하기</a>' : '<p class="hint">로그인 기능을 준비하고 있어요. 받은 픽업 초대는 기존 링크에서 열 수 있어요.</p>'}
       ${button("다시 확인", "refresh", "", true)}<p class="hint">연결을 수락해도 차량 위치는 공유되지 않아요.</p></section>`;
     return;

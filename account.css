@@ -611,3 +611,26 @@ body { overflow-x: clip; }
   .linked-vehicle-row { align-items: flex-start; flex-direction: column; gap: 16px; }
   .linked-vehicle-row button { align-self: flex-end; }
 }
+
+/* Privacy remains readable without login or JavaScript. */
+.privacy-content { max-width: 840px; margin: 24px auto 64px; padding: 0 20px; }
+.privacy-content h1 { font-size: 30px; line-height: 1.4; margin: 0 0 16px; }
+.privacy-content h2 { font-size: 21px; margin: 32px 0 12px; }
+.privacy-content p, .privacy-content li { line-height: 1.85; overflow-wrap: anywhere; }
+.privacy-content li + li { margin-top: 10px; }
+.privacy-link { max-width: 720px; margin: 24px auto 16px; padding: 0 20px; font-size: 14px; line-height: 1.7; }
+
+.privacy-content .card { padding: 32px; }
+.privacy-content h2 { scroll-margin-top: 100px; }
+.privacy-summary { margin: 28px 0 20px; padding: 24px; border-radius: 20px; background: #eef4ff; color: #253b60; }
+.privacy-summary strong { display: block; font-size: 18px; }
+.privacy-summary ul { margin: 14px 0 0; padding-left: 20px; }
+.privacy-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 32px; }
+.privacy-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 14px; border-radius: 12px; background: #f2f4f7; text-decoration: none; }
+.privacy-nav a:focus-visible { outline: 3px solid #2669dd; outline-offset: 3px; }
+@media (max-width: 500px) {
+  .privacy-content { padding: 0 16px; }
+  .privacy-content .card { padding: 26px 22px; }
+  .privacy-content h1 { font-size: 26px; }
+  .privacy-summary { padding: 20px; }
+}
