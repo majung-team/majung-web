@@ -611,3 +611,11 @@ body { overflow-x: clip; }
   .linked-vehicle-row { align-items: flex-start; flex-direction: column; gap: 16px; }
   .linked-vehicle-row button { align-self: flex-end; }
 }
+
+/* Privacy remains readable without login or JavaScript. */
+.privacy-content { max-width: 840px; margin: 24px auto 64px; padding: 0 20px; }
+.privacy-content h1 { font-size: 30px; line-height: 1.4; margin: 0 0 16px; }
+.privacy-content h2 { font-size: 21px; margin: 32px 0 12px; }
+.privacy-content p, .privacy-content li { line-height: 1.85; overflow-wrap: anywhere; }
+.privacy-content li + li { margin-top: 10px; }
+.privacy-link { max-width: 720px; margin: 24px auto 16px; padding: 0 20px; font-size: 14px; line-height: 1.7; }

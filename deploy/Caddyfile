@@ -35,6 +35,11 @@
         redir @accountQuery /account?{http.request.uri.query} 308
         redir * /account 308
     }
+    handle /privacy {
+        root * /srv/majung/web
+        rewrite * /privacy.html
+        file_server
+    }
     handle /account {
         root * /srv/majung/web
         rewrite * /account.html
