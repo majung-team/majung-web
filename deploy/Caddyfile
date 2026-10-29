@@ -22,12 +22,7 @@
         respond 404
     }
     handle /api/* {
-        reverse_proxy 127.0.0.1:8080 {
-            transport http {
-                dial_timeout 3s
-                response_header_timeout 10s
-            }
-        }
+        import /etc/caddy/majung-upstream.caddy
     }
     @legacyAccount path /account.html /account/
     handle @legacyAccount {

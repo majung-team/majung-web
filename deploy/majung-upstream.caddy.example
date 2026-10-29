@@ -1,0 +1,8 @@
+# Install once as /etc/caddy/majung-upstream.caddy, owned by root.
+# The backend deployment program updates this file when switching slots.
+reverse_proxy 127.0.0.1:8081 {
+    transport http {
+        dial_timeout 3s
+        response_header_timeout 10s
+    }
+}
