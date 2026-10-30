@@ -298,7 +298,7 @@ input {
   color: var(--ink);
   background: #ffffff;
   min-width: 0;
-  font-size: 15px;
+  font-size: 16px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 

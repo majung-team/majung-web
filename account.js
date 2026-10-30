@@ -211,7 +211,7 @@ if (location.search) history.replaceState(null, "", location.pathname);
 
 const button = (label, action, attrs = "", secondary = false) =>
   `<button type="button" data-action="${action}" ${attrs} class="${secondary ? "quiet" : "primary"}" ${busy ? "disabled" : ""}>${label}</button>`;
-const pager = (kind, page, count) => `<div class="pager">${button("이전", `${kind}-previous`, page === 0 ? "disabled" : "", true)}<span>${page + 1} 페이지</span>${button("다음", `${kind}-next`, count < 20 || page >= 50 ? "disabled" : "", true)}</div>`;
+const pager = (kind, page, count) => page === 0 && count < 20 ? "" : `<div class="pager">${button("이전", `${kind}-previous`, page === 0 ? "disabled" : "", true)}<span>${page + 1} 페이지</span>${button("다음", `${kind}-next`, count < 20 || page >= 50 ? "disabled" : "", true)}</div>`;
 function person(name, id) { return `<div class="person-name"><strong>${e(name)}</strong><span class="majung-id">${e(id)}</span></div>`; }
 function connectionRow(item) {
   const status = item.status === "ACCEPTED" ? "연결됨" : item.direction === "INCOMING" ? "받은 연결 요청" : "상대의 확인을 기다리고 있어요";
