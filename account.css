@@ -229,6 +229,27 @@ input:focus-visible {
   border: 1px solid rgba(36, 79, 115, 0.1);
 }
 
+.ride-row[data-state="ACTIVE"] > strong {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.ride-row[data-state="INVITED"] > strong {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.ride-row[data-state="COMPLETED"] > strong,
+.ride-row[data-state="CANCELLED"] > strong,
+.ride-row[data-state="REJECTED"] > strong,
+.ride-row[data-state="EXPIRED"] > strong {
+  color: #475569;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
 .ride-row > p {
   margin: 12px 0;
   line-height: 1.75;
@@ -438,6 +459,11 @@ input:focus-visible {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  background: var(--amber);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.live-connection.connected::before {
   background: var(--live-green);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }

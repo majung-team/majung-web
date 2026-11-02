@@ -187,6 +187,7 @@ test("통합 계정 화면은 준비 상태 수신 확인과 별도 제안을 �
 
 test("SSE 연결 중에는 변경 신호로 조회하고 끊기면 3초 조회로 복귀",async()=>{
   const app=await screen();
+  assert.doesNotMatch(app.root.innerHTML,/live-connection connected/);
   app.stream().onState(true);
   await app.tick(1000);
   const reads=app.reads();
@@ -196,9 +197,11 @@ test("SSE 연결 중에는 변경 신호로 조회하고 끊기면 3초 조회�
   app.stream().onChange();
   await app.tick(5100);
   assert.match(app.root.innerHTML,/약 10분/);
+  assert.match(app.root.innerHTML,/live-connection connected/);
   app.stream().onFallback();
   app.seconds(180); await app.tick(5200);
   assert.match(app.root.innerHTML,/약 3분/);
+  assert.doesNotMatch(app.root.innerHTML,/live-connection connected/);
   app.context.document.hidden=true;app.events.visibilitychange();
   assert.equal(app.closed(),true);
 });
