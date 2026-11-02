@@ -380,6 +380,17 @@ test("초대 확인 중 상태가 바뀌면 수락을 전송하지 않음", asyn
   assert.match(app.root.innerHTML,/요청 상태가 바뀌었어요/);
 });
 
+test("취소 확인 중 픽업이 시작돼 ACTIVE로 바뀌면 취소를 전송하지 않고 안내", async () => {
+  const app=await screen({requests:[{requestId:"queued",status:"QUEUED",nickname:"시험 운전자",place:{label:"시험 정문"}}]});
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"ride-cancel",id:"queued"}})}});
+  assert.match(app.root.innerHTML,/aria-label="마중 요청 취소 확인"/);
+  vm.runInContext('rides[0].status="ACTIVE";',app.context);
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"confirm-action"}})}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.writes.length,0);
+  assert.match(app.root.innerHTML,/요청 상태가 바뀌었어요/);
+});
+
 test("차량 연결 해제도 차량 이름을 확인한 뒤 한 번만 전송", async () => {
   const app=await screen({requests:[],vehicles:[{vehicleId:"test-vehicle",vehicleName:"시험 차량"}]});
   const click=action=>app.rootEvents.click({target:{closest:()=>({dataset:{action,id:"test-vehicle"}})}});

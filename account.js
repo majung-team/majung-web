@@ -428,7 +428,7 @@ root.addEventListener("click", event => {
   if (action === "ride-dismiss") { clearPlacePicker(); rideTarget=null; ridePlace=null; accountTab=rideReturnTab; render(); return; }
   if (["invitation-accept","invitation-reject","ride-cancel"].includes(action)) {
     const ride=rides.find(item=>item.requestId===target.dataset.id);
-    if (!ride || (action!=="ride-cancel" ? ride.status!=="INVITED" : !["PENDING","QUEUED","ACTIVE"].includes(ride.status))) return;
+    if (!ride || (action!=="ride-cancel" ? ride.status!=="INVITED" : !["PENDING","QUEUED"].includes(ride.status))) return;
     pendingAction={kind:"ride",requestId:ride.requestId,action,nickname:ride.nickname,majungId:ride.majungId,place:ride.place.label,
       label:action==="invitation-accept"?"초대 수락":action==="invitation-reject"?"초대 거절":"마중 요청 취소",
       note:action==="invitation-accept"?"수락하면 픽업 대기에 들어가요. 내 픽업이 시작되기 전에는 차량 위치가 보이지 않아요.":"처리한 뒤에는 이 요청으로 픽업을 진행할 수 없어요."};
@@ -458,7 +458,7 @@ root.addEventListener("click", event => {
     } else if (action === "confirm-action" && pendingAction?.kind === "ride") {
       const decision=pendingAction;
       const ride=rides.find(item=>item.requestId===decision.requestId);
-      if (!ride || (decision.action!=="ride-cancel" ? ride.status!=="INVITED" : !["PENDING","QUEUED","ACTIVE"].includes(ride.status))) {
+      if (!ride || (decision.action!=="ride-cancel" ? ride.status!=="INVITED" : !["PENDING","QUEUED"].includes(ride.status))) {
         pendingAction=null; notice="요청 상태가 바뀌었어요. 최신 목록을 확인해주세요."; return;
       }
       const accepting=decision.action==="invitation-accept";
