@@ -286,6 +286,11 @@ function guest() {
   const quickMsgSection = ["ACTIVE", "ARRIVED"].includes(status)
     ? `<div class="quick-messages" role="group" aria-label="차량으로 음성 전달">
         <span class="quick-title">차량으로 음성 전달</span>
+        <form class="quick-input-form quick-msg-form" data-role="guest">
+          <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off"${!online ? " disabled" : ""} />
+          <button type="submit" class="quick-send-btn"${!online ? " disabled" : ""}>전송</button>
+        </form>
+        <span class="quick-chips-label">자주 쓰는 말</span>
         <div class="quick-chips">
           ${button("지금 내려가요", "guest-quick-msg", true, !online, 'data-msg="지금 내려가요"')}
           ${button("1번 출구 앞이에요", "guest-quick-msg", true, !online, 'data-msg="1번 출구 앞이에요"')}
@@ -480,6 +485,18 @@ root.addEventListener("submit", async (event) => {
   const form = event.target;
   if (!form.reportValidity() || busy) return;
   const fields = new FormData(form);
+  if (form.classList?.contains?.("quick-msg-form") || form.className?.includes?.("quick-msg-form")) {
+    const msg = fields.get("quickMsg")?.trim();
+    if (!msg || !session || session.role !== "guest") return;
+    await mutate(async () => {
+      await request(`/${session.pickupId}/quick-message`, {
+        method: "POST",
+        body: { message: msg },
+      });
+      notice = `차량에 “${msg}” 메시지를 전달했어요.`;
+    });
+    return;
+  }
   if (form.id === "create-form") {
     if (!developmentToolsEnabled) return;
     draft.label = fields.get("label").trim();

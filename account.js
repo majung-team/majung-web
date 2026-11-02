@@ -77,6 +77,11 @@ function rideRow(source) {
   const quickMsgSection = current && ["ACTIVE", "ARRIVED"].includes(current.pickup.status)
     ? `<div class="quick-messages" role="group" aria-label="차량으로 음성 전달">
         <p class="quick-title">차량으로 음성 전달</p>
+        <form class="quick-input-form quick-msg-form" data-id="${e(item.requestId)}">
+          <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off" />
+          <button type="submit" class="quick-send-btn">전송</button>
+        </form>
+        <span class="quick-chips-label">자주 쓰는 말</span>
         <div class="quick-chips">
           ${button("지금 내려가요", "ride-quick-msg", `data-id="${e(item.requestId)}" data-msg="지금 내려가요"`, true)}
           ${button("1번 출구 앞이에요", "ride-quick-msg", `data-id="${e(item.requestId)}" data-msg="1번 출구 앞이에요"`, true)}
@@ -377,8 +382,21 @@ root.addEventListener("input", event => {
 });
 root.addEventListener("submit", event => {
   event.preventDefault();
-  const type = event.target.id;
+  const form = event.target;
+  const type = form.id;
   if (type === "place-search-form") { void searchPlaces(); return; }
+  if (form.classList?.contains?.("quick-msg-form") || form.className?.includes?.("quick-msg-form")) {
+    const input = form.querySelector ? form.querySelector("input[name='quickMsg']") : null;
+    const msg = input?.value?.trim();
+    const id = form.dataset.id;
+    if (!msg || !id) return;
+    run(async () => {
+      await api(`/ride-requests/${id}/quick-message`, {method:"POST", body:{message:msg}});
+      notice = `차량에 “${msg}” 메시지를 전달했어요.`;
+      await refresh();
+    });
+    return;
+  }
   run(async () => {
     if (type === "ride-form") {
       if (!rideTarget || !ridePlace || !rideLabel.trim() || placeSearchBusy) return;
