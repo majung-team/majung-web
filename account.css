@@ -566,7 +566,7 @@ input:focus-visible {
 }
 
 /* The indicator is separate from labels, so only its background slides. */
-.account-nav { position: sticky; isolation: isolate; }
+.account-nav { position: relative; isolation: isolate; }
 .account-tab-indicator {
   position: absolute; pointer-events: none; z-index: 0;
   top: 5px; bottom: 5px; left: 5px;
@@ -576,6 +576,33 @@ input:focus-visible {
 }
 .account-nav button { position: relative; z-index: 1; }
 .account-nav button[aria-current="page"] { background: transparent; box-shadow: none; }
+
+.vehicle-pair-card {
+  border-color: #b8d1ff;
+}
+
+.vehicle-pair-status {
+  margin: 16px 0 20px;
+  padding: 16px 18px;
+  border-radius: var(--radius-sm);
+  background: #eef4ff;
+  border: 1px solid #b8d1ff;
+  color: #1e3a8a;
+}
+
+.vehicle-pair-status strong {
+  display: block;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #1e3a8a;
+}
+
+.vehicle-pair-status p {
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #253b60;
+}
 
 /* 12px within a control group, 20–24px before a new action. */
 .kakao-login { margin-top: 24px; margin-bottom: 12px; min-height: 54px; }

@@ -283,11 +283,12 @@ test("첫 연결 QR은 장치 비밀 없이 로그인 후 요청하고 차량 �
   assert.equal(app.writes[0].path,`/vehicle-links/enrollments/${id}`);
   assert.deepEqual(Object.keys(app.writes[0].body),["code"]);
   assert.match(app.root.innerHTML,/차량에서/);
+  assert.match(app.root.innerHTML,/vehicle-pair-status/);
   assert.equal(JSON.parse(app.pairStorage.get("majung.vehicleRequest")).kind,"enroll");
   await vm.runInContext("run(refresh)",app.context);
   assert.equal(app.writes.length,1);
   app.enrollmentLinked(true);
-  await vm.runInContext("run(refresh)",app.context);
+  await app.tick(4000);
   assert.equal(app.pairStorage.has("majung.vehicleRequest"),false);
   assert.match(app.root.innerHTML,/차량 연결을 마쳤어요/);
 });
