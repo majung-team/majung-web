@@ -61,6 +61,8 @@ test("마중 요청과 차량 연결은 계정 세션·CSRF로만 보내고 차�
   await client("/ride-requests/abcd/accept-invitation",{method:"POST"});
   assert.equal(calls.at(-1).options.headers["X-CSRF-TOKEN"],"fixture-csrf");
   await client("/ride-requests/abcd/reject-invitation",{method:"POST"});
+  await client("/ride-requests/abcd/quick-message",{method:"POST",body:{message:"지금 내려가요"}});
+  assert.equal(calls.at(-1).options.headers["X-CSRF-TOKEN"],"fixture-csrf");
   const count=calls.length;
   await assert.rejects(client("/vehicles/ride-requests/abcd/accept",{method:"POST"}));
   await assert.rejects(client("/ride-requests/abcd/accept",{method:"POST"}));

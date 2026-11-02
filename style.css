@@ -983,3 +983,64 @@ button, .button {
 }
 .quiet { border-color: transparent; box-shadow: none; }
 .card:hover { box-shadow: var(--shadow-sm); }
+
+/* Vehicle Badge */
+.vehicle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-secondary, #f1f3f5);
+  color: var(--ink, #1a1a1a);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  margin: 6px 0 12px;
+  border: 1px solid var(--line, #e2e8f0);
+}
+
+/* Quick Messages */
+.quick-messages {
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--surface-subtle, #f8fafc);
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--line, #e2e8f0);
+}
+
+.quick-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 8px;
+}
+
+.quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-chips button {
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid var(--line, #cbd5e1);
+  color: var(--ink, #1e293b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quick-chips button:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.quick-msg-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--primary, #2563eb);
+}

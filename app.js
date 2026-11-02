@@ -277,8 +277,26 @@ function guest() {
     online,
     status,
   );
+  const vehicleBadge = snapshot.vehicleName
+    ? `<div class="vehicle-badge" aria-label="차량 정보">🚘 ${e(snapshot.vehicleName)}</div>`
+    : "";
+  const quickMsgStatus = snapshot.quickMessage
+    ? `<p class="quick-msg-hint">차량에 전달된 메시지: <strong>“${e(snapshot.quickMessage.text)}”</strong></p>`
+    : "";
+  const quickMsgSection = ["ACTIVE", "ARRIVED"].includes(status)
+    ? `<div class="quick-messages" role="group" aria-label="차량으로 음성 전달">
+        <span class="quick-title">차량으로 음성 전달</span>
+        <div class="quick-chips">
+          ${button("지금 내려가요", "guest-quick-msg", true, !online, 'data-msg="지금 내려가요"')}
+          ${button("1번 출구 앞이에요", "guest-quick-msg", true, !online, 'data-msg="1번 출구 앞이에요"')}
+          ${button("곧 도착해요", "guest-quick-msg", true, !online, 'data-msg="곧 도착해요"')}
+        </div>
+        ${quickMsgStatus}
+      </div>`
+    : "";
   return `${connection()}<section class="card pickup-live"><span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
     <h1>${status === "ARRIVED" ? "차량이 도착했어요." : "마중 차량이 오고 있어요"}</h1>
+    ${vehicleBadge}
     ${status === "ARRIVED" ? "<p>확정된 약속 장소에서 만나세요.<br />탑승 확인 후 공유가 종료돼요.</p>" : ""}
     <div class="arrival${current?.kind === "stale" ? " stale" : ""}" id="arrival-info">${
       !online
@@ -295,6 +313,7 @@ function guest() {
     ${placeCard()}${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : e(readinessDeliveryText(snapshot.participant, online))}</small></div>
     <div class="button-pair">${button("준비 중", "preparing", snapshot.participant.readiness !== "PREPARING", !online)}${button("준비 완료", "ready", snapshot.participant.readiness !== "READY", !online)}</div>
     ${pendingReadiness && online ? button("선택한 상태 다시 보내기", "retry-readiness", true) : ""}
+    ${quickMsgSection}
     <p class="hint">탑승하면 운전자가 픽업을 완료하고 위치 공유를 끝내요.</p>
     ${status === "ACTIVE" ? arrivalPushCard() : ""}</section>`;
 }
@@ -627,6 +646,23 @@ root.addEventListener("click", async (event) => {
           ? "READY"
           : "PREPARING",
     );
+    return;
+  }
+  if (action === "guest-quick-msg") {
+    if (!online || !session || session.role !== "guest") return;
+    const msg = target.dataset.msg;
+    if (!msg) return;
+    try {
+      await request(`/${session.pickupId}/quick-message`, {
+        method: "POST",
+        body: { message: msg },
+      });
+      notice = `차량에 “${msg}” 메시지를 전달했어요.`;
+      await refresh();
+    } catch {
+      notice = "메시지를 전달하지 못했어요. 다시 시도해주세요.";
+      render();
+    }
     return;
   }
   if (!session || session.role !== "driver" || !online) return;
