@@ -64,7 +64,7 @@ a {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--line);
-  background: rgba(247, 248, 247, 0.85);
+  background: rgba(245, 247, 250, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   position: sticky;
@@ -790,6 +790,81 @@ input:focus {
 
 .data-notice p {
   margin: 12px 0;
+}
+
+/* Alerts, Notices & Push Card */
+.alert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b42318;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.65;
+  margin: 0 0 18px;
+}
+
+.alert[hidden] {
+  display: none;
+}
+
+.notice {
+  background: var(--primary-light);
+  border: 1px solid #cfe0fc;
+  color: #1e4fa3;
+  padding: 13px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.65;
+  margin: 0 0 18px;
+}
+
+.push-card {
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  margin: 18px 0;
+}
+
+.push-card strong {
+  display: block;
+  font-size: 16px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.push-card .hint {
+  margin: 6px 0 0;
+}
+
+.push-card button {
+  margin-top: 14px;
+}
+
+.empty-state {
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: #f1f4f6;
+  border: 1px dashed #cbd5e1;
+  color: var(--muted);
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 16px;
+}
+
+.invite-card {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.arrival.stale > span,
+.arrival.stale > strong {
+  color: #475569;
 }
 
 /* End State */
