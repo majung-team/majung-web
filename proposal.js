@@ -42,7 +42,7 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
     const state=search.state();
     parts.searchButton.disabled=state.busy;
     parts.searchButton.textContent=state.busy ? "찾는 중…" : "장소 찾기";
-    parts.results.innerHTML=`${state.message ? `<p class="hint">${e(state.message)}</p>` : ""}${state.done ? `<p class="hint">‘${e(state.keyword)}’ 검색 결과 · 이름과 주소를 확인해주세요.</p>` : ""}${state.items.length ? `<ul class="place-results">${state.items.map((place,index)=>`<li><button type="button" data-proposal-result="${index}"><strong>${e(place.label)}</strong><span>${e(place.address || "지도에서 위치를 확인해주세요")}</span></button></li>`).join("")}</ul><div class="pager"><button type="button" data-proposal-page="${state.page-1}" ${state.page===1 || state.busy ? "disabled" : ""}>이전 결과</button><span>${state.page} 페이지</span><button type="button" data-proposal-page="${state.page+1}" ${!state.hasNext || state.busy ? "disabled" : ""}>다음 결과</button></div>` : ""}`;
+    parts.results.innerHTML=`${state.message ? `<p class="hint">${e(state.message)}</p>` : ""}${state.done ? `<p class="hint">‘${e(state.keyword)}’ 검색 결과 · 이름과 주소를 확인해주세요.</p>` : ""}${state.items.length ? `<ul class="place-results">${state.items.map((place,index)=>`<li><button type="button" data-proposal-result="${index}" aria-pressed="${Boolean(point && point.latitude===place.latitude && point.longitude===place.longitude && parts.input?.value===place.label)}"><strong>${e(place.label)}</strong><span>${e(place.address || "지도에서 위치를 확인해주세요")}</span></button></li>`).join("")}</ul><div class="pager"><button type="button" data-proposal-page="${state.page-1}" ${state.page===1 || state.busy ? "disabled" : ""}>이전 결과</button><span>${state.page} 페이지</span><button type="button" data-proposal-page="${state.page+1}" ${!state.hasNext || state.busy ? "disabled" : ""}>다음 결과</button></div>` : ""}`;
   }
 
   function build() {
@@ -74,7 +74,7 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
           if (!place) return;
           if (onSelectPoint?.(place)===false) { showError("지도를 다시 연 뒤 장소를 선택해주세요."); return; }
           point={latitude:place.latitude,longitude:place.longitude};
-          parts.input.value=place.label;showError("");refreshHint();
+          parts.input.value=place.label;showError("");refreshHint();renderSearch();
         } else if (page && !page.disabled) void search.find(search.state().keyword,Number(page.dataset.proposalPage));
       });
     }
