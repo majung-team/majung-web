@@ -37,7 +37,10 @@ export function createPickupMap(maps) {
   element.setAttribute("aria-label", "차량 위치와 약속 장소 지도");
   const carElement = document.createElement("div");
   carElement.className = "car-marker";
-  carElement.textContent = "차";
+  carElement.innerHTML = '<span class="map-marker-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m8 12 3-6h10l3 6M6 13h20v11H6zM9 24v3m14-3v3M10 18h2m8 0h2"/></svg></span><span class="map-marker-label">마중 차량</span>';
+  carElement.setAttribute("aria-label", "마중 차량 현재 위치");
+  const placeElement = markerElement("meeting-marker", "만날 장소");
+  placeElement.setAttribute("aria-label", "확정된 만날 장소 · 탑승자 현재 위치가 아님");
   let map = null;
   let placeMarker = null;
   let carOverlay = null;
@@ -52,8 +55,8 @@ export function createPickupMap(maps) {
   function ensureMap(center) {
     if (map) return;
     map = new maps.Map(element, { center, level: 4 });
-    placeMarker = new maps.Marker({ position: center });
-    carOverlay = new maps.CustomOverlay({ content: carElement, yAnchor: 0.5 });
+    placeMarker = new maps.CustomOverlay({ content: placeElement, yAnchor: 1, zIndex: 2 });
+    carOverlay = new maps.CustomOverlay({ content: carElement, yAnchor: 0, zIndex: 3 });
     proposalOverlay = new maps.CustomOverlay({ content: proposalElement, yAnchor: 0.5 });
     pinOverlay = new maps.CustomOverlay({ content: pinElement, yAnchor: 0.5 });
     maps.event.addListener(map, "click", (event) => {
@@ -82,6 +85,7 @@ export function createPickupMap(maps) {
         carOverlay.setPosition(new maps.LatLng(view.latitude, view.longitude));
         carOverlay.setMap(map);
         carElement.classList.toggle("stale", view.kind === "stale");
+        carElement.setAttribute("aria-label", view.kind === "stale" ? "마중 차량 마지막 위치 · 갱신 지연" : "마중 차량 현재 위치");
       } else carOverlay.setMap(null);
       if (proposal) {
         proposalOverlay.setPosition(new maps.LatLng(proposal.latitude, proposal.longitude));
@@ -98,7 +102,7 @@ export function createPickupMap(maps) {
       const bounds = new maps.LatLngBounds();
       bounds.extend(placePosition);
       bounds.extend(carOverlay.getPosition());
-      map.setBounds(bounds, 48, 48, 48, 48);
+      map.setBounds(bounds, 72, 112, 72, 112);
     },
     // Tapping the map places one pin and reports its coordinates; stopPicking removes the pin.
     startPicking(callback) {

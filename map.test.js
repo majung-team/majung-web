@@ -9,11 +9,11 @@ test('지도 키가 없으면 외부 SDK를 부르지 않음', async () => {
 test('지도 인스턴스를 재사용하고 오래된 차는 흐리게, 위치가 없으면 제거', () => {
   const previous=globalThis.document;
   const elements=[]; const mapsCreated=[]; const overlays=[];
-  globalThis.document={createElement:()=>{const element={isConnected:true,setAttribute(){},classList:{toggle(name,enabled){element[name]=enabled;}}};elements.push(element);return element;}};
+  globalThis.document={createElement:()=>{const element={isConnected:true,setAttribute(name,value){element[name]=value;},classList:{toggle(name,enabled){element[name]=enabled;}}};elements.push(element);return element;}};
   class LatLng { constructor(latitude,longitude){this.latitude=latitude;this.longitude=longitude;} }
   class Map { constructor(){this.fits=0;this.layouts=0;mapsCreated.push(this);} relayout(){this.layouts++;} setBounds(){this.fits++;} setCenter(value){this.center=value;} }
   class Marker { setPosition(value){this.position=value;} setMap(map){this.map=map;} }
-  class CustomOverlay extends Marker { constructor(){super();overlays.push(this);} getPosition(){return this.position;} }
+  class CustomOverlay extends Marker { constructor(options){super();this.options=options;overlays.push(this);} getPosition(){return this.position;} }
   class LatLngBounds { extend(){} }
   try {
     const pickup=createPickupMap({LatLng,Map,Marker,CustomOverlay,LatLngBounds,event:{addListener(){}}});
@@ -22,12 +22,17 @@ test('지도 인스턴스를 재사용하고 오래된 차는 흐리게, 위치�
     const place={latitude:37.3,longitude:127.3};
     pickup.update(place,{latitude:37.2,longitude:127.2,kind:'fresh'});
     assert.equal(mapsCreated.length,1); assert.equal(mapsCreated[0].fits,1);
+    assert.match(overlays[1].options.content.innerHTML, /<svg/);
+    assert.match(overlays[1].options.content.innerHTML, /마중 차량/);
+    assert.equal(overlays[0].options.content.textContent, '만날 장소');
+    assert.notEqual(overlays[0].options.content.className, overlays[1].options.content.className);
     pickup.attach(slot);
     pickup.update(place,{latitude:37.21,longitude:127.21,kind:'stale'});
     assert.equal(mapsCreated.length,1); assert.equal(mapsCreated[0].fits,1);
     assert.equal(elements[1].stale,true);
+    assert.match(elements[1]['aria-label'], /마지막 위치/);
     pickup.update(place,{kind:'lost'});
-    assert.equal(overlays[0].map,null);
+    assert.equal(overlays[1].map,null);
     assert.equal(mapsCreated[0].center.latitude,place.latitude);
   } finally { globalThis.document=previous; }
 });
@@ -139,7 +144,7 @@ test('지도를 눌러 핀을 놓고 제안 위치는 확정 장소와 따로 �
     pickup.attach({replaceWith(){}});
     const place={latitude:37.3,longitude:127.3};
     pickup.update(place,null);
-    const [car,proposal,pin]=overlays;
+    const [meeting,car,proposal,pin]=overlays;
     assert.equal(proposal.map,null);
     pickup.update(place,null,{latitude:37.31,longitude:127.31});
     assert.equal(proposal.position.latitude,37.31);
