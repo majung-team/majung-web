@@ -86,6 +86,7 @@ const readinessText = {
   READY: "준비가 끝났어요",
 };
 
+let guestQuickMsgText = "";
 let proposalMaps=null;
 const proposalPanel = createProposalPanel({
   searchPlaces: (keyword,page) => searchPickupPlaces(proposalMaps,keyword,page),
@@ -287,7 +288,7 @@ function guest() {
     ? `<div class="quick-messages" role="group" aria-label="차량으로 음성 전달">
         <span class="quick-title">차량으로 음성 전달</span>
         <form class="quick-input-form quick-msg-form" data-role="guest">
-          <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off"${!online ? " disabled" : ""} />
+          <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off" value="${e(guestQuickMsgText)}"${!online ? " disabled" : ""} />
           <button type="submit" class="quick-send-btn"${!online ? " disabled" : ""}>전송</button>
         </form>
         <span class="quick-chips-label">자주 쓰는 말</span>
@@ -337,8 +338,9 @@ function syncPickupStream() {
 }
 function render() {
   syncPickupStream();
-  // Typing a place description must not be interrupted by the periodic redraw.
+  // Typing a place description or message must not be interrupted by the periodic redraw.
   if (picking && proposalPanel.hasFocus()) return;
+  if (root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") return;
   if (picking && snapshot?.status !== "ACTIVE") {
     picking = false;
     proposalPanel.reset();
@@ -357,15 +359,25 @@ function render() {
   if (markup !== renderedMarkup) {
     const focused = document.activeElement;
     const focusId = root.contains(focused) ? focused.id : null;
+    const focusName = root.contains(focused) && focused.name ? focused.name : null;
     const focusAction = root.contains(focused) ? focused.dataset?.action : null;
+    const selectionStart = focused?.selectionStart;
+    const selectionEnd = focused?.selectionEnd;
     root.innerHTML = markup;
     renderedMarkup = markup;
     const nextFocus = focusId
       ? root.querySelector(`#${CSS.escape(focusId)}`)
-      : focusAction
-        ? root.querySelector(`[data-action="${CSS.escape(focusAction)}"]`)
-        : null;
-    nextFocus?.focus({ preventScroll: true });
+      : focusName
+        ? root.querySelector(`input[name="${CSS.escape(focusName)}"]`)
+        : focusAction
+          ? root.querySelector(`[data-action="${CSS.escape(focusAction)}"]`)
+          : null;
+    if (nextFocus) {
+      nextFocus.focus({ preventScroll: true });
+      if (typeof selectionStart === "number" && typeof selectionEnd === "number") {
+        try { nextFocus.setSelectionRange(selectionStart, selectionEnd); } catch {}
+      }
+    }
   }
   if (pickupMap && session?.role === "guest" && snapshot) {
     pickupMap.attach(root.querySelector("#map-slot"));
@@ -480,17 +492,35 @@ async function mutate(action) {
   }
 }
 
+root.addEventListener("input", (event) => {
+  if (event.target.name === "quickMsg") {
+    guestQuickMsgText = event.target.value;
+  }
+});
+
+root.addEventListener("focusout", (event) => {
+  if (event.target.name === "quickMsg") {
+    setTimeout(() => {
+      if (!root.contains(document.activeElement) || document.activeElement?.tagName !== "INPUT") {
+        render();
+      }
+    }, 50);
+  }
+});
+
 root.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
   if (!form.reportValidity() || busy) return;
   const fields = new FormData(form);
   if (form.classList?.contains?.("quick-msg-form") || form.className?.includes?.("quick-msg-form")) {
-    const msg = fields.get("quickMsg")?.trim();
+    const msg = fields.get("quickMsg")?.trim() || guestQuickMsgText.trim();
     if (!msg || !session || session.role !== "guest") return;
+    guestQuickMsgText = "";
     await mutate(async () => {
       await request(`/${session.pickupId}/quick-message`, {
         method: "POST",
+        token: session.token,
         body: { message: msg },
       });
       notice = `차량에 “${msg}” 메시지를 전달했어요.`;
@@ -672,6 +702,7 @@ root.addEventListener("click", async (event) => {
     try {
       await request(`/${session.pickupId}/quick-message`, {
         method: "POST",
+        token: session.token,
         body: { message: msg },
       });
       notice = `차량에 “${msg}” 메시지를 전달했어요.`;

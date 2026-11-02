@@ -62,6 +62,7 @@ function clearVehiclePair() {
   vehiclePair=null; vehicleRequest=null;
   try { sessionStorage.removeItem("majung.vehiclePair"); sessionStorage.removeItem("majung.vehicleRequest"); } catch { }
 }
+const quickMsgDraft = {};
 function rideRow(source) {
   const item={...source};
   if (performance.now()>=item._etaUntil) item.currentPickupRemainingSeconds=null;
@@ -78,7 +79,7 @@ function rideRow(source) {
     ? `<div class="quick-messages" role="group" aria-label="차량으로 음성 전달">
         <p class="quick-title">차량으로 음성 전달</p>
         <form class="quick-input-form quick-msg-form" data-id="${e(item.requestId)}">
-          <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off" />
+          <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off" value="${e(quickMsgDraft[item.requestId] || "")}" />
           <button type="submit" class="quick-send-btn">전송</button>
         </form>
         <span class="quick-chips-label">자주 쓰는 말</span>
