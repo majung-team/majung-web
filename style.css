@@ -533,6 +533,64 @@ input:focus {
   outline: 3px solid var(--primary);
 }
 
+/* Own shape and label: vehicle position is distinct from the agreed meeting point. */
+.car-marker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 6px;
+  border: 3px solid #fff;
+  border-radius: 30px;
+  background: #1760dc;
+  color: #fff;
+  box-shadow: 0 3px 12px #172b4d55;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.map-marker-icon {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+}
+.map-marker-icon svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.map-marker-label { font-size: 14px; font-weight: 700; line-height: 1.4; }
+.car-marker.stale { background: #53647b; border-style: dashed; }
+.car-marker.stale .map-marker-label::after { content: " · 마지막 위치"; }
+.meeting-marker {
+  position: relative;
+  padding: 9px 12px;
+  margin-bottom: 10px;
+  border: 2px solid #fff;
+  border-radius: 12px;
+  background: #173e36;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px #172b4d44;
+  pointer-events: none;
+}
+.meeting-marker::after {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: calc(50% - 7px);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 9px solid #173e36;
+}
+
 .proposal-marker,
 .pin-marker {
   min-width: 36px;
