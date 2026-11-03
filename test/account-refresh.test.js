@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
-import * as model from "./model.js";
-import * as push from "./push.js";
-import * as maps from "./map.js";
-import * as proposal from "./proposal.js";
-import { AccountError } from "./account-api.js";
+import * as model from "../model.js";
+import * as push from "../push.js";
+import * as maps from "../map.js";
+import * as proposal from "../proposal.js";
+import { AccountError } from "../account-api.js";
 
 // Execute the real account entry point with an isolated DOM shell and controlled API clock.
 async function screen({pairHash = "", contacts = [], searchResults = [], requests, vehicles = []} = {}) {
@@ -49,7 +49,7 @@ async function screen({pairHash = "", contacts = [], searchResults = [], request
     performance: { now: () => now }, URL, AbortSignal, crypto: {randomUUID:()=>"test-request-id"}, fetch: async () => ({ ok: true, json: async () => ({}) }),
     setInterval: callback => timers.push(callback), CSS: { escape: value => value },
   });
-  const source = (await readFile(new URL("./account.js", import.meta.url), "utf8")).replace(/^import .*;\n/gm, "");
+  const source = (await readFile(new URL("../account.js", import.meta.url), "utf8")).replace(/^import .*;\n/gm, "");
   vm.runInContext(source, context);
   const settle = () => new Promise(resolve => setImmediate(resolve));
   await settle();

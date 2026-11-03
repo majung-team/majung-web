@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildProposal, proposalBlock, createProposalSearch } from "./proposal.js";
-import { createAccountClient } from "./account-api.js";
+import { buildProposal, proposalBlock, createProposalSearch } from "../proposal.js";
+import { createAccountClient } from "../account-api.js";
 
 test("핀과 설명이 모두 있어야 제안을 만들고 설명은 공백을 정리", () => {
   const point = { latitude: 37.5, longitude: 127.1 };

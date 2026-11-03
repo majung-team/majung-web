@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {parseEventFrame,openPickupStream} from "./stream.js";
+import {parseEventFrame,openPickupStream} from "../stream.js";
 test("SSE multiline payloads and comments",()=>{
   assert.deepEqual(parseEventFrame("event: snapshot\ndata: {\ndata: \"value\":1}"),{event:"snapshot",data:'{\n"value":1}'});
   assert.equal(parseEventFrame(":keepalive"),null);

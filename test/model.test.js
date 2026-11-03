@@ -8,7 +8,7 @@ import {
   visibleVehicle,
   nextSequence,
   escapeHtml,
-} from "./model.js";
+} from "../model.js";
 const id = "12345678-1234-1234-1234-123456789abc";
 const token = "x".repeat(43);
 const vehicle = {
@@ -81,7 +81,7 @@ test("준비 상태 순서와 사용자 입력 이스케이프", () => {
   );
 });
 
-import { parseHostInvitation } from "./model.js";
+import { parseHostInvitation } from "../model.js";
 test("운전자 공유 주소와 탑승자 참여 주소는 구분한다", () => {
   const id = "00000000-0000-4000-8000-000000000001";
   const token = "A".repeat(43);
@@ -96,7 +96,7 @@ import {
   vehicleView,
   etaText,
   ageText,
-} from "./model.js";
+} from "../model.js";
 test("차량 정보 경과 시간은 서버 값에 왕복 시간을 더함", () => {
   assert.deepEqual(vehicleTiming({ ageMillis: 1000 }, 100, 400), {
     ageMillis: 1300,
@@ -149,7 +149,7 @@ test("새 SDK ETA가 늘거나 줄면 이전 카운트다운 대신 새 값을 �
 
 // A receipt for an older sequence must not confirm a newer selection.
 test("준비 상태의 서버 저장과 차량 수신을 구분", async () => {
-  const { readinessDeliveryText } = await import("./model.js");
+  const { readinessDeliveryText } = await import("../model.js");
   assert.match(readinessDeliveryText({readinessSequence: 0}), /선택하면/);
   assert.match(readinessDeliveryText({readinessSequence: 2}), /아직 확인되지/);
   assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 1}), /기다리고/);
@@ -158,7 +158,7 @@ test("준비 상태의 서버 저장과 차량 수신을 구분", async () => {
   assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 2}, false), /확인하지 못/);
 });
 
-import { vehicleForPlace } from "./model.js";
+import { vehicleForPlace } from "../model.js";
 test("place changes hide telemetry from either side of a split read", () => {
   const old = { ...vehicle, placeVersion: 1 };
   const next = { ...vehicle, placeVersion: 2 };

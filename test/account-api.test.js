@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createAccountClient, AccountError } from "./account-api.js";
+import { createAccountClient, AccountError } from "../account-api.js";
 
 test("세션 쿠키와 페이지 메모리의 CSRF만 사용하고 로그아웃하면 CSRF를 지운다", async () => {
   const calls = [];

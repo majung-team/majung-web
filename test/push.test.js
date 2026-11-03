@@ -11,8 +11,8 @@ import {
   applicationServerKey,
   pushFlag,
   setPushFlag,
-} from "./push.js";
-import { createAccountClient } from "./account-api.js";
+} from "../push.js";
+import { createAccountClient } from "../account-api.js";
 
 const ready = { publicKey: "key", supported: true, ios: false, standalone: false, permission: "default", subscribed: false };
 
@@ -106,7 +106,7 @@ function loadServiceWorker() {
     clients: { matchAll: async () => self.windows, openWindow: async (url) => opened.push(url) },
     windows: [],
   };
-  vm.runInNewContext(readFileSync(new URL("./sw.js", import.meta.url), "utf8"), { self });
+  vm.runInNewContext(readFileSync(new URL("../sw.js", import.meta.url), "utf8"), { self });
   const run = (name, event) => {
     let pending;
     handlers[name]({ ...event, waitUntil: (promise) => (pending = promise) });

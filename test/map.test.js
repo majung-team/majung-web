@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPickupMap, loadKakaoMaps } from './map.js';
+import { createPickupMap, loadKakaoMaps } from '../map.js';
 
 test('지도 키가 없으면 외부 SDK를 부르지 않음', async () => {
   assert.equal(await loadKakaoMaps(''), null);
@@ -52,7 +52,7 @@ test('SDK 응답이 잘못되면 실패 처리하고 다음 로딩을 다시 허
 });
 
 test('장소 선택 지도는 열기만으로 선택하지 않고 명시적 클릭·중심 선택만 반영', async () => {
-  const {createPlacePicker}=await import('./map.js');
+  const {createPlacePicker}=await import('../map.js');
   const previous=globalThis.document;
   const listeners=new Set(), created=[], selected=[];
   globalThis.document={createElement:()=>({setAttribute(){},remove(){this.removed=true;}})};
@@ -87,7 +87,7 @@ test('장소 선택 지도는 열기만으로 선택하지 않고 명시적 클�
 });
 
 test('장소명·주소 검색 결과를 합치고 공급자 ID와 잘못된 좌표를 제외', async () => {
-  const {searchPickupPlaces}=await import('./map.js');
+  const {searchPickupPlaces}=await import('../map.js');
   const calls=[];
   const place={id:'provider-only',place_name:'시험 정문',road_address_name:'시험 도로 10',x:'127.3',y:'37.3'};
   const maps={services:{Status:{OK:'OK',ZERO_RESULT:'ZERO_RESULT'},
@@ -104,7 +104,7 @@ test('장소명·주소 검색 결과를 합치고 공급자 ID와 잘못된 좌
 });
 
 test('검색 결과 없음과 서비스 실패를 구분하고 일부 성공은 안내와 함께 유지', async () => {
-  const {searchPickupPlaces}=await import('./map.js');
+  const {searchPickupPlaces}=await import('../map.js');
   const Status={OK:'OK',ZERO_RESULT:'ZERO_RESULT'};
   const empty=class {keywordSearch(query,callback){callback([],'ZERO_RESULT');}addressSearch(query,callback){callback([],'ZERO_RESULT');}};
   assert.deepEqual(await searchPickupPlaces({services:{Status,Places:empty,Geocoder:empty}},'시험'),{items:[],hasNext:false,partial:false});
@@ -117,7 +117,7 @@ test('검색 결과 없음과 서비스 실패를 구분하고 일부 성공은 
 });
 
 test('응답 없는 장소 검색은 제한 시간 후 실패하며 늦은 콜백을 반영하지 않음', async () => {
-  const {searchPickupPlaces}=await import('./map.js');
+  const {searchPickupPlaces}=await import('../map.js');
   const previousSet=globalThis.setTimeout, previousClear=globalThis.clearTimeout;
   const callbacks=[];
   globalThis.setTimeout=callback=>{queueMicrotask(callback);return 1;};

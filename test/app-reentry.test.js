@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
-import * as model from './model.js';
-import * as push from './push.js';
-import * as maps from './map.js';
-import * as proposal from './proposal.js';
-import {ApiError} from './api.js';
+import * as model from '../model.js';
+import * as push from '../push.js';
+import * as maps from '../map.js';
+import * as proposal from '../proposal.js';
+import {ApiError} from '../api.js';
 
 const pickupId='10000000-0000-4000-8000-000000000001';
 const otherId='10000000-0000-4000-8000-000000000002';
@@ -31,7 +31,7 @@ async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=fa
     history:{replaceState(){}},sessionStorage:{getItem:key=>store.get(key),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},
     performance:{now:()=>1000},setInterval(){},fetch:async()=>({ok:false}),navigator:{},CSS:{escape:x=>x},URL,AbortSignal,
   });
-  const source=(await readFile(new URL('./app.js',import.meta.url),'utf8')).replace(/^import[\s\S]*?from ["'][^"']+["'];\n/gm,'');
+  const source=(await readFile(new URL('../app.js',import.meta.url),'utf8')).replace(/^import[\s\S]*?from ["'][^"']+["'];\n/gm,'');
   vm.runInContext(source,context);
   const settle=()=>new Promise(resolve=>setImmediate(resolve));
   await settle();await settle();
