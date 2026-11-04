@@ -20,6 +20,7 @@ export function proposalBlock({ proposal, picking, mapReady, status }) {
   if (!mapReady || status !== "ACTIVE") return "";
   const summary = proposal
     ? `<div class="proposal"><span>${proposal.proposedBy === "DRIVER" ? "운전자가 제안한 장소" : "내가 제안한 장소"}</span>
+      <div class="proposal-badge pulse">${proposal.proposedBy === "DRIVER" ? "🚗 새 제안 수락 대기" : "📡 차량 전송 완료 · 운전자 확인 대기 중"}</div>
       <strong>${e(proposal.place.label)}</strong>
       <small>${proposal.proposedBy === "DRIVER" ? "마음에 들지 않으면 다른 장소를 제안할 수 있어요. " : ""}운전자가 확인할 때까지 약속 장소는 그대로예요.</small>
       ${proposal.proposedBy === "PASSENGER" ? '<button type="button" data-action="propose-withdraw" class="quiet">제안 취소</button>' : ""}</div>`
@@ -81,7 +82,14 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
     element.querySelector("[data-proposal-send]").addEventListener("click", () => {
       const result = buildProposal(parts.input.value, point);
       showError(result.error);
-      if (result.place) onSubmit(result.place);
+      if (result.place) {
+        const sendBtn = element.querySelector("[data-proposal-send]");
+        if (sendBtn) {
+          sendBtn.disabled = true;
+          sendBtn.textContent = "제안 보내는 중…";
+        }
+        onSubmit(result.place);
+      }
     });
     element.querySelector("[data-proposal-close]").addEventListener("click", () => onCancel());
     parts.input.addEventListener("input", () => showError(""));
@@ -119,6 +127,11 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
       if (!parts) return;
       if (parts.query) parts.query.value="";
       parts.input.value = "";
+      const sendBtn = parts.element?.querySelector("[data-proposal-send]");
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "제안 보내기";
+      }
       showError("");
       refreshHint();
     },

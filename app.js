@@ -28,6 +28,36 @@ import {
 import { loadKakaoMaps, createPickupMap, searchPickupPlaces } from "./map.js";
 import { proposalBlock, createProposalPanel } from "./proposal.js";
 
+function showToast(msg, type = "info", duration = 4000) {
+  if (typeof document === "undefined" || !document.body) return;
+  let container = document.getElementById("toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toast-container";
+    container.className = "toast-container";
+    container.setAttribute("aria-live", "polite");
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    try {
+      if (type === "success") navigator.vibrate([100, 50, 100]);
+      else navigator.vibrate(60);
+    } catch (_) {}
+  }
+
+  setTimeout(() => {
+    toast.classList.add("toast-hiding");
+    setTimeout(() => {
+      toast.remove();
+    }, 250);
+  }, duration);
+}
+
 const root = document.querySelector("#app");
 const storageKey = "majung.pickup.session.v1";
 let invitation = parseInvitation(location.hash);
@@ -426,6 +456,7 @@ async function refresh() {
   refreshing = true;
   const currentSession = session;
   const generation = epoch;
+  const prevSnapshot = snapshot;
   try {
     const data = await request(`/${currentSession.pickupId}`, {
       token: currentSession.token,
@@ -434,6 +465,22 @@ async function refresh() {
     snapshot = data;
     online = true;
     message = "";
+
+    // Immediate feedback when proposal state updates or driver responds
+    if (prevSnapshot && currentSession.role === "guest") {
+      const prevProposal = prevSnapshot.placeProposal;
+      const newProposal = data.placeProposal;
+      if (prevProposal?.proposedBy === "PASSENGER" && !newProposal) {
+        if (data.place?.label && data.place.label === prevProposal.place?.label) {
+          showToast(`🎉 운전자가 제안한 장소(“${data.place.label}”)를 수락했어요! 만날 장소가 변경되었습니다.`, "success", 5000);
+        } else if (data.place?.label && data.place.label !== prevSnapshot.place?.label) {
+          showToast(`🎉 만날 장소가 “${data.place.label}”(으)로 확정되었습니다!`, "success", 5000);
+        }
+      } else if (!prevProposal && newProposal?.proposedBy === "DRIVER") {
+        showToast(`🚗 운전자가 새로운 장소(“${newProposal.place?.label}”)를 제안했어요!`, "info", 5000);
+      }
+    }
+
     if (terminalStatuses.has(data.status)) {
       finish(data);
       return;
@@ -524,6 +571,8 @@ root.addEventListener("submit", async (event) => {
         body: { message: msg },
       });
       notice = `차량에 “${msg}” 메시지를 전달했어요.`;
+      showToast(`💬 차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
+      showToast(`💬 차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
     });
     return;
   }
@@ -588,6 +637,7 @@ async function sendProposal(place) {
     picking = false;
     proposalPanel.reset();
     notice = "장소를 제안했어요. 운전자가 확인할 때까지 약속 장소는 그대로예요.";
+    showToast("📍 차량으로 새 장소 제안을 보냈어요! 운전자 확인을 기다리는 중입니다.", "info", 4500);
   });
 }
 
@@ -622,6 +672,7 @@ root.addEventListener("click", async (event) => {
     await mutate(async () => {
       snapshot = await request(`/${session.pickupId}/place-proposal`, { method: "DELETE", token: session.token });
       notice = "장소 제안을 취소했어요.";
+      showToast("장소 제안을 취소했어요.", "info", 3000);
     });
     return;
   }
@@ -706,6 +757,7 @@ root.addEventListener("click", async (event) => {
         body: { message: msg },
       });
       notice = `차량에 “${msg}” 메시지를 전달했어요.`;
+      showToast(`💬 차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
       await refresh();
     } catch {
       notice = "메시지를 전달하지 못했어요. 다시 시도해주세요.";
