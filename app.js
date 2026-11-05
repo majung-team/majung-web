@@ -171,6 +171,7 @@ function forgetSession() {
   timing = null;
   pendingReadiness = null;
   picking = false;
+  activeTabModal = null;
   proposalPanel.reset();
   online = false;
   manualLink = false;
@@ -321,6 +322,8 @@ async function toggleArrivalPush(turnOn) {
   }
 }
 
+let activeTabModal = null; // null | "voice" | "proposal" | "push" | "info"
+
 function guest() {
   const status = snapshot.status;
   if (["WAITING_APPROVAL", "INVITE_EXPIRED"].includes(status))
@@ -356,7 +359,7 @@ function guest() {
     ? `<p class="quick-msg-hint">차량에 전달된 메시지: <strong>“${e(snapshot.quickMessage.text)}”</strong></p>`
     : "";
 
-  return `${connection()}<section class="card pickup-live compact-mobility-view">
+  return `${connection()}<section class="card pickup-live mobility-app-view">
     <div class="pickup-header-row">
       <span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
       <h1>${status === "ARRIVED" ? "약속 장소에 도착했어요" : "마중 차량이 오고 있어요"}</h1>
@@ -372,68 +375,91 @@ function guest() {
       </div>
     </div>
 
-    <!-- 2. Compact Summary Bar (Place & Readiness) -->
+    <!-- 2. Summary Bar (Place & Readiness Toggle) -->
     <div class="pickup-summary-bar">
       <div class="summary-place">
         <span class="summary-label">함께 만날 장소</span>
         <strong class="summary-place-name">📍 ${e(snapshot.place?.label || "장소 확인 중")}</strong>
       </div>
-      <div class="summary-badge ${isReady ? "badge-ready" : "badge-preparing"}">
-        ${isReady ? "✓ 탑승 준비 완료" : "⏳ 탑승 준비 중"}
+      <div class="summary-badge-toggle">
+        ${button(
+          isReady ? "✓ 탑승 준비 완료" : "⏳ 탑승 준비 중",
+          isReady ? "preparing" : "ready",
+          true,
+          !online,
+          `class="summary-readiness-pill ${isReady ? "is-ready" : "is-preparing"}"`
+        )}
       </div>
     </div>
 
     ${status === "ARRIVED" ? `<div class="arrival-notice">확정된 장소에서 차량에 탑승해주세요. 탑승 확인 후 운전자가 픽업을 완료해요.</div>` : ""}
 
-    <!-- 3. One-Touch Action Deck (Primary Buttons & Quick Voice Chips) -->
-    <div class="action-deck" role="group" aria-label="탑승자 빠른 조작">
-      <div class="action-deck-row">
-        ${button(
-          isReady ? "✓ 준비 완료됨" : "탑승 준비 완료",
-          "ready",
-          !isReady,
-          !online,
-          `class="deck-main-btn ${isReady ? "deck-btn-active" : "deck-btn-primary"}"`
-        )}
-        ${button(
-          "⚡ 지금 내려가요",
-          "guest-quick-msg",
-          true,
-          !online,
-          'data-msg="지금 내려가요" class="deck-main-btn deck-btn-quick"'
-        )}
-      </div>
-      <div class="action-chips-row">
-        ${button("1번 출구 앞이에요", "guest-quick-msg", true, !online, 'data-msg="1번 출구 앞이에요" class="action-chip"')}
-        ${button("곧 도착해요", "guest-quick-msg", true, !online, 'data-msg="곧 도착해요" class="action-chip"')}
-        ${isReady ? button("준비 중으로 변경", "preparing", true, !online, 'class="action-chip chip-quiet"') : ""}
-      </div>
-      ${quickMsgStatus ? `<div class="action-feedback">${quickMsgStatus}</div>` : ""}
-      ${pendingReadiness && online ? `<div class="action-feedback"><small>전송 결과를 확인하지 못했어요. ${button("선택한 상태 다시 보내기", "retry-readiness", true)}</small></div>` : ""}
-    </div>
+    <!-- 3. Fixed Bottom Action Tab Bar (사진 참조: 하단 탭 내비게이션 바) -->
+    <nav class="bottom-tab-bar" aria-label="픽업 조작 메뉴">
+      <button type="button" class="bottom-tab-item ${activeTabModal === "voice" ? "active" : ""}" data-action="toggle-tab" data-tab="voice">
+        <svg class="tab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <span class="tab-label">음성 전달</span>
+      </button>
+      <button type="button" class="bottom-tab-item ${activeTabModal === "proposal" || picking ? "active" : ""}" data-action="toggle-tab" data-tab="proposal">
+        <svg class="tab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        <span class="tab-label">장소 제안</span>
+        ${snapshot.placeProposal ? `<span class="tab-dot"></span>` : ""}
+      </button>
+      <button type="button" class="bottom-tab-item ${activeTabModal === "push" ? "active" : ""}" data-action="toggle-tab" data-tab="push">
+        <svg class="tab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        <span class="tab-label">도착 알림</span>
+      </button>
+      <button type="button" class="bottom-tab-item ${activeTabModal === "info" ? "active" : ""}" data-action="toggle-tab" data-tab="info">
+        <svg class="tab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span class="tab-label">안내·정보</span>
+      </button>
+    </nav>
 
-    <!-- 4. Collapsible Drawer for Secondary Actions (Custom message, Place proposal, Push notifications) -->
-    <details class="guest-drawer"${picking || snapshot.placeProposal ? " open" : ""}>
-      <summary class="guest-drawer-summary">
-        <span>메시지 직접 입력 · 장소 변경 제안 · 도착 알림 설정</span>
-        <span class="drawer-arrow">▾</span>
-      </summary>
-      <div class="drawer-content">
-        <div class="drawer-section">
-          <span class="drawer-section-title">차량 스피커로 전달할 메시지 직접 입력</span>
-          <form class="quick-input-form quick-msg-form" data-role="guest">
-            <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off" value="${e(guestQuickMsgText)}"${!online ? " disabled" : ""} />
-            <button type="submit" class="quick-send-btn"${!online ? " disabled" : ""}>전송</button>
-          </form>
+    <!-- 4. Modal Popup Sheet (탭을 눌렀을 때 화면 위에 카드/팝업 형태로 뜸) -->
+    ${activeTabModal ? `
+      <div class="tab-modal-backdrop" data-action="close-tab-modal"></div>
+      <div class="tab-modal-sheet" role="dialog" aria-modal="true">
+        <div class="sheet-drag-handle"></div>
+        <div class="sheet-header">
+          <h2 class="sheet-title">${
+            activeTabModal === "voice" ? "📢 차량 스피커로 음성 전달 (TTS)" :
+            activeTabModal === "proposal" ? "📍 함께 만날 장소 제안" :
+            activeTabModal === "push" ? "🔔 도착 3분 전 웹 푸시 알림" :
+            "ℹ️ 마중 픽업 안내"
+          }</h2>
+          <button type="button" class="sheet-close-btn" data-action="close-tab-modal" aria-label="닫기">✕</button>
         </div>
-        <div class="drawer-section">
-          <span class="drawer-section-title">만날 장소 변경 제안</span>
-          ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
+        <div class="sheet-body">
+          ${activeTabModal === "voice" ? `
+            <p class="sheet-desc">메시지를 보내면 차량 스피커로 운전자에게 즉시 음성 낭독돼요.</p>
+            <form class="quick-input-form quick-msg-form" data-role="guest">
+              <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off" value="${e(guestQuickMsgText)}"${!online ? " disabled" : ""} />
+              <button type="submit" class="quick-send-btn"${!online ? " disabled" : ""}>전송</button>
+            </form>
+            <span class="quick-chips-label">원터치 빠른 전송:</span>
+            <div class="quick-chips">
+              ${button("⚡ 지금 내려가요", "guest-quick-msg", true, !online, 'data-msg="지금 내려가요" class="quick-chip-highlight"')}
+              ${button("1번 출구 앞이에요", "guest-quick-msg", true, !online, 'data-msg="1번 출구 앞이에요"')}
+              ${button("곧 도착해요", "guest-quick-msg", true, !online, 'data-msg="곧 도착해요"')}
+            </div>
+            ${quickMsgStatus ? `<div class="action-feedback">${quickMsgStatus}</div>` : ""}
+          ` : activeTabModal === "proposal" ? `
+            ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
+          ` : activeTabModal === "push" ? `
+            ${arrivalPushCard()}
+          ` : `
+            <div class="info-sheet-content">
+              <p>탑승하면 운전자가 픽업을 완료하고 위치 공유를 끝내요.</p>
+              <p>마중은 안전하고 쾌적한 이동을 돕는 차량 특화 픽업 서비스입니다.</p>
+              <div class="info-links">
+                <a href="https://majung.cloud/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a> · 
+                <a href="https://majung.cloud/terms" target="_blank" rel="noopener noreferrer">위치 공유 안내</a>
+              </div>
+            </div>
+          `}
         </div>
-        ${status === "ACTIVE" ? `<div class="drawer-section">${arrivalPushCard()}</div>` : ""}
-        <p class="hint">탑승하면 운전자가 픽업을 완료하고 위치 공유를 끝내요.</p>
       </div>
-    </details>
+    ` : ""}
   </section>`;
 }
 
@@ -789,12 +815,24 @@ root.addEventListener("click", async (event) => {
   const target = event.target.closest("[data-action]");
   if (!target || busy || target.disabled) return;
   const action = target.dataset.action;
+  if (action === "toggle-tab") {
+    const tab = target.dataset.tab;
+    activeTabModal = activeTabModal === tab ? null : tab;
+    render();
+    return;
+  }
+  if (action === "close-tab-modal") {
+    activeTabModal = null;
+    render();
+    return;
+  }
   if (action === "push-on" || action === "push-off") {
     await toggleArrivalPush(action === "push-on");
     return;
   }
   if (action === "propose-start" && session?.role === "guest") {
     picking = true;
+    activeTabModal = null; // Close popup sheet so user can clearly tap on map
     render();
     return;
   }
