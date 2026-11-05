@@ -15,6 +15,8 @@ async function screen({pairHash = "", contacts = [], searchResults = [], request
   let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
   const timers = [], events = {}, windowEvents = {}, rootEvents = {}, writes = [];
   const pairStorage = new Map();
+  let requestSequence=0;
+  const history = {state:null, replaceState(state){this.state=state;},pushState(state){this.state=state;},back(){this.state={majungView:"account",tab:"people"};windowEvents.popstate({state:this.state});}};
   let enrollmentLinked = false;
   let streamCallbacks=null, streamClosed=false;
   let pauseTracking=false, finishTracking=null;
@@ -51,8 +53,8 @@ async function screen({pairHash = "", contacts = [], searchResults = [], request
     ...pickupControls,...model, ...push, ...maps, ...proposal, e: model.escapeHtml, AccountError, createAccountClient: () => api,
     document: { querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; }, createElement: () => ({ innerHTML: "", setAttribute(){}, remove(){}, addEventListener() {}, contains: () => false, querySelector: () => ({ addEventListener() {}, hidden: false, value: "", textContent: "" }) }) },
     window: { addEventListener(name,callback) {windowEvents[name]=callback;} }, location: { href: "https://test.invalid/account", hash: pairHash, search: "", pathname: "/account" },
-    history: { replaceState() {} }, sessionStorage: { getItem: key => pairStorage.get(key) || null, setItem(key,value) {pairStorage.set(key,value);}, removeItem(key) {pairStorage.delete(key);} },
-    performance: { now: () => now }, URL, URLSearchParams, AbortSignal, crypto: {randomUUID:()=>"test-request-id"}, fetch: async () => ({ ok: true, json: async () => ({}) }),
+    history, sessionStorage: { getItem: key => pairStorage.get(key) || null, setItem(key,value) {pairStorage.set(key,value);}, removeItem(key) {pairStorage.delete(key);} },
+    performance: { now: () => now }, URL, URLSearchParams, AbortSignal, crypto: {randomUUID:()=>`test-request-${++requestSequence}`}, fetch: async () => ({ ok: true, json: async () => ({}) }),
     setInterval: callback => timers.push(callback), CSS: { escape: value => value },
   });
   const source = (await readFile(new URL("../account.js", import.meta.url), "utf8")).replace(/^import .*;\n/gm, "");
@@ -455,4 +457,68 @@ test('계정 메시지도 전송 실패 때 입력 초안을 유지하고 수신
   assert.match(app.root.innerHTML,/저장하지 못했어요/);
   assert.doesNotMatch(app.root.innerHTML,/차량에 .*메시지를 전달했어요/);
   assert.equal(app.writes.length,1);
+});
+
+
+test("요청 작성 중 브라우저 뒤로가기는 폼을 닫고 재요청에는 새 식별자를 사용한다", async () => {
+  const app=await screen({requests:[]});
+  vm.runInContext('accountTab="people"; beginRideRequest({memberId:"driver",nickname:"운전자"}); rideLabel="정문"; ridePlace={latitude:37,longitude:127};',app.context);
+  const first=vm.runInContext('rideRequestId',app.context);
+  app.context.history.back();
+  assert.equal(vm.runInContext('rideTarget',app.context),null);
+  assert.equal(vm.runInContext('ridePlace',app.context),null);
+  assert.equal(vm.runInContext('accountTab',app.context),'people');
+  assert.equal(app.writes.length,0);
+  vm.runInContext('beginRideRequest({memberId:"driver",nickname:"운전자"})',app.context);
+  assert.notEqual(vm.runInContext('rideRequestId',app.context),first);
+  assert.equal(vm.runInContext('rideLabel',app.context),'');
+});
+
+test("요청 연속 제출은 한 번만 보내고 완료 후 앞으로가기로 재전송하지 않는다", async () => {
+  const app=await screen({requests:[]});
+  vm.runInContext('beginRideRequest({memberId:"driver",nickname:"운전자"}); rideLabel="정문"; ridePlace={latitude:37,longitude:127};',app.context);
+  const submit=()=>app.rootEvents.submit({preventDefault(){},target:{id:'ride-form'}});
+  submit(); submit();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.writes.length,1);
+  assert.equal(app.context.history.state.majungView,'account');
+  app.windowEvents.popstate({state:{majungView:'request'}});
+  assert.equal(vm.runInContext('rideTarget',app.context),null);
+  assert.equal(app.writes.length,1);
+});
+
+test("요청 중 다른 탭을 선택하면 숨겨진 작성 폼과 장소를 남기지 않는다", async () => {
+  const app=await screen({requests:[]});
+  vm.runInContext('beginRideRequest({memberId:"driver"}); rideLabel="정문"; ridePlace={latitude:37,longitude:127}; changeAccountTab("settings"); changeAccountTab("pickup");',app.context);
+  assert.equal(vm.runInContext('rideTarget',app.context),null);
+  assert.doesNotMatch(app.root.innerHTML,/id="ride-form"/);
+});
+
+test("브라우저 캐시에서 복귀하면 이전 픽업 위치를 지우고 최신 상태를 조회한다", async () => {
+  const requests=[{requestId:'test-ride',status:'ACTIVE',nickname:'운전자',place:{label:'정문'}}];
+  const app=await screen({requests});
+  assert.match(app.root.innerHTML,/data-ride-eta/);
+  app.windowEvents.pagehide();
+  requests[0].status='CANCELLED';
+  app.windowEvents.pageshow({persisted:true});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.doesNotMatch(app.root.innerHTML,/data-ride-eta/);
+  assert.equal(app.writes.length,0);
+});
+
+
+test("GPS 대기 중 뒤로가면 늦게 온 위치를 다음 요청에 넣지 않는다", async () => {
+  const app=await screen({requests:[]});
+  let finish;
+  app.context.navigator={geolocation:{getCurrentPosition(resolve){finish=resolve;}}};
+  vm.runInContext('accountTab="people"; beginRideRequest({memberId:"driver"})',app.context);
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"ride-location"}})}});
+  await new Promise(resolve=>setImmediate(resolve));
+  app.context.history.back();
+  finish({coords:{latitude:37,longitude:127,accuracy:10}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(vm.runInContext('ridePlace',app.context),null);
+  assert.equal(app.writes.length,0);
+  vm.runInContext('beginRideRequest({memberId:"driver"})',app.context);
+  assert.equal(vm.runInContext('ridePlace',app.context),null);
 });

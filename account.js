@@ -202,6 +202,7 @@ function changeAccountTab(next) {
   tabAnimations.forEach(animation => animation.cancel());
   tabAnimations = [];
   pendingAction = null;
+  if (rideTarget) closeRideRequest(false);
   accountTab = next;
   render();
   const selected = root.querySelector('.account-nav [aria-current="page"]');
@@ -379,7 +380,19 @@ async function run(work, renderBefore = true) {
     }
   } finally { busy = false; render(); }
 }
+function closeRideRequest(restoreTab = true) {
+  clearPlacePicker();
+  rideTarget = null; ridePlace = null; rideLabel = ""; rideRequestId = null;
+  if (restoreTab) accountTab = rideReturnTab;
+  // Keep a completed/dismissed form out of Forward history; never restore a POST.
+  if (history.state?.majungView === "request") history.replaceState({majungView:"account"}, "", location.href);
+}
 function beginRideRequest(person) {
+  error = ""; notice = "";
+  if (!rideTarget) {
+    history.replaceState({majungView:"account",tab:accountTab}, "", location.href);
+    history.pushState({majungView:"request"}, "", location.href);
+  }
   clearPlacePicker();
   pendingAction = null;
   rideReturnTab = accountTab;
@@ -432,7 +445,7 @@ root.addEventListener("submit", event => {
       if (!rideTarget || !ridePlace || !rideLabel.trim() || placeSearchBusy) return;
       if (ridePlace.source === "gps" && Date.now()-ridePlace.at>120000) throw new AccountError(400,"LOCATION_OLD","현재 위치를 다시 선택해주세요.");
       await api("/ride-requests",{method:"POST",body:{driverId:rideTarget.memberId,requestId:rideRequestId,place:{label:rideLabel.trim(),latitude:ridePlace.latitude,longitude:ridePlace.longitude}}});
-      rideTarget=null; ridePlace=null; rideLabel=""; rideRequestId=null;
+      closeRideRequest(false);
       await refresh(); notice="운전자에게 마중을 요청했어요. 수락하면 픽업 대기에 들어가요.";
     } else if (type === "nickname-form") {
       info.member = await api("/accounts/me", {method: "PATCH", body: {nickname}});
@@ -511,7 +524,11 @@ root.addEventListener("click", event => {
     run(async () => { await api(`/ride-requests/${id}/place-proposal`,{method:"DELETE"}); await refresh(); notice="장소 제안을 취소했어요."; });
     return;
   }
-  if (action === "ride-dismiss") { clearPlacePicker(); rideTarget=null; ridePlace=null; accountTab=rideReturnTab; render(); return; }
+  if (action === "ride-dismiss") {
+    if (history.state?.majungView === "request") history.back();
+    else { closeRideRequest(); render(); }
+    return;
+  }
   if (["invitation-accept","invitation-reject","ride-cancel"].includes(action)) {
     const ride=rides.find(item=>item.requestId===target.dataset.id);
     if (!ride || (action!=="ride-cancel" ? ride.status!=="INVITED" : !["PENDING","QUEUED"].includes(ride.status))) return;
@@ -538,7 +555,9 @@ root.addEventListener("click", event => {
   run(async () => {
     if (action === "ride-location") {
       if (!navigator.geolocation) throw new AccountError(400,"LOCATION_UNAVAILABLE","이 브라우저에서 위치를 사용할 수 없어요.");
+      const requestAtStart=rideRequestId;
       const position=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,()=>reject(new AccountError(400,"LOCATION_UNAVAILABLE","위치 권한과 휴대전화 GPS를 확인한 뒤 다시 선택해주세요.")),{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
+      if (!rideTarget || rideRequestId!==requestAtStart) return;
       if (position.coords.accuracy>300) throw new AccountError(400,"LOCATION_INACCURATE","위치 오차가 커요. GPS가 잘 잡히는 곳에서 다시 선택해주세요.");
       ridePlace={latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy,source:"gps",at:Date.now()};
     } else if (action === "confirm-action" && pendingAction?.kind === "ride") {
@@ -677,7 +696,23 @@ void fetch("/api/v1/config", { cache: "no-store", credentials: "omit", redirect:
   .then(maps => { if (!maps) return; placeMaps=maps; pickupMap=createPickupMap(maps); if ((tracking.size || rideTarget) && !busy) render(); })
   .catch(() => { });
 
+window.addEventListener("popstate", event => {
+  // A browser Back closes the local draft, not the preceding OAuth page.
+  if (rideTarget) closeRideRequest();
+  pendingAction = null;
+  if (accountTabs.includes(event.state?.tab)) accountTab = event.state.tab;
+  if (event.state?.majungView === "request") history.replaceState({majungView:"account"}, "", location.href);
+  render();
+});
 window.addEventListener("pagehide",()=>{rideStream?.close();rideStream=null;streamedRide=null;});
+window.addEventListener("pageshow", event => {
+  if (!event.persisted) return;
+  // A cached page may contain a cancelled/expired pickup. Fetch before showing its position again.
+  hideAccountVehicle();
+  tracking.clear();
+  nextRefreshAt = 0;
+  if (!busy) void run(refresh);
+});
 
 if (globalThis.navigator?.serviceWorker?.addEventListener) navigator.serviceWorker.addEventListener('message', event => {
   if (event.data?.type==='MAJUNG_PICKUP_REFRESH') nextRefreshAt=0;
