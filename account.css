@@ -799,3 +799,29 @@ body { overflow-x: clip; }
   font-size: 13px;
   color: var(--primary, #2563eb);
 }
+
+/* Place selection maps also appear outside an active ride row. */
+[data-place-picker] {
+  width: 100%;
+  height: clamp(240px, 36vh, 360px);
+  min-height: 240px;
+  margin: 20px 0 12px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+#account-app .hint { font-size: 15px; line-height: 1.7; }
+.ride-request-form { scroll-margin-top: 100px; }
+.selected-meeting-place { padding: 16px; margin: 16px 0; border-radius: 14px; background: #edf4ff; color: #23364e; }
+.selected-meeting-place p { margin: 8px 0 0; font-size: 15px; }
+.request-submit { padding-top: 12px; }
+.request-submit button { width: 100%; min-height: 56px; }
+.linked-vehicle-details { min-width: 0; }
+.linked-vehicle-details span { overflow-wrap: anywhere; font-size: 15px; }
+.ride-row .readiness-card, .ride-row .voice-composer-card { margin: 20px 0; }
+.ride-row .readiness-seg-btn { min-height: 52px; font-size: 16px; }
+@media (max-width: 500px) {
+  .ride-request-form { padding: 20px 16px; }
+  .linked-vehicle-row { align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .account-nav button { font-size: 15px; }
+}

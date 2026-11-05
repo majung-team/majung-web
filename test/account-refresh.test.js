@@ -1,3 +1,4 @@
+import * as pickupControls from "../model.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -42,7 +43,7 @@ async function screen({pairHash = "", contacts = [], searchResults = [], request
   };
   const context = vm.createContext({
     openPickupStream: callbacks => { streamCallbacks=callbacks; return {close(){streamClosed=true;callbacks.onState(false);}}; },
-    ...model, ...push, ...maps, ...proposal, e: model.escapeHtml, AccountError, createAccountClient: () => api,
+    ...pickupControls,...model, ...push, ...maps, ...proposal, e: model.escapeHtml, AccountError, createAccountClient: () => api,
     document: { querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; }, createElement: () => ({ innerHTML: "", setAttribute(){}, remove(){}, addEventListener() {}, contains: () => false, querySelector: () => ({ addEventListener() {}, hidden: false, value: "", textContent: "" }) }) },
     window: { addEventListener(name,callback) {windowEvents[name]=callback;} }, location: { href: "https://test.invalid/account", hash: pairHash, search: "", pathname: "/account" },
     history: { replaceState() {} }, sessionStorage: { getItem: key => pairStorage.get(key) || null, setItem(key,value) {pairStorage.set(key,value);}, removeItem(key) {pairStorage.delete(key);} },
@@ -408,4 +409,19 @@ test("차량 연결 해제도 차량 이름을 확인한 뒤 한 번만 전송",
   click("confirm-action"); click("confirm-action");
   await new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(app.writes,[{path:"/vehicle-links/test-vehicle"}]);
+});
+
+test("같은 이름의 차량은 구분 코드와 연결 시각을 표시하고 해제 확인에도 유지한다", async () => {
+  const vehicles=[
+    {vehicleId:"10000000-0000-4000-8000-000000000011",vehicleName:"마중 차량",linkedAt:"2026-11-04T03:00:00Z"},
+    {vehicleId:"10000000-0000-4000-8000-000000000022",vehicleName:"마중 차량",linkedAt:"2026-11-05T03:00:00Z"},
+  ];
+  const app=await screen({vehicles});
+  await app.rootEvents.click({target:{closest:()=>({dataset:{action:"tab-settings"}})}});
+  assert.match(app.root.innerHTML,/00000011/);
+  assert.match(app.root.innerHTML,/00000022/);
+  app.rootEvents.click({target:{closest:()=>({dataset:{action:"vehicle-detach",id:vehicles[1].vehicleId}})}});
+  assert.match(app.root.innerHTML,/차량 연결 해제할까요/);
+  assert.match(app.root.innerHTML,/00000022/);
+  assert.equal(app.writes.length,0);
 });

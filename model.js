@@ -153,3 +153,51 @@ export function vehicleForPlace(pickup, vehicle) {
   return Number.isSafeInteger(placeVersion) && placeVersion > 0 &&
     placeVersion === vehicleVersion ? vehicle : null;
 }
+
+
+// Both invite links and account tracking render the same participant controls.
+export function readinessControl({ participant, online = true, sending = false, retry = null,
+  prefix = '', attributes = '', blocked = false, pendingValue = null }) {
+  const displayed = sending && pendingValue ? pendingValue : participant?.readiness === 'READY' ? 'READY' : 'PREPARING';
+  const ready = displayed === 'READY';
+  return `<section class="readiness-card" aria-label="탑승 준비 상태" aria-busy="${sending}">
+    <div class="readiness-card-header"><strong class="readiness-card-title">탑승 준비 상태</strong>
+      <span class="readiness-card-status ${ready ? 'ready' : ''}" role="status">${sending ? '보내는 중…' : ready ? '준비 완료' : '준비 중'}</span></div>
+    <div class="readiness-segmented-control ${ready ? 'is-ready' : 'is-preparing'}" role="group" aria-label="탑승 준비 상태 변경">
+      <span class="readiness-slider" aria-hidden="true"></span>
+      ${[['PREPARING','준비 중','preparing'],['READY','탑승 준비 완료','ready']].map(([value,label,action]) => `<button type="button" class="readiness-seg-btn ${(ready ? value === 'READY' : value === 'PREPARING') ? 'selected' : ''}${ready && value === 'READY' ? ' ready' : ''}" data-action="${prefix}${action}" ${attributes} aria-pressed="${displayed === value}" ${!online || sending || blocked ? 'disabled' : ''}>${label}</button>`).join('')}
+    </div>
+    <p class="readiness-delivery" role="status">${sending ? '준비 상태를 차량에 보내고 있어요.' : escapeHtml(readinessDeliveryText(participant, online))}</p>
+    ${retry && !sending ? `<p class="readiness-error" role="alert">전송 결과를 확인하지 못했어요. 이전 준비 상태를 표시하고 있어요.</p><button type="button" class="quiet" data-action="${prefix}retry-readiness" ${attributes} ${!online || blocked ? 'disabled' : ''}>준비 상태 다시 보내기</button>` : ''}
+  </section>`;
+}
+
+export function quickMessageControl({ value = '', message = '', online = true, prefix = 'guest-', attributes = '' }) {
+  return `<section class="voice-composer-card" aria-label="운전자에게 메시지 보내기">
+    <div class="voice-header-row"><strong class="voice-title">운전자에게 메시지</strong><span class="voice-subtitle">차량에서 음성으로 안내해요</span></div>
+    <div class="quick-chips">${['지금 내려가요','1번 출구 앞이에요','곧 도착해요'].map(text => `<button type="button" class="quiet quick-chip" data-action="${prefix}quick-msg" data-msg="${escapeHtml(text)}" ${attributes} ${!online ? 'disabled' : ''}>${text}</button>`).join('')}</div>
+    <form class="quick-input-form quick-msg-form" ${attributes}><label class="sr-only">운전자에게 보낼 메시지</label><input type="text" name="quickMsg" class="quick-msg-input" aria-label="운전자에게 보낼 메시지" placeholder="메시지 입력 (최대 100자)" maxlength="100" autocomplete="off" value="${escapeHtml(value)}" ${!online ? 'disabled' : ''}/><button type="submit" class="quick-send-btn" ${!online ? 'disabled' : ''}>전송</button></form>
+    ${message ? `<p class="quick-msg-hint">보낸 메시지 · <strong>“${escapeHtml(message)}”</strong></p>` : ''}
+  </section>`;
+}
+
+export function beginReadinessSend(root, value) {
+  const control = root.querySelector(".readiness-segmented-control");
+  if (!control) return;
+  const ready = value === "READY";
+  control.classList.toggle("is-ready", ready);
+  control.classList.toggle("is-preparing", !ready);
+  control.querySelectorAll("button").forEach(button => {
+    const selected = button.dataset.action.endsWith(ready ? "ready" : "preparing");
+    button.disabled = true;
+    button.classList.toggle("selected", selected);
+    button.classList.toggle("ready", ready && selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  const card = control.closest(".readiness-card");
+  card?.setAttribute("aria-busy", "true");
+  const status = card?.querySelector(".readiness-card-status");
+  if (status) status.textContent = "보내는 중…";
+  const delivery = card?.querySelector(".readiness-delivery");
+  if (delivery) delivery.textContent = "준비 상태를 차량에 보내고 있어요.";
+}

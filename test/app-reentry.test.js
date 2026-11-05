@@ -1,3 +1,4 @@
+import * as pickupControls from "../model.js";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -12,15 +13,16 @@ const pickupId='10000000-0000-4000-8000-000000000001';
 const otherId='10000000-0000-4000-8000-000000000002';
 const guest={role:'guest',pickupId,participantId:otherId,token:'g'.repeat(43)};
 const link=id=>`#join/${id}/${'i'.repeat(43)}`;
-async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=false}={}) {
+async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=false,onReadiness=null}={}) {
   const reads=[],writes=[],events={};
   const store=new Map(saved ? [['majung.pickup.session.v1',JSON.stringify(saved)]]:[]);
   const root={innerHTML:'',addEventListener(){},contains:()=>false,querySelector:()=>null};
   const context=vm.createContext({
-    ...model,...push,...maps,...proposal,e:model.escapeHtml,ApiError,
+    ...pickupControls,...model,...push,...maps,...proposal,e:model.escapeHtml,ApiError,
     openPickupStream:()=>({close(){}}),
     request:async(path,options={})=>{
       (options.method && options.method!=='GET'?writes:reads).push({path,...options});
+      if(path.endsWith('/readiness') && onReadiness) return onReadiness(options);
       if(rejected)throw new ApiError(403,{code:'PARTICIPANT_REVOKED'});
       if(path.endsWith('/vehicle-state'))return {freshness:'WAITING'};
       return {status,place:{label:'시험 장소',latitude:37,longitude:127},participant:{readiness:'READY'}};
@@ -35,7 +37,7 @@ async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=fa
   vm.runInContext(source,context);
   const settle=()=>new Promise(resolve=>setImmediate(resolve));
   await settle();await settle();
-  return {root,reads,writes,store,events,settle};
+  return {root,reads,writes,store,events,settle,context};
 }
 test('같은 링크 재접속은 저장한 참여 권한으로 조회하고 다시 참여하지 않는다',async()=>{
   const ui=await open();
@@ -64,4 +66,24 @@ test('철회된 참여 권한은 지우고 위치 조회를 이어가지 않는�
   const ui=await open({rejected:true});
   assert.match(ui.root.innerHTML,/이 약속에 접근할 수 없어요/);assert.equal(ui.store.size,0);
   assert.equal(ui.reads.length,1);assert.equal(ui.writes.length,0);
+});
+
+test('준비 상태 전송이 끝나기 전에는 빠른 연속 클릭을 다시 전송하지 않는다',async()=>{
+  let finish;
+  const ui=await open({onReadiness:()=>new Promise(resolve=>{finish=resolve;})});
+  const first=vm.runInContext('sendReadiness("PREPARING")',ui.context);
+  await ui.settle();
+  await vm.runInContext('sendReadiness("READY")',ui.context);
+  assert.equal(ui.writes.filter(write=>write.path.endsWith('/readiness')).length,1);
+  finish({status:'ACTIVE',participant:{readiness:'PREPARING',readinessSequence:2,readinessReceivedSequence:1}});
+  await first;
+  assert.doesNotMatch(ui.root.innerHTML,/운전자 내비에/);
+});
+
+test('준비 상태 저장 실패는 이전 상태와 명시적인 재시도 버튼을 남긴다',async()=>{
+  const ui=await open({onReadiness:()=>{throw new Error('test network outage');}});
+  await vm.runInContext('sendReadiness("PREPARING")',ui.context);
+  assert.match(ui.root.innerHTML,/준비 상태 다시 보내기/);
+  assert.match(ui.root.innerHTML,/이전 준비 상태/);
+  assert.match(ui.root.innerHTML,/aria-pressed="true"/);
 });
