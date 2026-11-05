@@ -176,7 +176,8 @@ export function quickMessageControl({ value = '', message = '', online = true, p
   return `<section class="voice-composer-card" aria-label="운전자에게 메시지 보내기">
     <div class="voice-header-row"><strong class="voice-title">운전자에게 메시지</strong><span class="voice-subtitle">차량에서 음성으로 안내해요</span></div>
     <div class="quick-chips">${['지금 내려가요','1번 출구 앞이에요','곧 도착해요'].map(text => `<button type="button" class="quiet quick-chip" data-action="${prefix}quick-msg" data-msg="${escapeHtml(text)}" ${attributes} ${!online ? 'disabled' : ''}>${text}</button>`).join('')}</div>
-    <form class="quick-input-form quick-msg-form" ${attributes}><label class="sr-only">운전자에게 보낼 메시지</label><input type="text" name="quickMsg" class="quick-msg-input" aria-label="운전자에게 보낼 메시지" placeholder="메시지 입력 (최대 100자)" maxlength="100" autocomplete="off" value="${escapeHtml(value)}" ${!online ? 'disabled' : ''}/><button type="submit" class="quick-send-btn" ${!online ? 'disabled' : ''}>전송</button></form>
+    <form class="quick-input-form quick-msg-form" ${attributes}><label class="sr-only">운전자에게 보낼 메시지</label><input type="text" name="quickMsg" class="quick-msg-input" aria-label="운전자에게 보낼 메시지" placeholder="메시지 입력 (최대 50자)" maxlength="50" autocomplete="off" value="${escapeHtml(value)}" ${!online ? 'disabled' : ''}/><button type="submit" class="quick-send-btn" ${!online ? 'disabled' : ''}>전송</button></form>
+    <p class="hint quick-msg-count" data-message-count>${String(value).length}/50자</p>
     ${message ? `<p class="quick-msg-hint">보낸 메시지 · <strong>“${escapeHtml(message)}”</strong></p>` : ''}
   </section>`;
 }
@@ -200,4 +201,31 @@ export function beginReadinessSend(root, value) {
   if (status) status.textContent = "보내는 중…";
   const delivery = card?.querySelector(".readiness-delivery");
   if (delivery) delivery.textContent = "준비 상태를 차량에 보내고 있어요.";
+}
+
+// Arrival is a server state, never inferred from a countdown reaching zero.
+export function pickupStatusNotice(pickup, action = '') {
+  if (!pickup) return '';
+  const titles = {ARRIVED:'마중 차량이 도착했어요', CANCELLED:'픽업이 취소됐어요', EXPIRED:'픽업 시간이 만료됐어요', COMPLETED:'픽업이 완료됐어요'};
+  const title = titles[pickup.status];
+  if (!title) return '';
+  const arrived = pickup.status === 'ARRIVED';
+  return `<section class="pickup-status-notice ${arrived ? 'is-arrived' : 'is-ended'}" role="${arrived ? 'status' : 'alert'}" aria-live="assertive"><div><strong>${title}</strong><p>${arrived ? `${escapeHtml(pickup.place?.label || '약속 장소')} 근처에서 차량을 확인해주세요. 탑승 후 운전자가 픽업을 완료해요.` : '차량 위치 공유가 끝났어요. 이전 도착 시간은 더 이상 유효하지 않아요.'}</p></div>${action}</section>`;
+}
+export function vehicleFreshnessText(view) {
+  if (!view) return '차량 정보를 기다리고 있어요.';
+  if (view.kind === 'lost') return '갱신이 멈춰 도착 시간을 숨겼어요. 연결이 복구되면 다시 표시해요.';
+  return view.kind === 'stale' ? `갱신 지연 · 마지막 정보 ${ageText(view.ageMillis)}. 현재 도착 시간과 다를 수 있어요.` : `차량 정보 ${ageText(view.ageMillis)} 갱신`;
+}
+export const quickMessageSavedText = '메시지를 서버에 저장했어요. 차량 수신 여부는 아직 확인할 수 없어요.';
+
+export function pickupEtaLabel(status, view, online = true) {
+  if (!online) return '인터넷 연결 확인 중';
+  if (status === 'ARRIVED') return '차량 도착 · 약속 장소 확인';
+  if (view?.kind === 'lost') return '차량 위치 확인 중';
+  if (view?.remainingSeconds !== undefined) {
+    const time=view.remainingSeconds > 0 ? `약 ${Math.ceil(view.remainingSeconds/60)}분 후 도착` : '곧 도착 예정';
+    return view.kind === 'stale' ? `마지막 예상 · ${time}` : time;
+  }
+  return '도착 시간 확인 중';
 }

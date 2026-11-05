@@ -32,8 +32,8 @@ export function pushState({ publicKey, supported, ios, standalone, permission, s
 }
 
 const texts = {
-  off: "차량이 약 3분 안에 도착하면 알려드려요. 화면을 닫아도 받을 수 있어요.",
-  on: "도착 약 3분 전에 알림을 보낼게요. 알림은 한 번만 보내요.",
+  off: "도착 약 3분 전과 차량 도착 시 알려드려요. 알림이 늦을 수 있으니 진행 중인 픽업도 확인해주세요.",
+  on: "도착 전·차량 도착 알림을 각각 한 번 보내요. 브라우저와 네트워크 상태에 따라 늦어질 수 있어요.",
   blocked: "알림이 차단되어 있어요. 브라우저 설정에서 허용한 뒤 다시 시도해주세요.",
   "ios-install": "iPhone은 홈 화면에 추가한 앱에서만 알림을 받을 수 있어요. 공유 버튼에서 ‘홈 화면에 추가’한 뒤, 그 앱에서 로그인해 알림을 허용해주세요.",
   unsupported: "이 브라우저는 도착 알림을 지원하지 않아요. 이 화면을 열어 두면 안에서 확인할 수 있어요.",
@@ -48,7 +48,7 @@ export function pushCard(state, { busy = false, message = "", attributes = "" } 
       <div class="push-card-text">
         <div class="push-title-row">
           <span class="push-title-icon">🔔</span>
-          <strong>도착 3분 전 알림</strong>
+          <strong>도착 전·차량 도착 알림</strong>
         </div>
         <p class="hint">${e(texts[state])}</p>
       </div>
@@ -100,7 +100,8 @@ export async function enableArrivalPush(publicKey) {
     subscription = null;
   }
   subscription ??= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-  return subscription.endpoint;
+  const json=subscription.toJSON();
+  return {endpoint:subscription.endpoint, p256dh:json.keys?.p256dh, auth:json.keys?.auth};
 }
 
 export async function disableBrowserPush() {
@@ -129,4 +130,14 @@ export function setPushFlag(id, on) {
   } catch {
     /* Without storage the button simply shows its initial state after a reload. */
   }
+}
+
+// Upgrade an existing consented subscription without prompting or creating a new one.
+export async function existingArrivalSubscription(publicKey) {
+  const registration=await globalThis.navigator?.serviceWorker?.getRegistration?.('/');
+  const subscription=await registration?.pushManager.getSubscription();
+  if (!subscription || !sameKey(subscription,applicationServerKey(publicKey))) return null;
+  const json=subscription.toJSON();
+  if (!json.keys?.p256dh || !json.keys?.auth) return null;
+  return {endpoint:subscription.endpoint,p256dh:json.keys.p256dh,auth:json.keys.auth};
 }

@@ -14,9 +14,9 @@ const otherId='10000000-0000-4000-8000-000000000002';
 const guest={role:'guest',pickupId,participantId:otherId,token:'g'.repeat(43)};
 const link=id=>`#join/${id}/${'i'.repeat(43)}`;
 async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=false,onReadiness=null}={}) {
-  const reads=[],writes=[],events={};
+  const reads=[],writes=[],events={},rootEvents={};
   const store=new Map(saved ? [['majung.pickup.session.v1',JSON.stringify(saved)]]:[]);
-  const root={innerHTML:'',addEventListener(){},contains:()=>false,querySelector:()=>null};
+  const root={innerHTML:'',addEventListener(name,callback){rootEvents[name]=callback;},contains:()=>false,querySelector:()=>null};
   const context=vm.createContext({
     ...pickupControls,...model,...push,...maps,...proposal,e:model.escapeHtml,ApiError,
     openPickupStream:()=>({close(){}}),
@@ -37,7 +37,7 @@ async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=fa
   vm.runInContext(source,context);
   const settle=()=>new Promise(resolve=>setImmediate(resolve));
   await settle();await settle();
-  return {root,reads,writes,store,events,settle,context};
+  return {root,reads,writes,store,events,rootEvents,settle,context};
 }
 test('같은 링크 재접속은 저장한 참여 권한으로 조회하고 다시 참여하지 않는다',async()=>{
   const ui=await open();
@@ -86,4 +86,30 @@ test('준비 상태 저장 실패는 이전 상태와 명시적인 재시도 버
   assert.match(ui.root.innerHTML,/준비 상태 다시 보내기/);
   assert.match(ui.root.innerHTML,/이전 준비 상태/);
   assert.match(ui.root.innerHTML,/aria-pressed="true"/);
+});
+
+test('메시지 입력 중에도 실제 도착 안내를 갱신하고 취소 때 위치 화면을 제거한다',async()=>{
+  const ui=await open();
+  const critical={innerHTML:''};
+  ui.root.contains=()=>true;
+  ui.root.querySelector=selector=>selector==='[data-critical-status]' ? critical : null;
+  ui.context.document.activeElement={tagName:'INPUT',name:'quickMsg',value:'아직 쓰는 중'};
+  vm.runInContext('guestQuickMsgText="아직 쓰는 중"; snapshot.status="ARRIVED"; render()',ui.context);
+  assert.match(critical.innerHTML,/차량이 도착/);
+  assert.equal(vm.runInContext('guestQuickMsgText',ui.context),'아직 쓰는 중');
+  ui.root.contains=()=>false;
+  vm.runInContext('finished={status:"CANCELLED"}; render()',ui.context);
+  assert.match(ui.root.innerHTML,/취소/);
+  assert.doesNotMatch(ui.root.innerHTML,/quick-msg-form|map-slot/);
+});
+test('메시지 저장 실패 때 초안을 지우지 않고 51자는 전송하지 않는다',async()=>{
+  const ui=await open();
+  vm.runInContext('guestQuickMsgText="실패해도 남을 초안"; request=async()=>{throw new ApiError(500,{message:"시험 실패"});}',ui.context);
+  const form={reportValidity:()=>true,classList:{contains:()=>true}};
+  ui.context.FormData=class {get(){return vm.runInContext('guestQuickMsgText',ui.context);}};
+  await ui.rootEvents.submit({preventDefault(){},target:form});
+  assert.equal(vm.runInContext('guestQuickMsgText',ui.context),'실패해도 남을 초안');
+  vm.runInContext('guestQuickMsgText="가".repeat(51)',ui.context);
+  await ui.rootEvents.submit({preventDefault(){},target:form});
+  assert.match(vm.runInContext('message',ui.context),/50자/);
 });

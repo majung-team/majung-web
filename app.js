@@ -1,4 +1,5 @@
-import { readinessControl, quickMessageControl, beginReadinessSend } from "./model.js";
+import { existingArrivalSubscription } from "./push.js";
+import { pickupEtaLabel, pickupStatusNotice, vehicleFreshnessText, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend } from "./model.js";
 import { openPickupStream } from "./stream.js";
 import { request, ApiError } from "./api.js";
 import {
@@ -85,6 +86,7 @@ function showToast(msg, type = "info", duration = 3600) {
   }, duration);
 }
 
+let upgradedPushFor = null;
 const root = document.querySelector("#app");
 const storageKey = "majung.pickup.session.v1";
 let invitation = parseInvitation(location.hash);
@@ -316,17 +318,17 @@ async function toggleArrivalPush(turnOn) {
 
   try {
     if (turnOn) {
-      const endpoint = await enableArrivalPush(pushKey);
+      const subscription = await enableArrivalPush(pushKey);
       await request(`/${current.pickupId}/arrival-push`, {
         method: "PUT",
         token: current.token,
-        body: { endpoint },
+        body: subscription,
       });
       setPushFlag(current.pickupId, true);
     } else {
       await request(`/${current.pickupId}/arrival-push`, { method: "DELETE", token: current.token });
       setPushFlag(current.pickupId, false);
-      await disableBrowserPush();
+      // Keep the browser subscription: another pickup may still use it.
     }
   } catch (error) {
     pushMessage = pushErrorText(error);
@@ -354,25 +356,14 @@ function guest() {
     status,
   );
 
-  let etaText = "도착 시간 계산 중";
-  if (!online) {
-    etaText = "인터넷 연결 확인 중";
-  } else if (status === "ARRIVED") {
-    etaText = "약속 장소 도착 완료";
-  } else if (current?.kind === "lost") {
-    etaText = "차량 위치 확인 중";
-  } else if (current?.remainingSeconds !== undefined) {
-    etaText = current.remainingSeconds > 0 ? `약 ${Math.ceil(current.remainingSeconds / 60)}분 후 도착` : "곧 도착 예정";
-  } else if (vehicle?.freshness === "WAITING") {
-    etaText = "차량 정보 대기 중";
-  }
+  const etaText = pickupEtaLabel(status, current, online);
 
   const vehicleName = snapshot.vehicleName ? e(snapshot.vehicleName) : "";
 
   return `${connection()}<section class="card pickup-live mobility-app-view">
     <div class="pickup-header-row">
       <span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
-      <h1>${status === "ARRIVED" ? "약속 장소에 도착했어요" : "마중 차량이 오고 있어요"}</h1>
+      <h1>${status === "ARRIVED" ? "차량이 도착했어요" : "마중 차량이 오고 있어요"}</h1>
     </div>
 
     <!-- 1. Hero Map with Floating Live Pill -->
@@ -385,13 +376,15 @@ function guest() {
       </div>
     </div>
 
+    <p class="vehicle-freshness" role="status">${e(vehicleFreshnessText(current))}</p>
+    ${pickupMap ? '<button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : '<p class="hint">지도를 불러오지 못했어요. 아래 약속 장소와 도착 상태를 확인해주세요.</p>'}
     <!-- 2. Meeting Place Card -->
     <div class="pickup-place-card">
       <div class="place-card-info">
         <span class="place-card-badge">만날 약속 장소</span>
         <strong class="place-card-name">📍 ${e(snapshot.place?.label || "장소 확인 중")}</strong>
       </div>
-      ${!picking && !snapshot.placeProposal ? `
+      ${!picking && !snapshot.placeProposal && pickupMap && status === "ACTIVE" ? `
         <button type="button" class="place-change-btn" data-action="propose-start"${!online ? " disabled" : ""}>
           장소 변경
         </button>
@@ -406,7 +399,7 @@ function guest() {
 
     <!-- 5. Arrival Notification (도착 알림) -->
     <div class="arrival-push-section">
-      ${arrivalPushCard()}
+      ${status === "ACTIVE" ? arrivalPushCard() : ""}
     </div>
 
     <!-- 6. Footer Info Links -->
@@ -432,9 +425,17 @@ function syncPickupStream() {
 }
 function render() {
   syncPickupStream();
-  // Typing a place description or message must not be interrupted by the periodic redraw.
-  if (picking && proposalPanel.hasFocus()) return;
-  if (root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") return;
+  void upgradeStoredArrivalPush();
+  if (session?.role === 'guest' && location.search !== `?pickup=${session.pickupId}`)
+    history.replaceState(null, '', `/?pickup=${session.pickupId}${location.hash || ''}`);
+  const critical = pickupStatusNotice(finished || snapshot, snapshot?.status === "ARRIVED" && pickupMap ? '<button type="button" data-action="map-recenter" class="primary">차량 위치 확인</button>' : "");
+  root.querySelectorAll?.('[data-action="propose-start"]').forEach(button=>{button.hidden=snapshot?.status !== "ACTIVE";});
+  const criticalNode = root.querySelector("[data-critical-status]");
+  if (criticalNode && criticalNode.innerHTML !== critical) criticalNode.innerHTML = critical;
+  const mustEnd = finished || !session || terminalStatuses.has(snapshot?.status) || (picking && snapshot?.status !== "ACTIVE");
+  // Keep the editor intact, but never defer arrival, revocation or location removal.
+  if (!mustEnd && picking && proposalPanel.hasFocus()) { updateFocusedMap(); return; }
+  if (!mustEnd && root.contains(document.activeElement) && document.activeElement?.tagName === "INPUT") { updateFocusedMap(); return; }
   if (picking && snapshot?.status !== "ACTIVE") {
     picking = false;
     proposalPanel.reset();
@@ -449,7 +450,8 @@ function render() {
   else
     content =
       page === "create" ? createForm() : page === "join" ? joinForm() : home();
-  const markup = `${alerts()}${content}`;
+  const fromPush = !session && /^\?pickup=[0-9a-f-]{36}$/.test(location.search || '') ? '<section class="notice" role="status"><strong>원래 열어둔 픽업 화면을 확인해주세요</strong><p>이 새 탭에는 초대 참여 정보가 없어요. 기존 탭으로 돌아가거나 받은 초대 링크를 다시 열어주세요.</p></section>' : '';
+  const markup = `<div data-critical-status>${critical}</div>${fromPush}${alerts()}${content}`;
   if (markup !== renderedMarkup) {
     const focused = document.activeElement;
     const focusId = root.contains(focused) ? focused.id : null;
@@ -488,6 +490,16 @@ function render() {
   document.title = session
     ? `마중 · ${session.role === "driver" ? "운전자 확인" : "나의 약속"}`
     : "마중 · 함께 만날 약속";
+}
+
+function updateFocusedMap() {
+  const view=vehicleView(vehicleForPlace(snapshot,vehicle),timing,deadline,performance.now(),online,snapshot?.status);
+  const eta=root.querySelector('.floating-eta');
+  if (eta) eta.textContent=pickupEtaLabel(snapshot?.status,view,online);
+  const freshness=root.querySelector('.vehicle-freshness');
+  if (freshness) freshness.textContent=vehicleFreshnessText(view);
+  if (pickupMap && session?.role === 'guest' && snapshot) pickupMap.update(snapshot.place,
+    vehicleView(vehicleForPlace(snapshot, vehicle), timing, deadline, performance.now(), online, snapshot.status), snapshot.placeProposal?.place);
 }
 
 function handleError(error) {
@@ -547,29 +559,16 @@ async function refresh() {
 
       // 1. Vehicle Arrival Detection
       if (prevSnapshot.status !== "ARRIVED" && data.status === "ARRIVED") {
-        if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-        showToast("차량이 약속 장소에 도착했어요!", "arrival", 7000);
+        showToast("차량이 차량이 도착했어요!", "arrival", 7000);
         if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
           try { navigator.vibrate([200, 100, 200, 100, 300]); } catch (_) {}
         }
-        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          try {
-            new Notification("마중 · 차량 도착", {
-              body: "차량이 약속 장소에 도착했어요! 탑승 후 완료를 확인해주세요.",
-              icon: "/favicon.png",
-            });
-          } catch (_) {}
-        }
+
       }
     }
 
     if (terminalStatuses.has(data.status)) {
       if (prevSnapshot && prevSnapshot.status !== data.status && data.status === "COMPLETED") {
-        if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
         showToast("탑승이 확인되어 픽업이 완료되었어요. 잘 만났어요!", "success", 5000);
       }
       finish(data);
@@ -655,6 +654,8 @@ async function mutate(action) {
 root.addEventListener("input", (event) => {
   if (event.target.name === "quickMsg") {
     guestQuickMsgText = event.target.value;
+    const counter=event.target.closest?.('.voice-composer-card')?.querySelector('[data-message-count]');
+    if (counter) counter.textContent=`${guestQuickMsgText.length}/50자`;
   }
 });
 
@@ -676,15 +677,16 @@ root.addEventListener("submit", async (event) => {
   if (form.classList?.contains?.("quick-msg-form") || form.className?.includes?.("quick-msg-form")) {
     const msg = fields.get("quickMsg")?.trim() || guestQuickMsgText.trim();
     if (!msg || !session || session.role !== "guest") return;
-    guestQuickMsgText = "";
+    if (msg.length > 50) { message = "메시지는 50자까지 보낼 수 있어요."; render(); return; }
     await mutate(async () => {
       await request(`/${session.pickupId}/quick-message`, {
         method: "POST",
         token: session.token,
         body: { message: msg },
       });
-      notice = `차량에 “${msg}” 메시지를 전달했어요.`;
-      showToast(`차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
+      guestQuickMsgText = "";
+      notice = quickMessageSavedText;
+      showToast(quickMessageSavedText, "info", 5000);
     });
     return;
   }
@@ -799,7 +801,7 @@ root.addEventListener("click", async (event) => {
     await toggleArrivalPush(action === "push-on");
     return;
   }
-  if (action === "propose-start" && session?.role === "guest") {
+  if (action === "propose-start" && session?.role === "guest" && snapshot?.status === "ACTIVE") {
     picking = true;
     render();
     return;
@@ -882,23 +884,15 @@ root.addEventListener("click", async (event) => {
     );
     return;
   }
+  if (action === "map-recenter") { pickupMap?.recenter(); root.querySelector(".pickup-map")?.scrollIntoView?.({block:"center",behavior:"smooth"}); return; }
   if (action === "guest-quick-msg") {
     if (!online || !session || session.role !== "guest") return;
     const msg = target.dataset.msg;
     if (!msg) return;
-    try {
-      await request(`/${session.pickupId}/quick-message`, {
-        method: "POST",
-        token: session.token,
-        body: { message: msg },
-      });
-      notice = `차량에 “${msg}” 메시지를 전달했어요.`;
-      showToast(`차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
-      await refresh();
-    } catch {
-      notice = "메시지를 전달하지 못했어요. 다시 시도해주세요.";
-      render();
-    }
+    await mutate(async () => {
+      await request(`/${session.pickupId}/quick-message`, {method:"POST", token:session.token, body:{message:msg}});
+      notice = quickMessageSavedText;
+    });
     return;
   }
   if (!session || session.role !== "driver" || !online) return;
@@ -1007,3 +1001,20 @@ window.addEventListener("pageshow", event => {
   void refresh();
 });
 document.addEventListener("visibilitychange",()=>{syncPickupStream();if(!document.hidden)streamRefreshPending=true;});
+
+if (globalThis.navigator?.serviceWorker?.addEventListener) navigator.serviceWorker.addEventListener('message', event => {
+  if (event.data?.type==='MAJUNG_PICKUP_REFRESH') { lastSafetyRefresh=0; void refresh(); }
+});
+
+// Update an existing worker without asking for notification permission on page load.
+void globalThis.navigator?.serviceWorker?.getRegistration?.('/')?.then(registration=>registration?.update()).catch(()=>{});
+
+async function upgradeStoredArrivalPush() {
+  const current=session;
+  if (!pushKey || current?.role!=='guest' || !pushFlag(current.pickupId) || upgradedPushFor===current || !['ACTIVE','ARRIVED'].includes(snapshot?.status)) return;
+  upgradedPushFor=current;
+  try {
+    const body=await existingArrivalSubscription(pushKey);
+    if (body && session===current) await request(`/${current.pickupId}/arrival-push`,{method:'PUT',token:current.token,body});
+  } catch { /* An explicit toggle can retry; never replay a failed subscription write. */ }
+}

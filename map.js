@@ -45,6 +45,15 @@ export function createPickupMap(maps) {
   let placeMarker = null;
   let carOverlay = null;
   let fittedFor = null;
+  let latestBounds = null;
+  function recenter() {
+    if (!map || !latestBounds) return;
+    if (latestBounds.car) {
+      const bounds = new maps.LatLngBounds();
+      bounds.extend(latestBounds.place); bounds.extend(latestBounds.car);
+      map.setBounds(bounds, 72, 112, 72, 112);
+    } else map.setCenter(latestBounds.place);
+  }
   // Suggested place and the pin being placed use their own markers; the confirmed place is never moved.
   const proposalElement = markerElement("proposal-marker", "제안");
   const pinElement = markerElement("pin-marker", "여기");
@@ -69,6 +78,7 @@ export function createPickupMap(maps) {
   }
 
   return {
+    recenter,
     attach(slot) {
       if (!slot) return;
       if (slot !== element) slot.replaceWith(element);
@@ -91,6 +101,7 @@ export function createPickupMap(maps) {
         proposalOverlay.setPosition(new maps.LatLng(proposal.latitude, proposal.longitude));
         proposalOverlay.setMap(map);
       } else proposalOverlay.setMap(null);
+      latestBounds = {place:placePosition, car:hasCar ? carOverlay.getPosition() : null};
       // Fit once when the car appears or disappears; later updates leave the viewer's panning alone.
       const fitKey = `${place.latitude},${place.longitude},${hasCar}`;
       if (fittedFor === fitKey) return;
