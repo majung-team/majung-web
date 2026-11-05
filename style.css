@@ -1121,15 +1121,15 @@ button, .button {
 /* Floating Toast Notification System (Apple Dynamic Island Capsule Style) */
 .toast-container {
   position: fixed;
-  top: max(16px, env(safe-area-inset-top, 16px));
-  left: 50%;
-  transform: translateX(-50%);
+  top: max(14px, env(safe-area-inset-top, 14px));
+  left: 0;
+  right: 0;
   z-index: 10000;
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100%;
   pointer-events: none;
+  padding: 0 16px;
 }
 
 .toast {
@@ -1140,9 +1140,9 @@ button, .button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 18px;
+  padding: 9px 18px;
   border-radius: 9999px;
-  background: rgba(18, 22, 31, 0.92);
+  background: rgba(18, 24, 38, 0.94);
   color: #f8fafc;
   font-size: 13.5px;
   font-weight: 500;
@@ -1151,57 +1151,52 @@ button, .button {
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.35), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
-  width: fit-content;
-  max-width: min(440px, calc(100vw - 32px));
-  animation: toast-spring 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.3), 0 3px 8px -1px rgba(0, 0, 0, 0.15);
+  width: auto;
+  max-width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
+  animation: toast-spring 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.toast-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
+.toast .toast-symbol {
+  font-size: 15px;
+  line-height: 1;
+  display: inline-block;
   flex-shrink: 0;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  width: auto !important;
+  height: auto !important;
 }
 
-.toast-icon.success {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #10b981;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.toast-text {
-  white-space: normal;
-  word-break: keep-all;
-  text-align: left;
+.toast .toast-text {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .toast.toast-arrival {
-  background: rgba(6, 78, 59, 0.94);
-  border-color: rgba(52, 211, 153, 0.4);
-  box-shadow: 0 12px 32px -4px rgba(5, 150, 105, 0.35), 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.toast.toast-success {
-  background: rgba(15, 23, 42, 0.94);
-  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(52, 211, 153, 0.45);
+  box-shadow: 0 8px 24px -2px rgba(16, 185, 129, 0.25), 0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
 .toast.toast-hiding {
   opacity: 0;
-  transform: translate3d(0, -16px, 0) scale(0.94);
+  transform: translate3d(0, -12px, 0) scale(0.96);
 }
 
 @keyframes toast-spring {
   from {
     opacity: 0;
-    transform: translate3d(0, -22px, 0) scale(0.92);
+    transform: translate3d(0, -18px, 0) scale(0.94);
   }
   to {
     opacity: 1;
@@ -1209,70 +1204,15 @@ button, .button {
   }
 }
 
-/* Vehicle Arrived Card & Banner Highlights */
-.badge.badge-arrived {
-  background: #d1fae5;
-  color: #065f46;
-  border-color: #6ee7b7;
-  font-weight: 700;
-}
-
-.arrival-desc {
+/* In-Page Arrival Notice */
+.pickup-live .arrival-notice {
   font-size: 14.5px;
-  color: #047857;
-  font-weight: 500;
-  margin: 4px 0 12px;
-  line-height: 1.45;
-}
-
-.pickup-live .arrival.arrived-highlight {
-  background: linear-gradient(145deg, #ecfdf5 0%, #f0fdf4 100%);
-  border: 1.5px solid #10b981;
-  border-radius: 18px;
-  padding: 22px 18px;
-  margin: 16px 0 20px;
-  text-align: center;
-  box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.22);
-  animation: arrival-bounce-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.arrival-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
-  border-radius: 9999px;
-  background: #10b981;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-}
-
-.pickup-live .arrival.arrived-highlight h2 {
-  font-size: 24px;
-  font-weight: 800;
-  color: #064e3b;
-  letter-spacing: -0.5px;
-  margin: 0 0 6px;
-}
-
-.pickup-live .arrival.arrived-highlight p {
-  font-size: 14px;
-  color: #047857;
   line-height: 1.5;
-  margin: 0;
-}
-
-@keyframes arrival-bounce-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  color: var(--muted, #475569);
+  margin: 8px 0 16px;
+  background: var(--surface-secondary, #f8fafc);
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: var(--radius-md, 14px);
+  padding: 14px 18px;
+  text-align: center;
 }

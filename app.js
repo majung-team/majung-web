@@ -29,7 +29,7 @@ import { loadKakaoMaps, createPickupMap, searchPickupPlaces } from "./map.js";
 import { proposalBlock, createProposalPanel } from "./proposal.js";
 
 let toastTimer = null;
-function showToast(msg, type = "info", duration = 3800) {
+function showToast(msg, type = "info", duration = 3600) {
   if (typeof document === "undefined" || !document.body || typeof document.getElementById !== "function") return;
   let container = document.getElementById("toast-container");
   if (!container) {
@@ -60,18 +60,18 @@ function showToast(msg, type = "info", duration = 3800) {
   else if (type === "warning") iconText = "⚠️";
 
   const cleanMsg = String(msg).replace(/^(💬|🎉|🚗|📍|🚘|⏱️|✨|👍)\s*/, "");
-  toast.innerHTML = `<span class="toast-icon ${type}">${iconText}</span><span class="toast-text">${e(cleanMsg)}</span>`;
+  toast.innerHTML = `<span class="toast-symbol">${iconText}</span><span class="toast-text">${e(cleanMsg)}</span>`;
 
   toast.addEventListener("click", () => {
     toast.classList.add("toast-hiding");
-    setTimeout(() => toast.remove(), 200);
+    setTimeout(() => toast.remove(), 180);
   });
   container.appendChild(toast);
 
   if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
     try {
-      if (type === "arrival") navigator.vibrate([200, 100, 200, 100, 300]);
-      else if (type === "success") navigator.vibrate([100, 50, 100]);
+      if (type === "arrival") navigator.vibrate([150, 80, 150]);
+      else if (type === "success") navigator.vibrate([80, 40, 80]);
       else navigator.vibrate(40);
     } catch (_) {}
   }
@@ -81,7 +81,7 @@ function showToast(msg, type = "info", duration = 3800) {
     setTimeout(() => {
       toast.remove();
       if (toastTimer) toastTimer = null;
-    }, 220);
+    }, 200);
   }, duration);
 }
 
@@ -357,15 +357,14 @@ function guest() {
         ${quickMsgStatus}
       </div>`
     : "";
-  return `${connection()}<section class="card pickup-live ${status === "ARRIVED" ? "arrived-card" : ""}"><span class="badge ${status === "ARRIVED" ? "badge-arrived" : ""}">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
-    <h1>${status === "ARRIVED" ? "차량이 도착했어요." : "마중 차량이 오고 있어요"}</h1>
+  return `${connection()}<section class="card pickup-live"><span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
+    <h1>${status === "ARRIVED" ? "약속 장소에 도착했어요" : "마중 차량이 오고 있어요"}</h1>
     ${vehicleBadge}
-    ${status === "ARRIVED" ? "<p class=\"arrival-desc\">확정된 약속 장소에서 만나세요.<br />탑승 확인 후 공유가 종료돼요.</p>" : ""}
-    <div class="arrival${status === "ARRIVED" ? " arrived-highlight" : ""}${current?.kind === "stale" ? " stale" : ""}" id="arrival-info">${
+    <div class="arrival${current?.kind === "stale" ? " stale" : ""}" id="arrival-info">${
       !online
         ? "<h2>인터넷 연결을 확인하세요.</h2><p>지난 위치와 도착 시간을 숨겼어요.<br />연결이 돌아오면 다시 확인할게요.</p>"
         : status === "ARRIVED"
-          ? `<div class="arrival-pill">🚘 탑승 대기 중</div><h2>약속 장소에 도착했어요.</h2><p>탑승한 뒤 운전자에게 픽업 완료를 확인해주세요.</p>`
+          ? "<p class=\"arrival-notice\">확정된 약속 장소에서 차량에 탑승해주세요.<br />탑승한 뒤 운전자에게 픽업 완료를 확인해주세요.</p>"
           : current?.kind === "lost"
             ? `<h2>위치 확인 중</h2><p>마지막 갱신 ${e(ageText(current.ageMillis))}<br />차량에서 새 정보를 보내면 다시 표시할게요.</p>`
             : current
