@@ -151,11 +151,11 @@ test("새 SDK ETA가 늘거나 줄면 이전 카운트다운 대신 새 값을 �
 test("준비 상태의 서버 저장과 차량 수신을 구분", async () => {
   const { readinessDeliveryText } = await import("../model.js");
   assert.match(readinessDeliveryText({readinessSequence: 0}), /선택하면/);
-  assert.match(readinessDeliveryText({readinessSequence: 2}), /아직 확인되지/);
+  assert.match(readinessDeliveryText({readinessSequence: 2}), /준비 상태를 보냈어요/);
   assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 1}), /기다리고/);
-  assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 2}), /차량 앱에 전달/);
+  assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 2}), /차량에 전달/);
   assert.match(readinessDeliveryText({readinessSequence: 3, readinessReceivedSequence: 2}), /기다리고/);
-  assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 2}, false), /확인하지 못/);
+  assert.match(readinessDeliveryText({readinessSequence: 2, readinessReceivedSequence: 2}, false), /연결을 확인/);
 });
 
 import { vehicleForPlace } from "../model.js";
@@ -168,4 +168,10 @@ test("place changes hide telemetry from either side of a split read", () => {
   assert.equal(vehicleForPlace({}, vehicle), vehicle);
   assert.equal(vehicleForPlace({ placeVersion: 2 }, vehicle), null);
   assert.equal(vehicleForPlace({ placeVersion: -1 }, old), null);
+});
+
+// A successful POST confirms sending, never a driver's read receipt.
+test("message success uses short user-facing wording without a read claim", async () => {
+  const { quickMessageSavedText } = await import("../model.js");
+  assert.equal(quickMessageSavedText, "메시지를 보냈어요.");
 });

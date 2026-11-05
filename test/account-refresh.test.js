@@ -121,15 +121,15 @@ test("직접 새로 확인에 실패해도 이전 위치와 ETA를 숨김", asyn
 
 test("계정 화면은 차량 수신 후 전달 완료로 바꾸고 새 선택은 다시 대기", async () => {
   const app = await screen();
-  assert.match(app.root.innerHTML, /차량 앱으로 전달을 기다리고/);
+  assert.match(app.root.innerHTML, /차량 연결을 기다리고/);
   await app.tick(1000);
   app.receipt(1, 1);
   await app.tick(4000);
-  assert.match(app.root.innerHTML, /차량 앱에 전달됐어요/);
+  assert.match(app.root.innerHTML, /차량에 전달됐어요/);
   app.receipt(2, 1);
   await app.tick(7000);
-  assert.doesNotMatch(app.root.innerHTML, /차량 앱에 전달됐어요/);
-  assert.match(app.root.innerHTML, /차량 앱으로 전달을 기다리고/);
+  assert.doesNotMatch(app.root.innerHTML, /차량에 전달됐어요/);
+  assert.match(app.root.innerHTML, /차량 연결을 기다리고/);
 });
 
 test("지도에서 명시적으로 고른 지점만 장소 설명과 함께 요청", async () => {
@@ -185,7 +185,7 @@ test("통합 계정 화면은 준비 상태 수신 확인과 별도 제안을 �
   app.receipt(1,1);
   vm.runInContext('pickupMap={attach(){},update(){},startPicking(){},stopPicking(){}};',app.context);
   await app.tick(1000);
-  assert.match(app.root.innerHTML,/차량 앱에 전달됐어요/);
+  assert.match(app.root.innerHTML,/차량에 전달됐어요/);
   assert.match(app.root.innerHTML,/내가 제안한 장소/);
   assert.match(app.root.innerHTML,/시험 제안 장소/);
   assert.match(app.root.innerHTML,/운전자가 확인할 때까지 약속 장소는 그대로/);

@@ -136,14 +136,14 @@ export function escapeHtml(value) {
 
 // The receipt confirms the vehicle app received this sequence, not that the driver read it.
 export function readinessDeliveryText(participant, online = true) {
-  if (!online) return "연결이 끊겨 차량 전달 여부를 확인하지 못했어요.";
+  if (!online) return "연결을 확인하고 있어요.";
   const sequence = participant?.readinessSequence;
   const received = participant?.readinessReceivedSequence;
   if (!Number.isSafeInteger(sequence) || sequence <= 0) return "준비 상태를 선택하면 차량에 전달해요.";
-  if (!Number.isSafeInteger(received)) return "서버에 저장했어요. 차량 전달 여부는 아직 확인되지 않았어요.";
+  if (!Number.isSafeInteger(received)) return "준비 상태를 보냈어요.";
   return received >= sequence
-    ? "차량 앱에 전달됐어요. 운전자가 읽었는지는 확인할 수 없어요."
-    : "서버에 저장했어요. 차량 앱으로 전달을 기다리고 있어요.";
+    ? "차량에 전달됐어요."
+    : "차량 연결을 기다리고 있어요.";
 }
 
 // Snapshot and telemetry may be fetched across a place change. Never mix their versions.
@@ -217,7 +217,7 @@ export function vehicleFreshnessText(view) {
   if (view.kind === 'lost') return '갱신이 멈춰 도착 시간을 숨겼어요. 연결이 복구되면 다시 표시해요.';
   return view.kind === 'stale' ? `갱신 지연 · 마지막 정보 ${ageText(view.ageMillis)}. 현재 도착 시간과 다를 수 있어요.` : `차량 정보 ${ageText(view.ageMillis)} 갱신`;
 }
-export const quickMessageSavedText = '메시지를 서버에 저장했어요. 차량 수신 여부는 아직 확인할 수 없어요.';
+export const quickMessageSavedText = '메시지를 보냈어요.';
 
 export function pickupEtaLabel(status, view, online = true) {
   if (!online) return '인터넷 연결 확인 중';

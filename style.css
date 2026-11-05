@@ -1383,29 +1383,22 @@ button, .button {
   text-align: center;
 }
 
-.map-floating-bar {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 16px;
-  border-radius: 9999px;
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  box-shadow: 0 6px 18px -2px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  pointer-events: none;
-  white-space: nowrap;
+.pickup-eta-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 0 18px;
+  color: var(--ink);
 }
+.pickup-eta-summary .floating-eta {
+  font-size: clamp(24px, 5vw, 34px);
+  line-height: 1.35;
+  letter-spacing: -.6px;
+  overflow-wrap: anywhere;
+}
+.eta-vehicle-name { color: var(--muted); font-size: 16px; }
 
 .floating-pulse {
   width: 8px;
