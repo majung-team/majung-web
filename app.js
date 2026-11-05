@@ -1,3 +1,4 @@
+import { readinessControl, quickMessageControl, beginReadinessSend } from "./model.js";
 import { openPickupStream } from "./stream.js";
 import { request, ApiError } from "./api.js";
 import {
@@ -6,7 +7,6 @@ import {
   validSession,
   invitationUrl,
   nextSequence,
-  readinessDeliveryText,
   vehicleDeadline,
   vehicleTiming,
   vehicleView,
@@ -130,6 +130,8 @@ let message = invalidInvitation
 let notice = "";
 let finished = null;
 let pendingReadiness = null;
+let readinessSending = false;
+let readinessRevision = 0;
 let manualLink = false;
 let renderedMarkup = "";
 let developmentToolsEnabled = false;
@@ -190,7 +192,7 @@ const button = (text, action, quiet = false, disabled = false) =>
   `<button type="button" data-action="${action}" class="${quiet ? "quiet" : "primary"}" ${busy || disabled ? "disabled" : ""}>${text}</button>`;
 
 function alerts() {
-  return `${message ? `<div class="alert" role="alert">${e(message)}</div>` : ""}
+  return `${message ? `<div class="alert" role="alert"><strong>확인이 필요해요</strong><p>${e(message)}</p>${session?button("현재 상태 다시 확인", "refresh", true):""}</div>` : ""}
     ${notice ? `<p class="notice" role="status">${e(notice)}</p>` : ""}
     ${!storageAvailable ? '<p class="hint">이 브라우저에서는 세션을 저장할 수 없어요. 새로고침하면 다시 초대가 필요해요.</p>' : ""}`;
 }
@@ -365,11 +367,7 @@ function guest() {
     etaText = "차량 정보 대기 중";
   }
 
-  const isReady = snapshot.participant.readiness === "READY";
   const vehicleName = snapshot.vehicleName ? e(snapshot.vehicleName) : "";
-  const quickMsgStatus = snapshot.quickMessage
-    ? `<p class="quick-msg-hint">차량에 전달된 메시지: <strong>“${e(snapshot.quickMessage.text)}”</strong></p>`
-    : "";
 
   return `${connection()}<section class="card pickup-live mobility-app-view">
     <div class="pickup-header-row">
@@ -403,44 +401,8 @@ function guest() {
     <!-- Inline Proposal Panel (팝업 없이 바로 그 자리에 펼쳐짐) -->
     ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
 
-    <!-- 3. Interactive Passenger Readiness Control (모던 토스/카카오T 스타일 슬라이딩 세그먼트 컨트롤) -->
-    <div class="readiness-card">
-      <div class="readiness-card-header">
-        <span class="readiness-card-title">탑승 준비 상태</span>
-        <span class="readiness-card-status ${isReady ? "ready" : "preparing"}">
-          ${isReady ? "운전자 내비에 '준비 완료' 표시 중" : "준비 중"}
-        </span>
-      </div>
-      <div class="readiness-segmented-control ${isReady ? "is-ready" : "is-preparing"}" role="group" aria-label="탑승 준비 상태 변경">
-        <div class="readiness-slider" aria-hidden="true"></div>
-        <button type="button" class="readiness-seg-btn ${!isReady ? "selected" : ""}" data-action="preparing"${!online ? " disabled" : ""}>
-          준비 중
-        </button>
-        <button type="button" class="readiness-seg-btn ${isReady ? "selected ready" : ""}" data-action="ready"${!online ? " disabled" : ""}>
-          탑승 준비 완료
-        </button>
-      </div>
-    </div>
-
-    ${status === "ARRIVED" ? `<div class="arrival-notice">차량이 약속 장소에 도착했습니다. 탑승 후 운전자가 픽업을 완료합니다.</div>` : ""}
-
-    <!-- 4. Quick Voice Messages (차량 스피커 낭독) -->
-    <div class="voice-composer-card">
-      <div class="voice-header-row">
-        <span class="voice-title">운전자에게 음성 전달</span>
-        <span class="voice-subtitle">차량 스피커로 TTS 낭독</span>
-      </div>
-      <div class="quick-chips">
-        ${button("지금 내려가요", "guest-quick-msg", true, !online, 'data-msg="지금 내려가요" class="quick-chip"')}
-        ${button("1번 출구 앞이에요", "guest-quick-msg", true, !online, 'data-msg="1번 출구 앞이에요" class="quick-chip"')}
-        ${button("곧 도착해요", "guest-quick-msg", true, !online, 'data-msg="곧 도착해요" class="quick-chip"')}
-      </div>
-      <form class="quick-input-form quick-msg-form" data-role="guest">
-        <input type="text" name="quickMsg" class="quick-msg-input" placeholder="스피커로 낭독할 메시지 입력 (최대 100자)" maxlength="100" autocomplete="off" value="${e(guestQuickMsgText)}"${!online ? " disabled" : ""} />
-        <button type="submit" class="quick-send-btn"${!online ? " disabled" : ""}>전송</button>
-      </form>
-      ${quickMsgStatus ? `<div class="action-feedback">${quickMsgStatus}</div>` : ""}
-    </div>
+    ${readinessControl({ participant: snapshot.participant, online, sending: readinessSending, pendingValue: pendingReadiness, retry: pendingReadiness })}
+    ${quickMessageControl({ value: guestQuickMsgText, message: snapshot.quickMessage?.text, online, attributes: 'data-role="guest"' })}
 
     <!-- 5. Arrival Notification (도착 알림) -->
     <div class="arrival-push-section">
@@ -451,7 +413,7 @@ function guest() {
     <div class="pickup-footer-links">
       <a href="https://majung.cloud/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>
       <span class="footer-divider">·</span>
-      <a href="https://majung.cloud/terms" target="_blank" rel="noopener noreferrer">위치 공유 안내</a>
+      <a href="/privacy" target="_blank" rel="noopener noreferrer">위치 공유 안내</a>
     </div>
   </section>`;
 }
@@ -554,16 +516,17 @@ function handleError(error) {
 }
 
 async function refresh() {
-  if (!session || refreshing || busy || document.hidden) return;
+  if (!session || refreshing || busy || readinessSending || document.hidden) return;
   refreshing = true;
   const currentSession = session;
   const generation = epoch;
   const prevSnapshot = snapshot;
+  const readinessRevisionAtStart = readinessRevision;
   try {
     const data = await request(`/${currentSession.pickupId}`, {
       token: currentSession.token,
     });
-    if (generation !== epoch || currentSession !== session || busy) return;
+    if (generation !== epoch || currentSession !== session || busy || readinessRevisionAtStart !== readinessRevision) return;
     snapshot = data;
     online = true;
     message = "";
@@ -623,7 +586,7 @@ async function refresh() {
           `/${currentSession.pickupId}/vehicle-state`,
           { token: currentSession.token },
         );
-        if (generation !== epoch || currentSession !== session || busy) return;
+        if (generation !== epoch || currentSession !== session || busy || readinessRevisionAtStart !== readinessRevision) return;
         vehicle = vehicleForPlace(snapshot, state);
         const received = performance.now();
         deadline = vehicleDeadline(state, started, received);
@@ -658,7 +621,7 @@ async function refresh() {
     timing = null;
     }
   } catch (error) {
-    if (generation !== epoch || currentSession !== session || busy) return;
+    if (generation !== epoch || currentSession !== session || busy || readinessRevisionAtStart !== readinessRevision) return;
     // Any failed read invalidates the displayed position, even if it is an HTTP error.
     online = false;
     vehicle = null;
@@ -791,43 +754,29 @@ async function sendProposal(place) {
 }
 
 async function sendReadiness(value) {
-  if (busy) return;
+  if (busy || readinessSending || !session || session.role !== "guest" || !["READY", "PREPARING"].includes(value)) return;
+  const current = session;
+  const generation = epoch;
   pendingReadiness = value;
-  const isReadyVal = value === "READY";
-
-  // Instant smooth 60fps sliding feedback in the DOM!
-  const control = root.querySelector(".readiness-segmented-control");
-  if (control) {
-    control.classList.toggle("is-ready", isReadyVal);
-    control.classList.toggle("is-preparing", !isReadyVal);
-    const readyBtn = control.querySelector('[data-action="ready"]');
-    const prepBtn = control.querySelector('[data-action="preparing"]');
-    if (readyBtn && prepBtn) {
-      readyBtn.classList.toggle("selected", isReadyVal);
-      readyBtn.classList.toggle("ready", isReadyVal);
-      prepBtn.classList.toggle("selected", !isReadyVal);
-    }
-    const statusEl = root.querySelector(".readiness-card-status");
-    if (statusEl) {
-      statusEl.className = `readiness-card-status ${isReadyVal ? "ready" : "preparing"}`;
-      statusEl.textContent = isReadyVal ? "운전자 내비에 '준비 완료' 표시 중" : "준비 중";
-    }
-  }
-
+  readinessSending = true;
+  readinessRevision++;
+  message = "";
+  beginReadinessSend(root, value);
   try {
-    const result = await request(`/${session.pickupId}/readiness`, {
-      method: "PUT",
-      token: session.token,
+    const result = await request(`/${current.pickupId}/readiness`, {
+      method: "PUT", token: current.token,
       body: { readiness: value, sequence: nextSequence(snapshot) },
     });
+    if (current !== session || generation !== epoch) return;
     snapshot = result;
     pendingReadiness = null;
-    notice = "준비 상태를 서버에 저장했어요.";
+    notice = "준비 상태를 저장했어요.";
   } catch (error) {
-    handleError(error);
+    if (current === session && generation === epoch) handleError(error);
   } finally {
+    readinessSending = false;
     render();
-    await refresh();
+    if (current === session && generation === epoch) await refresh();
   }
 }
 

@@ -2070,3 +2070,23 @@ button, .button {
     transform: translate3d(-50%, 0, 0);
   }
 }
+
+/* Shared pickup controls keep the same meaning in invite and account views. */
+.readiness-card-header { flex-wrap: wrap; align-items: center; }
+.readiness-card-title, .voice-title { font-size: 16px; }
+.readiness-card-status { font-size: 14px; }
+.readiness-seg-btn { min-height: 52px; height: auto; margin: 0; padding: 12px 8px; font-size: 16px; }
+.readiness-delivery, .readiness-error { font-size: 15px; line-height: 1.65; margin: 12px 0 0; }
+.readiness-error { color: #a52b24; }
+.voice-header-row { flex-wrap: wrap; gap: 8px; }
+.voice-subtitle, .quick-msg-hint { font-size: 15px; line-height: 1.6; }
+.quick-chips { flex-wrap: wrap; }
+.quick-chips .quick-chip { min-height: 48px; white-space: normal; font-size: 15px; }
+.quick-input-form { min-width: 0; }
+.quick-input-form input { min-width: 0; font-size: 16px; }
+.quick-input-form .quick-send-btn { min-height: 48px; }
+.push-card .hint { font-size: 15px; }
+.data-notice, .privacy-link { font-size: 15px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
