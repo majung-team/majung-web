@@ -299,7 +299,19 @@ async function toggleArrivalPush(turnOn) {
   const current = session;
   pushBusy = true;
   pushMessage = "";
-  render();
+
+  // Instant visual feedback for the toggle switch in the DOM!
+  const switchBtn = root.querySelector(".push-toggle-switch");
+  const pushCard = root.querySelector(".push-card");
+  if (switchBtn) {
+    switchBtn.classList.toggle("is-on", turnOn);
+    switchBtn.classList.toggle("is-off", !turnOn);
+    switchBtn.setAttribute("aria-checked", turnOn ? "true" : "false");
+  }
+  if (pushCard) {
+    pushCard.classList.toggle("is-active", turnOn);
+  }
+
   try {
     if (turnOn) {
       const endpoint = await enableArrivalPush(pushKey);
@@ -391,7 +403,7 @@ function guest() {
     <!-- Inline Proposal Panel (팝업 없이 바로 그 자리에 펼쳐짐) -->
     ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
 
-    <!-- 3. Interactive Passenger Readiness Control (모던 토스/카카오T 스타일 세그먼트 컨트롤) -->
+    <!-- 3. Interactive Passenger Readiness Control (모던 토스/카카오T 스타일 슬라이딩 세그먼트 컨트롤) -->
     <div class="readiness-card">
       <div class="readiness-card-header">
         <span class="readiness-card-title">탑승 준비 상태</span>
@@ -399,7 +411,8 @@ function guest() {
           ${isReady ? "운전자 내비에 '준비 완료' 표시 중" : "준비 중"}
         </span>
       </div>
-      <div class="readiness-segmented-control" role="group" aria-label="탑승 준비 상태 변경">
+      <div class="readiness-segmented-control ${isReady ? "is-ready" : "is-preparing"}" role="group" aria-label="탑승 준비 상태 변경">
+        <div class="readiness-slider" aria-hidden="true"></div>
         <button type="button" class="readiness-seg-btn ${!isReady ? "selected" : ""}" data-action="preparing"${!online ? " disabled" : ""}>
           준비 중
         </button>
@@ -778,8 +791,30 @@ async function sendProposal(place) {
 }
 
 async function sendReadiness(value) {
+  if (busy) return;
   pendingReadiness = value;
-  await mutate(async () => {
+  const isReadyVal = value === "READY";
+
+  // Instant smooth 60fps sliding feedback in the DOM!
+  const control = root.querySelector(".readiness-segmented-control");
+  if (control) {
+    control.classList.toggle("is-ready", isReadyVal);
+    control.classList.toggle("is-preparing", !isReadyVal);
+    const readyBtn = control.querySelector('[data-action="ready"]');
+    const prepBtn = control.querySelector('[data-action="preparing"]');
+    if (readyBtn && prepBtn) {
+      readyBtn.classList.toggle("selected", isReadyVal);
+      readyBtn.classList.toggle("ready", isReadyVal);
+      prepBtn.classList.toggle("selected", !isReadyVal);
+    }
+    const statusEl = root.querySelector(".readiness-card-status");
+    if (statusEl) {
+      statusEl.className = `readiness-card-status ${isReadyVal ? "ready" : "preparing"}`;
+      statusEl.textContent = isReadyVal ? "운전자 내비에 '준비 완료' 표시 중" : "준비 중";
+    }
+  }
+
+  try {
     const result = await request(`/${session.pickupId}/readiness`, {
       method: "PUT",
       token: session.token,
@@ -788,7 +823,12 @@ async function sendReadiness(value) {
     snapshot = result;
     pendingReadiness = null;
     notice = "준비 상태를 서버에 저장했어요.";
-  });
+  } catch (error) {
+    handleError(error);
+  } finally {
+    render();
+    await refresh();
+  }
 }
 
 root.addEventListener("click", async (event) => {

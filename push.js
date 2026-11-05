@@ -43,13 +43,28 @@ export function pushCard(state, { busy = false, message = "", attributes = "" } 
   if (state === "hidden") return "";
   const action = state === "off" ? "push-on" : state === "on" ? "push-off" : null;
   const label = state === "off" ? "도착 알림 받기" : "알림 끄기";
-  return `<div class="push-card"><strong>도착 3분 전 알림</strong><p class="hint">${e(texts[state])}</p>${
-    message ? `<p class="hint" role="alert">${e(message)}</p>` : ""
-  }${
-    action
-      ? `<button type="button" data-action="${action}" ${attributes} class="${state === "off" ? "primary" : "quiet"}" ${busy ? "disabled" : ""}>${busy ? "처리하고 있어요…" : label}</button>`
-      : ""
-  }</div>`;
+  return `<div class="push-card ${state === "on" ? "is-active" : ""}">
+    <div class="push-card-header">
+      <div class="push-card-text">
+        <div class="push-title-row">
+          <span class="push-title-icon">🔔</span>
+          <strong>도착 3분 전 알림</strong>
+        </div>
+        <p class="hint">${e(texts[state])}</p>
+      </div>
+      ${
+        action
+          ? `<button type="button" role="switch" aria-checked="${state === "on" ? "true" : "false"}" data-action="${action}" ${attributes} class="push-toggle-switch ${state === "on" ? "is-on" : "is-off"}" ${busy ? "disabled" : ""} aria-label="도착 알림 ${state === "on" ? "끄기" : "받기"}">
+              <span class="push-switch-track">
+                <span class="push-switch-thumb"></span>
+              </span>
+              <span class="sr-only">${busy ? "처리하고 있어요…" : label}</span>
+            </button>`
+          : ""
+      }
+    </div>
+    ${message ? `<p class="hint" role="alert">${e(message)}</p>` : ""}
+  </div>`;
 }
 
 export function pushErrorText(error) {
