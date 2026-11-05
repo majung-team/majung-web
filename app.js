@@ -327,6 +327,7 @@ function guest() {
     return `${connection()}<section class="card"><span class="badge">${status === "INVITE_EXPIRED" ? "참여 기한 만료" : "참여 요청 완료"}</span>
     <h1>${status === "INVITE_EXPIRED" ? "새 초대를<br />받아주세요." : "운전자 확인을<br />기다리고 있어요."}</h1><p>${status === "INVITE_EXPIRED" ? "운전자에게 새 링크를 요청해주세요." : "확인되면 이 화면에서<br />약속 장소와 도착 정보를 볼 수 있어요."}</p>
     <div class="empty-state">아직 차량 위치를 공유하지 않아요.</div></section>`;
+
   const current = vehicleView(
     vehicleForPlace(snapshot, vehicle),
     timing,
@@ -335,49 +336,105 @@ function guest() {
     online,
     status,
   );
-  const vehicleBadge = snapshot.vehicleName
-    ? `<div class="vehicle-badge" aria-label="차량 정보">🚘 ${e(snapshot.vehicleName)}</div>`
-    : "";
+
+  let etaText = "도착 시간 계산 중";
+  if (!online) {
+    etaText = "인터넷 연결 확인 중";
+  } else if (status === "ARRIVED") {
+    etaText = "약속 장소 도착 완료";
+  } else if (current?.kind === "lost") {
+    etaText = "차량 위치 확인 중";
+  } else if (current?.remainingSeconds !== undefined) {
+    etaText = current.remainingSeconds > 0 ? `약 ${Math.ceil(current.remainingSeconds / 60)}분 후 도착` : "곧 도착 예정";
+  } else if (vehicle?.freshness === "WAITING") {
+    etaText = "차량 정보 대기 중";
+  }
+
+  const isReady = snapshot.participant.readiness === "READY";
+  const vehicleName = snapshot.vehicleName ? e(snapshot.vehicleName) : "";
   const quickMsgStatus = snapshot.quickMessage
     ? `<p class="quick-msg-hint">차량에 전달된 메시지: <strong>“${e(snapshot.quickMessage.text)}”</strong></p>`
     : "";
-  const quickMsgSection = ["ACTIVE", "ARRIVED"].includes(status)
-    ? `<div class="quick-messages" role="group" aria-label="차량으로 음성 전달">
-        <span class="quick-title">차량으로 음성 전달</span>
-        <form class="quick-input-form quick-msg-form" data-role="guest">
-          <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off" value="${e(guestQuickMsgText)}"${!online ? " disabled" : ""} />
-          <button type="submit" class="quick-send-btn"${!online ? " disabled" : ""}>전송</button>
-        </form>
-        <span class="quick-chips-label">자주 쓰는 말</span>
-        <div class="quick-chips">
-          ${button("지금 내려가요", "guest-quick-msg", true, !online, 'data-msg="지금 내려가요"')}
-          ${button("1번 출구 앞이에요", "guest-quick-msg", true, !online, 'data-msg="1번 출구 앞이에요"')}
-          ${button("곧 도착해요", "guest-quick-msg", true, !online, 'data-msg="곧 도착해요"')}
+
+  return `${connection()}<section class="card pickup-live compact-mobility-view">
+    <div class="pickup-header-row">
+      <span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
+      <h1>${status === "ARRIVED" ? "약속 장소에 도착했어요" : "마중 차량이 오고 있어요"}</h1>
+    </div>
+
+    <!-- 1. Hero Map with Floating Live Pill -->
+    <div class="map-wrapper${!pickupMap ? " no-map" : ""}">
+      ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : '<div class="map-fallback"><div class="coordinates">차량 위치 · 위도 ' + (current?.latitude ? e(current.latitude.toFixed(5)) : "-") + ', 경도 ' + (current?.longitude ? e(current.longitude.toFixed(5)) : "-") + '</div></div>'}
+      <div class="map-floating-bar" aria-live="polite">
+        <span class="floating-pulse ${status === "ARRIVED" ? "pulse-arrived" : ""}"></span>
+        <span class="floating-eta">${e(etaText)}</span>
+        ${vehicleName ? `<span class="floating-divider">·</span><span class="floating-vehicle">🚘 ${vehicleName}</span>` : ""}
+      </div>
+    </div>
+
+    <!-- 2. Compact Summary Bar (Place & Readiness) -->
+    <div class="pickup-summary-bar">
+      <div class="summary-place">
+        <span class="summary-label">함께 만날 장소</span>
+        <strong class="summary-place-name">📍 ${e(snapshot.place?.label || "장소 확인 중")}</strong>
+      </div>
+      <div class="summary-badge ${isReady ? "badge-ready" : "badge-preparing"}">
+        ${isReady ? "✓ 탑승 준비 완료" : "⏳ 탑승 준비 중"}
+      </div>
+    </div>
+
+    ${status === "ARRIVED" ? `<div class="arrival-notice">확정된 장소에서 차량에 탑승해주세요. 탑승 확인 후 운전자가 픽업을 완료해요.</div>` : ""}
+
+    <!-- 3. One-Touch Action Deck (Primary Buttons & Quick Voice Chips) -->
+    <div class="action-deck" role="group" aria-label="탑승자 빠른 조작">
+      <div class="action-deck-row">
+        ${button(
+          isReady ? "✓ 준비 완료됨" : "탑승 준비 완료",
+          "ready",
+          !isReady,
+          !online,
+          `class="deck-main-btn ${isReady ? "deck-btn-active" : "deck-btn-primary"}"`
+        )}
+        ${button(
+          "⚡ 지금 내려가요",
+          "guest-quick-msg",
+          true,
+          !online,
+          'data-msg="지금 내려가요" class="deck-main-btn deck-btn-quick"'
+        )}
+      </div>
+      <div class="action-chips-row">
+        ${button("1번 출구 앞이에요", "guest-quick-msg", true, !online, 'data-msg="1번 출구 앞이에요" class="action-chip"')}
+        ${button("곧 도착해요", "guest-quick-msg", true, !online, 'data-msg="곧 도착해요" class="action-chip"')}
+        ${isReady ? button("준비 중으로 변경", "preparing", true, !online, 'class="action-chip chip-quiet"') : ""}
+      </div>
+      ${quickMsgStatus ? `<div class="action-feedback">${quickMsgStatus}</div>` : ""}
+      ${pendingReadiness && online ? `<div class="action-feedback"><small>전송 결과를 확인하지 못했어요. ${button("선택한 상태 다시 보내기", "retry-readiness", true)}</small></div>` : ""}
+    </div>
+
+    <!-- 4. Collapsible Drawer for Secondary Actions (Custom message, Place proposal, Push notifications) -->
+    <details class="guest-drawer"${picking || snapshot.placeProposal ? " open" : ""}>
+      <summary class="guest-drawer-summary">
+        <span>메시지 직접 입력 · 장소 변경 제안 · 도착 알림 설정</span>
+        <span class="drawer-arrow">▾</span>
+      </summary>
+      <div class="drawer-content">
+        <div class="drawer-section">
+          <span class="drawer-section-title">차량 스피커로 전달할 메시지 직접 입력</span>
+          <form class="quick-input-form quick-msg-form" data-role="guest">
+            <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off" value="${e(guestQuickMsgText)}"${!online ? " disabled" : ""} />
+            <button type="submit" class="quick-send-btn"${!online ? " disabled" : ""}>전송</button>
+          </form>
         </div>
-        ${quickMsgStatus}
-      </div>`
-    : "";
-  return `${connection()}<section class="card pickup-live"><span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
-    <h1>${status === "ARRIVED" ? "약속 장소에 도착했어요" : "마중 차량이 오고 있어요"}</h1>
-    ${vehicleBadge}
-    <div class="arrival${current?.kind === "stale" ? " stale" : ""}" id="arrival-info">${
-      !online
-        ? "<h2>인터넷 연결을 확인하세요.</h2><p>지난 위치와 도착 시간을 숨겼어요.<br />연결이 돌아오면 다시 확인할게요.</p>"
-        : status === "ARRIVED"
-          ? "<p class=\"arrival-notice\">확정된 약속 장소에서 차량에 탑승해주세요.<br />탑승한 뒤 운전자에게 픽업 완료를 확인해주세요.</p>"
-          : current?.kind === "lost"
-            ? `<h2>위치 확인 중</h2><p>마지막 갱신 ${e(ageText(current.ageMillis))}<br />차량에서 새 정보를 보내면 다시 표시할게요.</p>`
-            : current
-              ? `<span>도착까지</span><strong>${current.remainingSeconds > 0 ? `약 ${Math.ceil(current.remainingSeconds / 60)}<small>분</small>` : "곧 도착"}</strong><p>${current.kind === "stale" ? `마지막 갱신 ${e(ageText(current.ageMillis))} · 남은 시간을 이어서 세고 있어요.` : `차량 정보 수신 시각 ${e(new Date(vehicle.receivedAt).toLocaleTimeString("ko-KR"))}`}</p>${pickupMap ? "" : `<div class="coordinates">차량 위치 · 위도 ${e(current.latitude.toFixed(5))}<br />경도 ${e(current.longitude.toFixed(5))}</div>`}`
-              : `<h2>${vehicle?.freshness === "WAITING" ? "차량 정보를 기다리고 있어요." : "최신 정보를 확인하고 있어요."}</h2><p>${vehicle?.freshness === "WAITING" ? "차량에서 정보를 보내면<br />도착 예정 시간을 확인할 수 있어요." : "지난 위치와 도착 시간은 표시하지 않아요."}</p>`
-    }</div>
-    ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : ""}
-    ${placeCard()}${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}<div class="readiness"><strong>${e(readinessText[snapshot.participant.readiness])}</strong><small>${pendingReadiness ? "전송 결과를 확인하지 못했어요. 다시 확인한 뒤 재전송해주세요." : e(readinessDeliveryText(snapshot.participant, online))}</small></div>
-    <div class="button-pair">${button("준비 중", "preparing", snapshot.participant.readiness !== "PREPARING", !online)}${button("준비 완료", "ready", snapshot.participant.readiness !== "READY", !online)}</div>
-    ${pendingReadiness && online ? button("선택한 상태 다시 보내기", "retry-readiness", true) : ""}
-    ${quickMsgSection}
-    <p class="hint">탑승하면 운전자가 픽업을 완료하고 위치 공유를 끝내요.</p>
-    ${status === "ACTIVE" ? arrivalPushCard() : ""}</section>`;
+        <div class="drawer-section">
+          <span class="drawer-section-title">만날 장소 변경 제안</span>
+          ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
+        </div>
+        ${status === "ACTIVE" ? `<div class="drawer-section">${arrivalPushCard()}</div>` : ""}
+        <p class="hint">탑승하면 운전자가 픽업을 완료하고 위치 공유를 끝내요.</p>
+      </div>
+    </details>
+  </section>`;
 }
 
 let pickupStream = null, streamSession = null, streamConnected = false;

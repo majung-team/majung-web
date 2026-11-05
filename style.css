@@ -1209,10 +1209,357 @@ button, .button {
   font-size: 14.5px;
   line-height: 1.5;
   color: var(--muted, #475569);
-  margin: 8px 0 16px;
+  margin: 6px 0 12px;
   background: var(--surface-secondary, #f8fafc);
   border: 1px solid var(--line, #e2e8f0);
   border-radius: var(--radius-md, 14px);
-  padding: 14px 18px;
+  padding: 12px 16px;
   text-align: center;
+}
+
+/* Option A: Compact Mobility View (Hero Map + One-Touch Action Deck) */
+.compact-mobility-view {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+.compact-mobility-view .pickup-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.compact-mobility-view .pickup-header-row .badge {
+  margin-bottom: 0;
+}
+
+.compact-mobility-view .pickup-header-row h1 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink, #1e293b);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+/* 1. Hero Map with Floating Live Pill */
+.map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 290px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--line, #e2e8f0);
+  margin-bottom: 10px;
+  background: #e2e8f0;
+}
+
+.map-wrapper .pickup-map {
+  width: 100%;
+  height: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.map-wrapper.no-map {
+  height: auto;
+  min-height: 80px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-fallback .coordinates {
+  display: block;
+  font-size: 13px;
+  color: var(--muted, #64748b);
+  text-align: center;
+}
+
+.map-floating-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  box-shadow: 0 6px 18px -2px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.floating-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulse-green 1.8s infinite;
+}
+
+.floating-pulse.pulse-arrived {
+  background: #38bdf8;
+  animation: none;
+}
+
+@keyframes pulse-green {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.floating-divider {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  margin: 0 1px;
+}
+
+.floating-vehicle {
+  color: #f1f5f9;
+}
+
+/* 2. Compact Summary Bar (Place & Readiness) */
+.pickup-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.summary-place {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+  letter-spacing: -0.1px;
+}
+
+.summary-place-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink, #1e293b);
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 210px;
+}
+
+.summary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  flex-shrink: 0;
+}
+
+.summary-badge.badge-ready {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.summary-badge.badge-preparing {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+/* 3. One-Touch Action Deck */
+.action-deck {
+  background: #ffffff;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.action-deck-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.deck-main-btn {
+  min-height: 48px !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  cursor: pointer !important;
+}
+
+.deck-btn-primary {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25) !important;
+}
+
+.deck-btn-active {
+  background: #ecfdf5 !important;
+  color: #059669 !important;
+  border: 1.5px solid #10b981 !important;
+}
+
+.deck-btn-quick {
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.deck-btn-quick:hover {
+  background: #f1f5f9 !important;
+}
+
+.action-chips-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.action-chip {
+  min-height: 34px !important;
+  padding: 6px 12px !important;
+  margin: 0 !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  border-radius: 9999px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+}
+
+.action-chip:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.action-chip.chip-quiet {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--muted, #64748b) !important;
+  text-decoration: underline !important;
+}
+
+.action-feedback {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: #059669;
+}
+
+.action-feedback .quick-msg-hint {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+/* 4. Collapsible Drawer for Secondary Actions */
+.guest-drawer {
+  background: #ffffff;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.guest-drawer-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  background: #f8fafc;
+}
+
+.guest-drawer-summary:hover {
+  background: #f1f5f9;
+  color: var(--ink, #1e293b);
+}
+
+.guest-drawer[open] .drawer-arrow {
+  transform: rotate(180deg);
+}
+
+.drawer-arrow {
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+
+.drawer-content {
+  padding: 12px 14px 16px;
+  border-top: 1px solid var(--line, #e2e8f0);
+}
+
+.drawer-section {
+  margin-bottom: 14px;
+}
+
+.drawer-section:last-child {
+  margin-bottom: 0;
+}
+
+.drawer-section-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+  margin-bottom: 6px;
 }
