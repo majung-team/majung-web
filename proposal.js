@@ -19,11 +19,15 @@ export function buildProposal(label, point) {
 export function proposalBlock({ proposal, picking, mapReady, status }) {
   if (!mapReady || status !== "ACTIVE") return "";
   const summary = proposal
-    ? `<div class="proposal"><span>${proposal.proposedBy === "DRIVER" ? "운전자가 제안한 장소" : "내가 제안한 장소"}</span>
-      <div class="proposal-badge pulse">${proposal.proposedBy === "DRIVER" ? "🚗 새 제안 수락 대기" : "📡 차량 전송 완료 · 운전자 확인 대기 중"}</div>
-      <strong>${e(proposal.place.label)}</strong>
-      <small>${proposal.proposedBy === "DRIVER" ? "마음에 들지 않으면 다른 장소를 제안할 수 있어요. " : ""}운전자가 확인할 때까지 약속 장소는 그대로예요.</small>
-      ${proposal.proposedBy === "PASSENGER" ? '<button type="button" data-action="propose-withdraw" class="quiet">제안 취소</button>' : ""}</div>`
+    ? `<div class="proposal">
+        <div class="proposal-badge-row">
+          <span class="proposal-badge">${proposal.proposedBy === "DRIVER" ? "운전자가 제안한 장소" : "내가 제안한 장소"}</span>
+          <span class="proposal-status-tag">${proposal.proposedBy === "DRIVER" ? "수락 대기 중" : "운전자 확인 대기 중"}</span>
+        </div>
+        <strong class="proposal-place-name">${e(proposal.place.label)}</strong>
+        <p class="proposal-desc">${proposal.proposedBy === "DRIVER" ? "마음에 들지 않으면 다른 장소를 제안할 수 있어요. " : ""}운전자가 확인할 때까지 약속 장소는 그대로예요.</p>
+        ${proposal.proposedBy === "PASSENGER" ? '<button type="button" data-action="propose-withdraw" class="quiet proposal-withdraw-btn">제안 취소</button>' : ""}
+      </div>`
     : "";
   const control = picking
     ? '<div data-proposal-slot></div>'
@@ -36,24 +40,82 @@ export function proposalBlock({ proposal, picking, mapReady, status }) {
 export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, onSelectPoint }) {
   let parts = null;
   let point = null;
+  let selectedPlace = null;
   const search = createProposalSearch(searchPlaces, () => renderSearch());
 
   function renderSearch() {
     if (!parts?.results) return;
-    const state=search.state();
-    parts.searchButton.disabled=state.busy;
-    parts.searchButton.textContent=state.busy ? "찾는 중…" : "장소 찾기";
-    parts.results.innerHTML=`${state.message ? `<p class="hint">${e(state.message)}</p>` : ""}${state.done ? `<p class="hint">‘${e(state.keyword)}’ 검색 결과 · 이름과 주소를 확인해주세요.</p>` : ""}${state.items.length ? `<ul class="place-results">${state.items.map((place,index)=>`<li><button type="button" data-proposal-result="${index}" aria-pressed="${Boolean(point && point.latitude===place.latitude && point.longitude===place.longitude && parts.input?.value===place.label)}"><strong>${e(place.label)}</strong><span>${e(place.address || "지도에서 위치를 확인해주세요")}</span></button></li>`).join("")}</ul><div class="pager"><button type="button" data-proposal-page="${state.page-1}" ${state.page===1 || state.busy ? "disabled" : ""}>이전 결과</button><span>${state.page} 페이지</span><button type="button" data-proposal-page="${state.page+1}" ${!state.hasNext || state.busy ? "disabled" : ""}>다음 결과</button></div>` : ""}`;
+    const state = search.state();
+    parts.searchButton.disabled = state.busy;
+    parts.searchButton.textContent = state.busy ? "검색 중…" : "검색";
+
+    if (selectedPlace) {
+      parts.results.innerHTML = `
+        <div class="selected-place-card">
+          <div class="selected-place-info">
+            <span class="selected-place-badge">선택된 장소</span>
+            <strong class="selected-place-title">📍 ${e(selectedPlace.label)}</strong>
+            ${selectedPlace.address ? `<span class="selected-place-address">${e(selectedPlace.address)}</span>` : ""}
+          </div>
+          <button type="button" class="selected-place-change-btn" data-proposal-reopen>다른 장소 검색</button>
+        </div>
+      `;
+      return;
+    }
+
+    parts.results.innerHTML = `${state.message ? `<p class="hint">${e(state.message)}</p>` : ""}${
+      state.items.length
+        ? `<ul class="place-results">${state.items
+            .map(
+              (place, index) =>
+                `<li><button type="button" data-proposal-result="${index}" aria-pressed="${Boolean(
+                  point &&
+                    point.latitude === place.latitude &&
+                    point.longitude === place.longitude &&
+                    parts.input?.value === place.label,
+                )}"><strong>${e(place.label)}</strong><span>${e(
+                  place.address || "지도에서 위치를 확인해주세요",
+                )}</span></button></li>`,
+            )
+            .join(
+              "",
+            )}</ul><div class="pager"><button type="button" data-proposal-page="${
+            state.page - 1
+          }" ${state.page === 1 || state.busy ? "disabled" : ""}>이전</button><span>${
+            state.page
+          } 페이지</span><button type="button" data-proposal-page="${state.page + 1}" ${
+            !state.hasNext || state.busy ? "disabled" : ""
+          }>다음</button></div>`
+        : ""
+    }`;
   }
 
   function build() {
     if (parts) return parts;
     const element = document.createElement("div");
     element.className = "proposal-panel";
-    element.innerHTML = `${searchPlaces ? `<form data-proposal-search class="place-search-form"><label>새 장소 검색<input data-proposal-query maxlength="80" required placeholder="장소명 또는 주소" autocomplete="off" /></label><button class="primary" data-proposal-search-button>장소 찾기</button></form><p class="hint">검색어는 카카오에 전달돼요. 결과를 고른 뒤 핀 위치를 확인해주세요.</p><div data-proposal-results aria-live="polite"></div>` : ""}<p class="hint" data-proposal-hint></p>
-    <label>장소 설명<input data-proposal-label maxlength="${proposalLabelMax}" placeholder="예: 정문 앞" autocomplete="off" /></label>
+    element.innerHTML = `${
+      searchPlaces
+        ? `<form data-proposal-search class="place-search-bar">
+            <div class="search-input-wrap">
+              <span class="search-input-icon">🔍</span>
+              <input data-proposal-query class="search-input" maxlength="80" required placeholder="만날 장소나 주소 검색 (예: 의왕역)" autocomplete="off" />
+            </div>
+            <button type="submit" class="search-submit-btn" data-proposal-search-button>검색</button>
+          </form>
+          <div data-proposal-results aria-live="polite"></div>`
+        : ""
+    }
+    <div class="proposal-memo-group">
+      <label class="proposal-field-label">상세 위치 설명 <small>(선택)</small></label>
+      <input data-proposal-label class="proposal-detail-input" maxlength="${proposalLabelMax}" placeholder="예: 1번 출구 앞 택시 승강장" autocomplete="off" />
+    </div>
+    <p class="hint" data-proposal-hint></p>
     <p class="alert" role="alert" data-proposal-error hidden></p>
-    <div class="button-pair"><button type="button" class="primary" data-proposal-send>제안 보내기</button><button type="button" class="quiet" data-proposal-close>닫기</button></div>`;
+    <div class="button-pair">
+      <button type="button" class="primary proposal-send-btn" data-proposal-send>이 장소로 변경 제안</button>
+      <button type="button" class="quiet proposal-cancel-btn" data-proposal-close>닫기</button>
+    </div>`;
     parts = {
       element,
       input: element.querySelector("[data-proposal-label]"),
@@ -64,19 +126,36 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
       results: element.querySelector("[data-proposal-results]"),
     };
     if (searchPlaces) {
-      element.querySelector("[data-proposal-search]").addEventListener("submit", event => {
-        event.preventDefault(); void search.find(parts.query.value);
+      element.querySelector("[data-proposal-search]").addEventListener("submit", (event) => {
+        event.preventDefault();
+        selectedPlace = null;
+        void search.find(parts.query.value);
       });
-      parts.results.addEventListener("click", event => {
-        const result=event.target.closest("[data-proposal-result]");
-        const page=event.target.closest("[data-proposal-page]");
+      parts.results.addEventListener("click", (event) => {
+        const reopen = event.target.closest("[data-proposal-reopen]");
+        if (reopen) {
+          selectedPlace = null;
+          renderSearch();
+          return;
+        }
+        const result = event.target.closest("[data-proposal-result]");
+        const page = event.target.closest("[data-proposal-page]");
         if (result) {
-          const place=search.choose(Number(result.dataset.proposalResult));
+          const place = search.choose(Number(result.dataset.proposalResult));
           if (!place) return;
-          if (onSelectPoint?.(place)===false) { showError("지도를 다시 연 뒤 장소를 선택해주세요."); return; }
-          point={latitude:place.latitude,longitude:place.longitude};
-          parts.input.value=place.label;showError("");refreshHint();renderSearch();
-        } else if (page && !page.disabled) void search.find(search.state().keyword,Number(page.dataset.proposalPage));
+          if (onSelectPoint?.(place) === false) {
+            showError("지도를 다시 연 뒤 장소를 선택해주세요.");
+            return;
+          }
+          point = { latitude: place.latitude, longitude: place.longitude };
+          selectedPlace = place;
+          parts.input.value = place.label;
+          showError("");
+          refreshHint();
+          renderSearch();
+        } else if (page && !page.disabled) {
+          void search.find(search.state().keyword, Number(page.dataset.proposalPage));
+        }
       });
     }
     element.querySelector("[data-proposal-send]").addEventListener("click", () => {
@@ -94,7 +173,10 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
     element.querySelector("[data-proposal-close]").addEventListener("click", () => onCancel());
     parts.input.addEventListener("input", () => showError(""));
     element.addEventListener("focusout", () =>
-      setTimeout(() => { if (!element.contains(document.activeElement)) onBlur?.(); }, 0));
+      setTimeout(() => {
+        if (!element.contains(document.activeElement)) onBlur?.();
+      }, 0),
+    );
     refreshHint();
     return parts;
   }
@@ -105,7 +187,7 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
   }
   function refreshHint() {
     parts.hint.textContent = point
-      ? "핀을 놓았어요. 다른 곳을 누르면 옮길 수 있어요."
+      ? "지도의 핀을 터치해 원하는 위치로 조정할 수 있어요."
       : "장소를 검색해 고르거나 지도를 눌러 핀을 놓아주세요.";
   }
 
@@ -123,14 +205,15 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
     hasFocus: () => Boolean(parts && parts.element.contains(document.activeElement)),
     reset() {
       point = null;
+      selectedPlace = null;
       search.reset();
       if (!parts) return;
-      if (parts.query) parts.query.value="";
+      if (parts.query) parts.query.value = "";
       parts.input.value = "";
       const sendBtn = parts.element?.querySelector("[data-proposal-send]");
       if (sendBtn) {
         sendBtn.disabled = false;
-        sendBtn.textContent = "제안 보내기";
+        sendBtn.textContent = "이 장소로 변경 제안";
       }
       showError("");
       refreshHint();
