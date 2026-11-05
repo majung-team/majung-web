@@ -106,7 +106,7 @@ function loadServiceWorker() {
     clients: { matchAll: async () => self.windows, openWindow: async (url) => opened.push(url) },
     windows: [],
   };
-  vm.runInNewContext(readFileSync(new URL("../sw.js", import.meta.url), "utf8"), { self });
+  vm.runInNewContext(readFileSync(new URL("../sw.js", import.meta.url), "utf8"), { self, URL });
   const run = (name, event) => {
     let pending;
     handlers[name]({ ...event, waitUntil: (promise) => (pending = promise) });
@@ -119,19 +119,39 @@ test("서비스 워커는 내용 없는 푸시에 고정 문구 알림을 띄움
   const worker = loadServiceWorker();
   await worker.run("push", { data: null });
   assert.equal(worker.shown.length, 1);
-  assert.equal(worker.shown[0].title, "마중");
+  assert.equal(worker.shown[0].title, "마중 · 도착이 가까워요");
   assert.match(worker.shown[0].options.body, /3분/);
-  assert.equal(worker.shown[0].options.tag, "majung-arrival");
+  assert.equal(worker.shown[0].options.tag, "majung-legacy-approaching");
 });
 
 test("알림을 누르면 열려 있는 창으로 가고 없으면 내 연결 화면을 연다", async () => {
   const worker = loadServiceWorker();
   let focused = 0;
-  worker.self.windows = [{ focus: () => (focused++, Promise.resolve()) }];
+  worker.self.windows = [{ url:"https://majung.cloud/account", postMessage(){}, focus: () => (focused++, Promise.resolve()) }];
   await worker.run("notificationclick", { notification: { close: () => worker.closed.push(1) } });
   assert.equal(focused, 1);
   assert.equal(worker.closed.length, 1);
   worker.self.windows = [];
   await worker.run("notificationclick", { notification: { close: () => {} } });
   assert.deepEqual(worker.opened, ["/account"]);
+});
+
+const pickupId='10000000-0000-4000-8000-000000000001';
+test('실제 도착 푸시는 구분된 문구와 픽업 경로로 연결하고 다른 탭을 빼앗지 않는다', async()=>{
+  const worker=loadServiceWorker();
+  const path=`/?pickup=${pickupId}`;
+  await worker.run('push',{data:{json:()=>({kind:'ARRIVED',pickupId,path,sentAt:Date.now()})}});
+  assert.match(worker.shown[0].title,/차량 도착/);
+  assert.equal(worker.shown[0].options.requireInteraction,true);
+  assert.equal(worker.shown[0].options.data.path,path);
+  worker.self.windows=[{url:'https://majung.cloud/account',focus(){throw new Error('wrong pickup');}}];
+  await worker.run('notificationclick',{notification:{data:{path},close(){}}});
+  assert.deepEqual(worker.opened,[path]);
+});
+test('오래된 푸시는 도착을 주장하지 않고 외부 주소는 클릭 대상으로 쓰지 않는다',async()=>{
+  const worker=loadServiceWorker();
+  await worker.run('push',{data:{json:()=>({kind:'ARRIVED',pickupId,path:'https://evil.invalid',sentAt:Date.now()-300000})}});
+  assert.equal(worker.shown.length,0);
+  await worker.run('notificationclick',{notification:{data:{path:'https://evil.invalid'},close(){}}});
+  assert.deepEqual(worker.opened,['/account']);
 });

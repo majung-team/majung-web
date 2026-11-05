@@ -22,13 +22,14 @@ test('지도 인스턴스를 재사용하고 오래된 차는 흐리게, 위치�
     const place={latitude:37.3,longitude:127.3};
     pickup.update(place,{latitude:37.2,longitude:127.2,kind:'fresh'});
     assert.equal(mapsCreated.length,1); assert.equal(mapsCreated[0].fits,1);
+    pickup.recenter(); assert.equal(mapsCreated[0].fits,2);
     assert.match(overlays[1].options.content.innerHTML, /<svg/);
     assert.match(overlays[1].options.content.innerHTML, /마중 차량/);
     assert.equal(overlays[0].options.content.textContent, '만날 장소');
     assert.notEqual(overlays[0].options.content.className, overlays[1].options.content.className);
     pickup.attach(slot);
     pickup.update(place,{latitude:37.21,longitude:127.21,kind:'stale'});
-    assert.equal(mapsCreated.length,1); assert.equal(mapsCreated[0].fits,1);
+    assert.equal(mapsCreated.length,1); assert.equal(mapsCreated[0].fits,2);
     assert.equal(elements[1].stale,true);
     assert.match(elements[1]['aria-label'], /마지막 위치/);
     pickup.update(place,{kind:'lost'});

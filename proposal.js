@@ -15,9 +15,9 @@ export function buildProposal(label, point) {
   return { place: { label: text, latitude: point.latitude, longitude: point.longitude } };
 }
 
-// The picker needs the map; without it the whole block stays hidden.
+// Keep the confirmed/proposed text and withdrawal available when the map fails.
 export function proposalBlock({ proposal, picking, mapReady, status }) {
-  if (!mapReady || status !== "ACTIVE") return "";
+  if (status !== "ACTIVE") return "";
   const summary = proposal
     ? `<div class="proposal">
         <div class="proposal-badge-row">
@@ -29,7 +29,9 @@ export function proposalBlock({ proposal, picking, mapReady, status }) {
         ${proposal.proposedBy === "PASSENGER" ? '<button type="button" data-action="propose-withdraw" class="quiet proposal-withdraw-btn">제안 취소</button>' : ""}
       </div>`
     : "";
-  const control = picking
+  const control = !mapReady
+    ? '<p class="hint" role="status">지도를 불러오지 못했어요. 제안한 장소는 그대로이며, 페이지를 다시 열면 장소 검색을 재시도해요.</p>'
+    : picking
     ? '<div data-proposal-slot></div>'
     : `<button type="button" data-action="propose-start" class="quiet">다른 장소 제안하기</button>`;
   return `${summary}${control}`;

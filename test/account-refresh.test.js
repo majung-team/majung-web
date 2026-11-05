@@ -10,7 +10,7 @@ import * as proposal from "../proposal.js";
 import { AccountError } from "../account-api.js";
 
 // Execute the real account entry point with an isolated DOM shell and controlled API clock.
-async function screen({pairHash = "", contacts = [], searchResults = [], requests, vehicles = []} = {}) {
+async function screen({pairHash = "", contacts = [], searchResults = [], requests, vehicles = [], messageFailure = false} = {}) {
   let now = 0, seconds = 420, fail = false, authenticated = true, trackingReads = 0;
   let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
   const timers = [], events = {}, windowEvents = {}, rootEvents = {}, writes = [];
@@ -22,6 +22,11 @@ async function screen({pairHash = "", contacts = [], searchResults = [], request
   const api = async (path, options = {}) => {
     if (path === "/ride-requests" && options.method === "POST") { writes.push(options.body); return {}; }
     if (/^\/ride-requests\/[^/]+\/(accept-invitation|reject-invitation|cancel)$/.test(path) && options.method==="POST") { writes.push({path}); return {}; }
+    if (path.endsWith('/quick-message')) {
+      writes.push({path,body:options.body});
+      if (messageFailure) throw new AccountError(500,'TEST_FAILURE','메시지를 저장하지 못했어요.');
+      return {};
+    }
     if (fail) throw new Error("test network outage");
     if (path === "/auth/session") return { authenticated, member: { nickname: "시험 탑승자", majungId: "test", profileReady: true } };
     if (path === "/connections" || path.startsWith("/connections?")) return contacts;
@@ -47,7 +52,7 @@ async function screen({pairHash = "", contacts = [], searchResults = [], request
     document: { querySelector: () => root, hidden: false, activeElement: null, addEventListener: (name, callback) => { events[name] = callback; }, createElement: () => ({ innerHTML: "", setAttribute(){}, remove(){}, addEventListener() {}, contains: () => false, querySelector: () => ({ addEventListener() {}, hidden: false, value: "", textContent: "" }) }) },
     window: { addEventListener(name,callback) {windowEvents[name]=callback;} }, location: { href: "https://test.invalid/account", hash: pairHash, search: "", pathname: "/account" },
     history: { replaceState() {} }, sessionStorage: { getItem: key => pairStorage.get(key) || null, setItem(key,value) {pairStorage.set(key,value);}, removeItem(key) {pairStorage.delete(key);} },
-    performance: { now: () => now }, URL, AbortSignal, crypto: {randomUUID:()=>"test-request-id"}, fetch: async () => ({ ok: true, json: async () => ({}) }),
+    performance: { now: () => now }, URL, URLSearchParams, AbortSignal, crypto: {randomUUID:()=>"test-request-id"}, fetch: async () => ({ ok: true, json: async () => ({}) }),
     setInterval: callback => timers.push(callback), CSS: { escape: value => value },
   });
   const source = (await readFile(new URL("../account.js", import.meta.url), "utf8")).replace(/^import .*;\n/gm, "");
@@ -424,4 +429,30 @@ test("같은 이름의 차량은 구분 코드와 연결 시각을 표시하고 
   assert.match(app.root.innerHTML,/차량 연결 해제할까요/);
   assert.match(app.root.innerHTML,/00000022/);
   assert.equal(app.writes.length,0);
+});
+
+test('입력 중에도 계정 픽업을 조회하고 도착 안내만 갱신해 초안을 유지한다',async()=>{
+  const app=await screen();
+  const critical={innerHTML:''};
+  app.root.contains=()=>true;
+  app.root.querySelector=selector=>selector==='[data-critical-status]' ? critical : null;
+  app.context.document.activeElement={tagName:'INPUT',name:'quickMsg'};
+  vm.runInContext('quickMsgDraft["test-ride"]="작성 중인 메시지"',app.context);
+  const reads=app.reads(); await app.tick(1000); assert.ok(app.reads()>reads);
+  vm.runInContext('tracking.get("test-ride").pickup.status="ARRIVED"; updateCriticalAccount()',app.context);
+  assert.match(critical.innerHTML,/차량이 도착/);
+  assert.equal(vm.runInContext('quickMsgDraft["test-ride"]',app.context),'작성 중인 메시지');
+});
+
+test('계정 메시지도 전송 실패 때 입력 초안을 유지하고 수신 완료라고 안내하지 않는다',async()=>{
+  const app=await screen({messageFailure:true});
+  const input={name:'quickMsg',value:'다시 입력하지 않을 메시지',closest:selector=>selector==='form'?{dataset:{id:'test-ride'}}:null};
+  app.rootEvents.input({target:input});
+  const form={classList:{contains:()=>true},querySelector:()=>input,dataset:{id:'test-ride'}};
+  app.rootEvents.submit({preventDefault(){},target:form});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(app.root.innerHTML,/다시 입력하지 않을 메시지/);
+  assert.match(app.root.innerHTML,/저장하지 못했어요/);
+  assert.doesNotMatch(app.root.innerHTML,/차량에 .*메시지를 전달했어요/);
+  assert.equal(app.writes.length,1);
 });

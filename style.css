@@ -2090,3 +2090,22 @@ button, .button {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Important pickup changes stay visible even while an editor owns focus. */
+[data-critical-status]:empty { display:none; }
+[data-critical-status] { position:sticky; top:0; z-index:30; }
+.pickup-status-notice { display:flex; align-items:center; justify-content:space-between; gap:20px; background:#fff; border:2px solid #2669dd; border-radius:20px; padding:20px 24px; margin:16px 0 24px; box-shadow:0 4px 18px #172b4d16; }
+.pickup-status-notice strong { display:block; font-size:24px; line-height:1.4; color:#1454c1; }
+.pickup-status-notice p { margin:8px 0 0; font-size:16px; line-height:1.6; }
+.pickup-status-notice.is-arrived { background:#edf5ff; }
+.pickup-status-notice.is-ended { border-color:#64748b; }
+.vehicle-freshness { font-size:16px; line-height:1.6; margin:16px 0; }
+.queue-summary { border-radius:16px; background:#f1f5fa; padding:20px; margin:20px 0; }
+.queue-summary summary { cursor:pointer; padding:12px 0; }
+.menu-badge { display:inline-block; min-width:22px; padding:2px 6px; margin-left:6px; border-radius:20px; background:#2669dd; color:#fff; font-size:13px; }
+.map-recenter { margin:12px 0 24px; }
+@media(max-width:600px) { .pickup-status-notice { flex-direction:column; align-items:stretch; padding:18px; } .pickup-status-notice strong {font-size:22px;} }
+
+.pickup-status-notice > div { flex:1; min-width:0; }
+.pickup-status-notice button { width:auto; flex:0 0 auto; min-width:120px; margin:0; }
+@media(max-width:600px) { .pickup-status-notice button {width:100%;} }

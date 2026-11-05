@@ -13,8 +13,9 @@ test("핀과 설명이 모두 있어야 제안을 만들고 설명은 공백을 
   assert.ok(buildProposal("가".repeat(120), point).place);
 });
 
-test("지도가 없거나 진행 중이 아니면 제안 영역을 숨김", () => {
-  assert.equal(proposalBlock({ proposal: null, picking: false, mapReady: false, status: "ACTIVE" }), "");
+test("지도 실패에도 제안 취소와 장소 설명을 남기고 종료 상태에서만 숨김", () => {
+  const offline=proposalBlock({proposal:{proposedBy:"PASSENGER",place:{label:"정문 앞"}},picking:false,mapReady:false,status:"ACTIVE"});
+  assert.match(offline,/정문 앞/); assert.match(offline,/propose-withdraw/); assert.doesNotMatch(offline,/data-action="propose-start"/);
   assert.equal(proposalBlock({ proposal: null, picking: false, mapReady: true, status: "ARRIVED" }), "");
 });
 
