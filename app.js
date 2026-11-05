@@ -28,8 +28,9 @@ import {
 import { loadKakaoMaps, createPickupMap, searchPickupPlaces } from "./map.js";
 import { proposalBlock, createProposalPanel } from "./proposal.js";
 
-function showToast(msg, type = "info", duration = 4000) {
-  if (typeof document === "undefined" || !document.body) return;
+let toastTimer = null;
+function showToast(msg, type = "info", duration = 3800) {
+  if (typeof document === "undefined" || !document.body || typeof document.getElementById !== "function") return;
   let container = document.getElementById("toast-container");
   if (!container) {
     container = document.createElement("div");
@@ -38,23 +39,49 @@ function showToast(msg, type = "info", duration = 4000) {
     container.setAttribute("aria-live", "polite");
     document.body.appendChild(container);
   }
+
+  // Singleton: dismiss previous toast immediately so toasts never stack
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+  const existing = container.querySelector(".toast");
+  if (existing) {
+    existing.remove();
+  }
+
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
-  toast.textContent = msg;
+  toast.setAttribute("role", "status");
+
+  let iconText = "💬";
+  if (type === "arrival") iconText = "🚘";
+  else if (type === "success") iconText = "✓";
+  else if (type === "warning") iconText = "⚠️";
+
+  const cleanMsg = String(msg).replace(/^(💬|🎉|🚗|📍|🚘|⏱️|✨|👍)\s*/, "");
+  toast.innerHTML = `<span class="toast-icon ${type}">${iconText}</span><span class="toast-text">${e(cleanMsg)}</span>`;
+
+  toast.addEventListener("click", () => {
+    toast.classList.add("toast-hiding");
+    setTimeout(() => toast.remove(), 200);
+  });
   container.appendChild(toast);
 
   if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
     try {
-      if (type === "success") navigator.vibrate([100, 50, 100]);
-      else navigator.vibrate(60);
+      if (type === "arrival") navigator.vibrate([200, 100, 200, 100, 300]);
+      else if (type === "success") navigator.vibrate([100, 50, 100]);
+      else navigator.vibrate(40);
     } catch (_) {}
   }
 
-  setTimeout(() => {
+  toastTimer = setTimeout(() => {
     toast.classList.add("toast-hiding");
     setTimeout(() => {
       toast.remove();
-    }, 250);
+      if (toastTimer) toastTimer = null;
+    }, 220);
   }, duration);
 }
 
@@ -330,15 +357,15 @@ function guest() {
         ${quickMsgStatus}
       </div>`
     : "";
-  return `${connection()}<section class="card pickup-live"><span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
+  return `${connection()}<section class="card pickup-live ${status === "ARRIVED" ? "arrived-card" : ""}"><span class="badge ${status === "ARRIVED" ? "badge-arrived" : ""}">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
     <h1>${status === "ARRIVED" ? "차량이 도착했어요." : "마중 차량이 오고 있어요"}</h1>
     ${vehicleBadge}
-    ${status === "ARRIVED" ? "<p>확정된 약속 장소에서 만나세요.<br />탑승 확인 후 공유가 종료돼요.</p>" : ""}
-    <div class="arrival${current?.kind === "stale" ? " stale" : ""}" id="arrival-info">${
+    ${status === "ARRIVED" ? "<p class=\"arrival-desc\">확정된 약속 장소에서 만나세요.<br />탑승 확인 후 공유가 종료돼요.</p>" : ""}
+    <div class="arrival${status === "ARRIVED" ? " arrived-highlight" : ""}${current?.kind === "stale" ? " stale" : ""}" id="arrival-info">${
       !online
         ? "<h2>인터넷 연결을 확인하세요.</h2><p>지난 위치와 도착 시간을 숨겼어요.<br />연결이 돌아오면 다시 확인할게요.</p>"
         : status === "ARRIVED"
-          ? "<h2>약속 장소에 도착했어요.</h2><p>탑승한 뒤 운전자에게 픽업 완료를 확인해주세요.</p>"
+          ? `<div class="arrival-pill">🚘 탑승 대기 중</div><h2>약속 장소에 도착했어요.</h2><p>탑승한 뒤 운전자에게 픽업 완료를 확인해주세요.</p>`
           : current?.kind === "lost"
             ? `<h2>위치 확인 중</h2><p>마지막 갱신 ${e(ageText(current.ageMillis))}<br />차량에서 새 정보를 보내면 다시 표시할게요.</p>`
             : current
@@ -472,16 +499,41 @@ async function refresh() {
       const newProposal = data.placeProposal;
       if (prevProposal?.proposedBy === "PASSENGER" && !newProposal) {
         if (data.place?.label && data.place.label === prevProposal.place?.label) {
-          showToast(`🎉 운전자가 제안한 장소(“${data.place.label}”)를 수락했어요! 만날 장소가 변경되었습니다.`, "success", 5000);
+          showToast(`운전자가 제안한 장소(“${data.place.label}”)를 수락했어요! 만날 장소가 변경되었습니다.`, "success", 5000);
         } else if (data.place?.label && data.place.label !== prevSnapshot.place?.label) {
-          showToast(`🎉 만날 장소가 “${data.place.label}”(으)로 확정되었습니다!`, "success", 5000);
+          showToast(`만날 장소가 “${data.place.label}”(으)로 확정되었습니다!`, "success", 5000);
         }
       } else if (!prevProposal && newProposal?.proposedBy === "DRIVER") {
-        showToast(`🚗 운전자가 새로운 장소(“${newProposal.place?.label}”)를 제안했어요!`, "info", 5000);
+        showToast(`운전자가 새로운 장소(“${newProposal.place?.label}”)를 제안했어요!`, "info", 5000);
+      }
+
+      // 1. Vehicle Arrival Detection
+      if (prevSnapshot.status !== "ARRIVED" && data.status === "ARRIVED") {
+        if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        showToast("차량이 약속 장소에 도착했어요!", "arrival", 7000);
+        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+          try { navigator.vibrate([200, 100, 200, 100, 300]); } catch (_) {}
+        }
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          try {
+            new Notification("마중 · 차량 도착", {
+              body: "차량이 약속 장소에 도착했어요! 탑승 후 완료를 확인해주세요.",
+              icon: "/favicon.png",
+            });
+          } catch (_) {}
+        }
       }
     }
 
     if (terminalStatuses.has(data.status)) {
+      if (prevSnapshot && prevSnapshot.status !== data.status && data.status === "COMPLETED") {
+        if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        showToast("탑승이 확인되어 픽업이 완료되었어요. 잘 만났어요!", "success", 5000);
+      }
       finish(data);
       return;
     }
@@ -501,6 +553,29 @@ async function refresh() {
         const received = performance.now();
         deadline = vehicleDeadline(state, started, received);
         timing = vehicleTiming(state, started, received);
+
+        // Imminent arrival alert (<= 60 seconds)
+        const currentView = vehicleView(
+          vehicleForPlace(snapshot, vehicle),
+          timing,
+          deadline,
+          performance.now(),
+          online,
+          data.status,
+        );
+        if (
+          data.status === "ACTIVE" &&
+          currentView &&
+          currentView.remainingSeconds > 0 &&
+          currentView.remainingSeconds <= 60 &&
+          !currentSession.imminentAlerted
+        ) {
+          currentSession.imminentAlerted = true;
+          showToast("차량이 곧 도착해요! 만날 준비를 해주세요.", "info", 4500);
+          if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+            try { navigator.vibrate([100, 60, 100]); } catch (_) {}
+          }
+        }
       }
     } else {
       vehicle = null;
@@ -571,8 +646,7 @@ root.addEventListener("submit", async (event) => {
         body: { message: msg },
       });
       notice = `차량에 “${msg}” 메시지를 전달했어요.`;
-      showToast(`💬 차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
-      showToast(`💬 차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
+      showToast(`차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
     });
     return;
   }
@@ -757,7 +831,7 @@ root.addEventListener("click", async (event) => {
         body: { message: msg },
       });
       notice = `차량에 “${msg}” 메시지를 전달했어요.`;
-      showToast(`💬 차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
+      showToast(`차량에 “${msg}” 메시지를 전달했어요.`, "info", 3500);
       await refresh();
     } catch {
       notice = "메시지를 전달하지 못했어요. 다시 시도해주세요.";
