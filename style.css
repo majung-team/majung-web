@@ -1437,20 +1437,19 @@ button, .button {
   margin: 0 !important;
 }
 
-/* 3. Interactive Passenger Readiness Control (명확한 조작 버튼 UI) */
-.readiness-card {
-  background: #ffffff;
-  border: 1.5px solid var(--line, #e2e8f0);
-  border-radius: 18px;
-  padding: 14px 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.25s ease;
+.pickup-place-card + button[data-action="propose-start"] {
+  display: none;
 }
 
-.readiness-card.is-ready {
-  border-color: #86efac;
-  background: #f0fdf4;
+/* 3. Interactive Passenger Readiness Control (모던 토스/카카오T 스타일 세그먼트 컨트롤) */
+.readiness-card {
+  background: #ffffff;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
 }
 
 .readiness-card-header {
@@ -1464,268 +1463,188 @@ button, .button {
 .readiness-card-title {
   font-size: 13.5px;
   font-weight: 700;
-  color: #1e293b;
+  color: #334155;
   letter-spacing: -0.2px;
 }
 
-.readiness-live-badge {
-  font-size: 11.5px;
+.readiness-card-status {
+  font-size: 12px;
   font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 9999px;
-  white-space: nowrap;
+  color: #94a3b8;
+  letter-spacing: -0.2px;
 }
 
-.readiness-live-badge.badge-preparing {
-  background: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fde68a;
+.readiness-card-status.ready {
+  color: #059669;
 }
 
-.readiness-live-badge.badge-ready {
-  background: #dcfce7;
-  color: #15803d;
-  border: 1px solid #86efac;
-}
-
-.readiness-toggle-group {
+.readiness-segmented-control {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 4px;
   background: #f1f5f9;
   padding: 4px;
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 .readiness-seg-btn {
+  height: 44px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 10px 8px;
-  border-radius: 11px;
   border: none;
   background: transparent;
   color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 9px;
   cursor: pointer;
-  min-height: 54px;
   margin: 0 !important;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: -0.2px;
 }
 
 .readiness-seg-btn.selected {
   background: #ffffff;
-  color: #1e293b;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  font-weight: 700;
 }
 
-.readiness-card.is-ready .readiness-seg-btn.selected {
-  background: #10b981;
+.readiness-seg-btn.selected.ready {
+  background: #2563eb;
   color: #ffffff;
-  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.28);
+  font-weight: 700;
 }
 
-.readiness-seg-btn .seg-icon {
-  font-size: 14px;
-  line-height: 1;
+/* 4. Quick Voice Messages (운전자에게 음성 전달) */
+.voice-composer-card {
+  background: #ffffff;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.readiness-seg-btn .seg-text {
+.voice-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.voice-title {
   font-size: 13.5px;
   font-weight: 700;
+  color: #334155;
   letter-spacing: -0.2px;
 }
 
-.readiness-seg-btn .seg-sub {
-  font-size: 10.5px;
-  opacity: 0.85;
+.voice-subtitle {
+  font-size: 11.5px;
+  color: #94a3b8;
   font-weight: 500;
-  letter-spacing: -0.2px;
 }
 
-/* 4. Floating Island Bottom Action Tab Bar (플로팅 닥 스타일) */
-.bottom-tab-bar {
-  position: fixed;
-  bottom: max(12px, env(safe-area-inset-bottom, 12px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 24px);
-  max-width: 440px;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 22px;
-  box-shadow: 0 10px 30px -4px rgba(15, 23, 42, 0.14), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  padding: 6px;
-  z-index: 100;
-}
-
-.bottom-tab-item {
+.quick-chips {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  background: transparent;
-  border: none;
-  padding: 4px 2px;
-  margin: 0;
-  color: #64748b;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  min-height: 48px;
-  border-radius: 16px;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
-.bottom-tab-item .tab-icon-wrap {
-  width: 40px;
-  height: 28px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.bottom-tab-item .tab-icon {
-  width: 20px;
-  height: 20px;
-  stroke: currentColor;
-}
-
-.bottom-tab-item .tab-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-}
-
-.bottom-tab-item.active {
-  color: #2563eb;
-}
-
-.bottom-tab-item.active .tab-icon-wrap {
-  background: rgba(37, 99, 235, 0.12);
-  color: #2563eb;
-}
-
-.bottom-tab-item.active .tab-label {
-  color: #2563eb;
-  font-weight: 700;
-}
-
-.bottom-tab-item:active {
-  transform: scale(0.95);
-}
-
-.bottom-tab-item .tab-dot,
-.bottom-tab-item .tab-badge-dot {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ef4444;
-}
-
-/* 5. Modal Popup Sheet (Slides up over screen) */
-.tab-modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  z-index: 200;
-  animation: fade-in 0.2s ease forwards;
-}
-
-.tab-modal-sheet {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
-  background: #ffffff;
-  border-radius: 28px 28px 0 0;
-  box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.22);
-  z-index: 201;
-  padding: 10px 20px max(28px, env(safe-area-inset-bottom, 28px));
-  max-height: 85vh;
-  overflow-y: auto;
-  box-sizing: border-box;
-  animation: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.sheet-drag-handle {
-  width: 40px;
-  height: 5px;
-  border-radius: 3px;
-  background: #cbd5e1;
-  margin: 4px auto 14px;
-}
-
-.sheet-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.sheet-title-col {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sheet-eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  color: #2563eb;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-.sheet-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-  letter-spacing: -0.3px;
-}
-
-.sheet-close-btn {
-  background: #f1f5f9 !important;
-  border: none !important;
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 50% !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  color: #64748b !important;
+.quick-chip {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  border-radius: 20px !important;
+  padding: 7px 14px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
   cursor: pointer !important;
-  margin: 0 !important;
-  padding: 0 !important;
   min-height: auto !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
 }
 
-.sheet-close-btn:hover {
-  background: #e2e8f0 !important;
-  color: #1e293b !important;
+.quick-chip:hover, .quick-chip:active {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+  transform: scale(0.97);
+}
+
+.quick-input-form {
+  display: flex;
+  gap: 8px;
+}
+
+.quick-msg-input {
+  flex: 1;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  padding: 0 14px;
+  font-size: 13.5px;
+  color: #0f172a;
+  transition: all 0.15s ease;
+}
+
+.quick-msg-input:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.quick-send-btn {
+  height: 42px;
+  padding: 0 16px !important;
+  border-radius: 10px !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  cursor: pointer !important;
+  min-height: auto !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  transition: all 0.15s ease !important;
+}
+
+.quick-send-btn:hover {
+  background: #1d4ed8 !important;
+}
+
+.arrival-push-section {
+  margin-bottom: 12px;
+}
+
+.pickup-footer-links {
+  text-align: center;
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin: 20px 0 12px;
+}
+
+.pickup-footer-links a {
+  color: #64748b;
+  text-decoration: none;
+}
+
+.pickup-footer-links a:hover {
+  text-decoration: underline;
+}
+
+.footer-divider {
+  margin: 0 6px;
+  color: #cbd5e1;
 }
 
 /* Selected Place Card (검색 결과 선택 후 깔끔하게 표시) */

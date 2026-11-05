@@ -378,142 +378,68 @@ function guest() {
     <!-- 2. Meeting Place Card -->
     <div class="pickup-place-card">
       <div class="place-card-info">
-        <span class="place-card-badge">함께 만날 약속 장소</span>
+        <span class="place-card-badge">만날 약속 장소</span>
         <strong class="place-card-name">📍 ${e(snapshot.place?.label || "장소 확인 중")}</strong>
       </div>
-      <button type="button" class="place-change-btn" data-action="toggle-tab" data-tab="proposal">
-        장소 변경
-      </button>
+      ${!picking && !snapshot.placeProposal ? `
+        <button type="button" class="place-change-btn" data-action="propose-start"${!online ? " disabled" : ""}>
+          장소 변경
+        </button>
+      ` : ""}
     </div>
 
-    <!-- 3. Interactive Passenger Readiness Control (명확한 조작 버튼 UI) -->
-    <div class="readiness-card ${isReady ? "is-ready" : "is-preparing"}">
+    <!-- Inline Proposal Panel (팝업 없이 바로 그 자리에 펼쳐짐) -->
+    ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
+
+    <!-- 3. Interactive Passenger Readiness Control (모던 토스/카카오T 스타일 세그먼트 컨트롤) -->
+    <div class="readiness-card">
       <div class="readiness-card-header">
-        <span class="readiness-card-title">내 탑승 준비 상태</span>
-        <span class="readiness-live-badge ${isReady ? "badge-ready" : "badge-preparing"}">
-          ${isReady ? "✓ 운전자 네비에 '준비 완료' 표시 중" : "⏳ 운전자에게 출발 상태를 알려주세요"}
+        <span class="readiness-card-title">탑승 준비 상태</span>
+        <span class="readiness-card-status ${isReady ? "ready" : "preparing"}">
+          ${isReady ? "운전자 내비에 '준비 완료' 표시 중" : "준비 중"}
         </span>
       </div>
-      <div class="readiness-toggle-group" role="group" aria-label="탑승 준비 상태 변경">
+      <div class="readiness-segmented-control" role="group" aria-label="탑승 준비 상태 변경">
         <button type="button" class="readiness-seg-btn ${!isReady ? "selected" : ""}" data-action="preparing"${!online ? " disabled" : ""}>
-          <span class="seg-icon">⏳</span>
-          <span class="seg-text">아직 준비 중</span>
-          <span class="seg-sub">출발 준비하고 있어요</span>
+          준비 중
         </button>
-        <button type="button" class="readiness-seg-btn ${isReady ? "selected" : ""}" data-action="ready"${!online ? " disabled" : ""}>
-          <span class="seg-icon">✓</span>
-          <span class="seg-text">탑승 준비 완료!</span>
-          <span class="seg-sub">약속 장소에 나왔어요</span>
+        <button type="button" class="readiness-seg-btn ${isReady ? "selected ready" : ""}" data-action="ready"${!online ? " disabled" : ""}>
+          탑승 준비 완료
         </button>
       </div>
     </div>
 
-    ${status === "ARRIVED" ? `<div class="arrival-notice">확정된 장소에서 차량에 탑승해주세요. 탑승 확인 후 운전자가 픽업을 완료해요.</div>` : ""}
+    ${status === "ARRIVED" ? `<div class="arrival-notice">차량이 약속 장소에 도착했습니다. 탑승 후 운전자가 픽업을 완료합니다.</div>` : ""}
 
-    <!-- 4. Floating Island Bottom Action Tab Bar (사진 참조: 플로팅 내비게이션 바) -->
-    <nav class="bottom-tab-bar" aria-label="픽업 조작 메뉴">
-      <button type="button" class="bottom-tab-item ${activeTabModal === "voice" ? "active" : ""}" data-action="toggle-tab" data-tab="voice">
-        <div class="tab-icon-wrap">
-          <svg class="tab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><line x1="9" y1="10" x2="15" y2="10"></line></svg>
-        </div>
-        <span class="tab-label">음성 전달</span>
-      </button>
-      <button type="button" class="bottom-tab-item ${activeTabModal === "proposal" || picking ? "active" : ""}" data-action="toggle-tab" data-tab="proposal">
-        <div class="tab-icon-wrap">
-          <svg class="tab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-          ${snapshot.placeProposal ? `<span class="tab-dot"></span>` : ""}
-        </div>
-        <span class="tab-label">장소 제안</span>
-      </button>
-      <button type="button" class="bottom-tab-item ${activeTabModal === "push" ? "active" : ""}" data-action="toggle-tab" data-tab="push">
-        <div class="tab-icon-wrap">
-          <svg class="tab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-        </div>
-        <span class="tab-label">도착 알림</span>
-      </button>
-      <button type="button" class="bottom-tab-item ${activeTabModal === "info" ? "active" : ""}" data-action="toggle-tab" data-tab="info">
-        <div class="tab-icon-wrap">
-          <svg class="tab-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        </div>
-        <span class="tab-label">안내·정보</span>
-      </button>
-    </nav>
-
-    <!-- 5. Modal Popup Sheet (슬라이딩 카드 팝업) -->
-    ${activeTabModal ? `
-      <div class="tab-modal-backdrop" data-action="close-tab-modal"></div>
-      <div class="tab-modal-sheet" role="dialog" aria-modal="true">
-        <div class="sheet-drag-handle"></div>
-        <div class="sheet-header">
-          <div class="sheet-title-col">
-            <span class="sheet-eyebrow">${
-              activeTabModal === "voice" ? "차량 스피커 낭독" :
-              activeTabModal === "proposal" ? "만날 위치 변경" :
-              activeTabModal === "push" ? "푸시 알림" : "이용 안내"
-            }</span>
-            <h2 class="sheet-title">${
-              activeTabModal === "voice" ? "차량 스피커로 음성 전달" :
-              activeTabModal === "proposal" ? "함께 만날 장소 제안" :
-              activeTabModal === "push" ? "도착 3분 전 알림 설정" :
-              "마중 픽업 이용 안내"
-            }</h2>
-          </div>
-          <button type="button" class="sheet-close-btn" data-action="close-tab-modal" aria-label="닫기">✕</button>
-        </div>
-        <div class="sheet-body">
-          ${activeTabModal === "voice" ? `
-            <div class="voice-composer-card">
-              <p class="sheet-desc">보낸 메시지는 운전자의 차량 스피커에서 음성(TTS)으로 즉시 낭독돼요.</p>
-              <form class="quick-input-form quick-msg-form" data-role="guest">
-                <input type="text" name="quickMsg" class="quick-msg-input" placeholder="차량 스피커로 읽어줄 메시지 입력" maxlength="100" autocomplete="off" value="${e(guestQuickMsgText)}"${!online ? " disabled" : ""} />
-                <button type="submit" class="quick-send-btn"${!online ? " disabled" : ""}>전송</button>
-              </form>
-              <div class="quick-chips-group">
-                <span class="quick-chips-label">원터치 빠른 전송:</span>
-                <div class="quick-chips">
-                  ${button("⚡ 지금 내려가요", "guest-quick-msg", true, !online, 'data-msg="지금 내려가요" class="quick-chip-highlight"')}
-                  ${button("1번 출구 앞이에요", "guest-quick-msg", true, !online, 'data-msg="1번 출구 앞이에요"')}
-                  ${button("곧 도착해요", "guest-quick-msg", true, !online, 'data-msg="곧 도착해요"')}
-                </div>
-              </div>
-              ${quickMsgStatus ? `<div class="action-feedback">${quickMsgStatus}</div>` : ""}
-            </div>
-          ` : activeTabModal === "proposal" ? `
-            ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
-          ` : activeTabModal === "push" ? `
-            ${arrivalPushCard()}
-          ` : `
-            <div class="info-sheet-content">
-              <div class="info-step-card">
-                <div class="info-step-icon">📍</div>
-                <div class="info-step-text">
-                  <strong>1. 약속 장소에서 대기</strong>
-                  <span>안전한 승하차 장소에서 마중 차량을 기다려주세요.</span>
-                </div>
-              </div>
-              <div class="info-step-card">
-                <div class="info-step-icon">🚘</div>
-                <div class="info-step-text">
-                  <strong>2. 차량 도착 시 탑승</strong>
-                  <span>차량이 도착하면 탑승 준비 완료 상태를 확인하고 탑승합니다.</span>
-                </div>
-              </div>
-              <div class="info-step-card">
-                <div class="info-step-icon">🔒</div>
-                <div class="info-step-text">
-                  <strong>3. 위치 공유 자동 종료</strong>
-                  <span>운전자가 탑승을 확인하면 실시간 위치 공유가 안전하게 종료됩니다.</span>
-                </div>
-              </div>
-              <div class="info-links">
-                <a href="https://majung.cloud/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a> · 
-                <a href="https://majung.cloud/terms" target="_blank" rel="noopener noreferrer">위치 공유 안내</a>
-              </div>
-            </div>
-          `}
-        </div>
+    <!-- 4. Quick Voice Messages (차량 스피커 낭독) -->
+    <div class="voice-composer-card">
+      <div class="voice-header-row">
+        <span class="voice-title">운전자에게 음성 전달</span>
+        <span class="voice-subtitle">차량 스피커로 TTS 낭독</span>
       </div>
-    ` : ""}
+      <div class="quick-chips">
+        ${button("지금 내려가요", "guest-quick-msg", true, !online, 'data-msg="지금 내려가요" class="quick-chip"')}
+        ${button("1번 출구 앞이에요", "guest-quick-msg", true, !online, 'data-msg="1번 출구 앞이에요" class="quick-chip"')}
+        ${button("곧 도착해요", "guest-quick-msg", true, !online, 'data-msg="곧 도착해요" class="quick-chip"')}
+      </div>
+      <form class="quick-input-form quick-msg-form" data-role="guest">
+        <input type="text" name="quickMsg" class="quick-msg-input" placeholder="스피커로 낭독할 메시지 입력 (최대 100자)" maxlength="100" autocomplete="off" value="${e(guestQuickMsgText)}"${!online ? " disabled" : ""} />
+        <button type="submit" class="quick-send-btn"${!online ? " disabled" : ""}>전송</button>
+      </form>
+      ${quickMsgStatus ? `<div class="action-feedback">${quickMsgStatus}</div>` : ""}
+    </div>
+
+    <!-- 5. Arrival Notification (도착 알림) -->
+    <div class="arrival-push-section">
+      ${arrivalPushCard()}
+    </div>
+
+    <!-- 6. Footer Info Links -->
+    <div class="pickup-footer-links">
+      <a href="https://majung.cloud/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>
+      <span class="footer-divider">·</span>
+      <a href="https://majung.cloud/terms" target="_blank" rel="noopener noreferrer">위치 공유 안내</a>
+    </div>
   </section>`;
 }
 
@@ -886,7 +812,6 @@ root.addEventListener("click", async (event) => {
   }
   if (action === "propose-start" && session?.role === "guest") {
     picking = true;
-    activeTabModal = null; // Close popup sheet so user can clearly tap on map
     render();
     return;
   }
