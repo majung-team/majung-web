@@ -113,3 +113,10 @@ test('메시지 저장 실패 때 초안을 지우지 않고 51자는 전송하�
   await ui.rootEvents.submit({preventDefault(){},target:form});
   assert.match(vm.runInContext('message',ui.context),/50자/);
 });
+
+test('도착 시간 안내는 지도 컨테이너 밖에 있어 지도 오류에도 남는다', async()=>{
+  const ui=await open();
+  const html=ui.root.innerHTML;
+  assert.ok(html.indexOf('class="pickup-eta-summary"') < html.indexOf('class="map-wrapper'));
+  assert.match(html,/도착 시간 확인 중/);
+});

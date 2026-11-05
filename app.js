@@ -366,14 +366,14 @@ function guest() {
       <h1>${status === "ARRIVED" ? "차량이 도착했어요" : "마중 차량이 오고 있어요"}</h1>
     </div>
 
-    <!-- 1. Hero Map with Floating Live Pill -->
+    <div class="pickup-eta-summary" role="status" aria-live="polite">
+      <strong class="floating-eta">${e(etaText)}</strong>
+      ${vehicleName ? `<span class="eta-vehicle-name">${vehicleName}</span>` : ""}
+    </div>
+
+    <!-- The time stays outside the map so map controls cannot cover it. -->
     <div class="map-wrapper${!pickupMap ? " no-map" : ""}">
       ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : '<div class="map-fallback"><div class="coordinates">차량 위치 · 위도 ' + (current?.latitude ? e(current.latitude.toFixed(5)) : "-") + ', 경도 ' + (current?.longitude ? e(current.longitude.toFixed(5)) : "-") + '</div></div>'}
-      <div class="map-floating-bar" aria-live="polite">
-        <span class="floating-pulse ${status === "ARRIVED" ? "pulse-arrived" : ""}"></span>
-        <span class="floating-eta">${e(etaText)}</span>
-        ${vehicleName ? `<span class="floating-divider">·</span><span class="floating-vehicle">🚘 ${vehicleName}</span>` : ""}
-      </div>
     </div>
 
     <p class="vehicle-freshness" role="status">${e(vehicleFreshnessText(current))}</p>

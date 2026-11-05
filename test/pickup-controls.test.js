@@ -4,8 +4,8 @@ import { readinessControl, quickMessageControl } from "../model.js";
 
 test("준비 상태는 서버 저장과 차량 수신을 구분하고 전송 중 조작을 잠근다", () => {
   const participant = {readiness:"READY",readinessSequence:3,readinessReceivedSequence:2};
-  assert.match(readinessControl({participant}), /차량 앱으로 전달을 기다리고/);
-  assert.match(readinessControl({participant:{...participant,readinessReceivedSequence:3}}), /차량 앱에 전달됐어요/);
+  assert.match(readinessControl({participant}), /차량 연결을 기다리고/);
+  assert.match(readinessControl({participant:{...participant,readinessReceivedSequence:3}}), /차량에 전달됐어요/);
   const pending=readinessControl({participant,sending:true});
   assert.match(pending,/보내는 중/);
   assert.equal((pending.match(/ disabled/g)||[]).length,2);
