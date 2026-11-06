@@ -1480,14 +1480,11 @@ button, .button {
 
 /* 2. Pickup Meeting Place Card */
 .pickup-place-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   background: #ffffff;
   border: 1px solid var(--line, #e2e8f0);
   border-radius: 16px;
   padding: 12px 16px;
-  margin: 10px 0 8px;
+  margin: 10px 0 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
@@ -1505,28 +1502,27 @@ button, .button {
 }
 
 .pickup-place-card .place-card-name {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--ink, #1e293b);
-  letter-spacing: -0.3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 240px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
-.pickup-place-card .place-change-btn {
-  padding: 6px 12px !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  border-radius: 9999px !important;
-  background: #f8fafc !important;
-  border: 1px solid #cbd5e1 !important;
-  color: #334155 !important;
-  cursor: pointer !important;
-  white-space: nowrap !important;
-  min-height: auto !important;
-  margin: 0 !important;
+.pickup-place-proposal {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.pickup-place-proposal > button.quiet {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+}
+
+.pickup-place-proposal > .proposal + button.quiet {
+  margin-top: 12px;
 }
 
 /* 3. Interactive Passenger Readiness Control (모던 토스/카카오T 스타일 슬라이딩 세그먼트 컨트롤) */
