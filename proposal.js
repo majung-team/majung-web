@@ -16,6 +16,10 @@ export function buildProposal(label, point) {
 }
 
 // Keep the confirmed/proposed text and withdrawal available when the map fails.
+export function unavailableProposal(message) {
+  return `<button type="button" class="quiet" disabled>다른 장소 제안하기</button><p class="hint" role="status">${e(message)}</p>`;
+}
+
 export function proposalBlock({ proposal, picking, mapReady, status }) {
   if (status !== "ACTIVE") return "";
   const summary = proposal
@@ -30,7 +34,7 @@ export function proposalBlock({ proposal, picking, mapReady, status }) {
       </div>`
     : "";
   const control = !mapReady
-    ? '<button type="button" class="quiet" disabled>다른 장소 제안하기</button><p class="hint" role="status">지도를 열 수 없어 장소를 선택할 수 없어요. 화면을 새로고침해 주세요.</p>'
+    ? unavailableProposal("지도를 열 수 없어 장소를 선택할 수 없어요. 화면을 새로고침해 주세요.")
     : picking
     ? '<div data-proposal-slot></div>'
     : `<button type="button" data-action="propose-start" class="quiet">다른 장소 제안하기</button>`;
