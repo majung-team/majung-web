@@ -30,7 +30,7 @@ export function proposalBlock({ proposal, picking, mapReady, status }) {
       </div>`
     : "";
   const control = !mapReady
-    ? '<p class="hint" role="status">지도를 불러오지 못했어요. 제안한 장소는 그대로이며, 페이지를 다시 열면 장소 검색을 재시도해요.</p>'
+    ? '<button type="button" class="quiet" disabled>다른 장소 제안하기</button><p class="hint" role="status">지도를 열 수 없어 장소를 선택할 수 없어요. 화면을 새로고침해 주세요.</p>'
     : picking
     ? '<div data-proposal-slot></div>'
     : `<button type="button" data-action="propose-start" class="quiet">다른 장소 제안하기</button>`;
