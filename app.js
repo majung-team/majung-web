@@ -90,6 +90,8 @@ let upgradedPushFor = null;
 const root = document.querySelector("#app");
 const storageKey = "majung.pickup.session.v1";
 let invitation = parseInvitation(location.hash);
+let reopenedInvitation = null;
+let unavailableInvitation = "";
 const hostInvitation = parseHostInvitation(location.hash);
 const invalidInvitation = Boolean(
   (location.hash.startsWith("#join") || location.hash.startsWith("#share")) && !invitation && !hostInvitation,
@@ -110,7 +112,10 @@ try {
     session = restored;
     // Reopening an already used invitation resumes its existing participant authority.
     // The server still decides whether that authority is active, ended or revoked.
-    if (invitation) invitation = null;
+    if (invitation) {
+      reopenedInvitation = invitation;
+      invitation = null;
+    }
   }
 } catch {
   storageAvailable = false;
@@ -228,6 +233,8 @@ function createForm() {
 }
 
 function joinForm() {
+  if (unavailableInvitation)
+    return `<section class="card"><h1>${e(unavailableInvitation)}</h1><p>운전자에게 새 초대 링크를 받아 열어주세요.</p>${button("처음으로", "home", true)}</section>`;
   if (!invitation)
     return `<section class="card"><h1>초대가 필요해요.</h1><p>운전자에게 받은 링크를 다시 열어주세요.</p>${button("처음으로", "home", true)}</section>`;
   return `<section class="intro small"><p class="eyebrow">마중 약속 초대</p><h1>함께 만날 약속에<br />참여할까요?</h1><p>참여하면 바로 연결돼서 만날 장소와<br />차량의 도착 정보를 볼 수 있어요.</p></section>
@@ -538,6 +545,7 @@ async function refresh() {
       token: currentSession.token,
     });
     if (generation !== epoch || currentSession !== session || busy || readinessRevisionAtStart !== readinessRevision) return;
+    reopenedInvitation = null;
     snapshot = data;
     online = true;
     message = "";
@@ -625,7 +633,14 @@ async function refresh() {
     vehicle = null;
     deadline = 0;
     timing = null;
-    handleError(error);
+    if (reopenedInvitation && error instanceof ApiError && [401, 403].includes(error.status)) {
+      const nextInvitation = reopenedInvitation;
+      reopenedInvitation = null;
+      forgetSession();
+      invitation = nextInvitation;
+      page = "join";
+      message = "";
+    } else handleError(error);
   } finally {
     refreshing = false;
     render();
@@ -724,10 +739,21 @@ root.addEventListener("submit", async (event) => {
   } else if (form.id === "join-form" && invitation) {
     const invite = invitation;
     await mutate(async () => {
-      const joined = await request(`/${invite.pickupId}/participants`, {
-        method: "POST",
-        body: { inviteToken: invite.inviteToken },
-      });
+      let joined;
+      try {
+        joined = await request(`/${invite.pickupId}/participants`, {
+          method: "POST",
+          body: { inviteToken: invite.inviteToken },
+        });
+      } catch (error) {
+        if (!(error instanceof ApiError) ||
+            !["PICKUP_ENDED", "PICKUP_NOT_FOUND", "INVITE_UNAVAILABLE", "FORBIDDEN"].includes(error.code)) throw error;
+        unavailableInvitation = error.code === "PICKUP_ENDED"
+          ? "이미 끝난 픽업이에요."
+          : "이 초대 링크는 더 이상 사용할 수 없어요.";
+        invitation = null;
+        return;
+      }
       session = {
         role: "guest",
         pickupId: invite.pickupId,
