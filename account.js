@@ -78,8 +78,13 @@ function rideRow(source) {
   const vehicleBadge = current?.pickup?.vehicleName
     ? `<div class="vehicle-badge" aria-label="차량 정보">🚘 ${e(current.pickup.vehicleName)}</div>`
     : "";
-  const controls = current ? readinessControl({participant:current.pickup.participant, online:networkAvailable, blocked:busy, sending:readinessSendingId===item.requestId, pendingValue:readinessRetries.get(item.requestId), retry:readinessRetries.get(item.requestId), prefix:"ride-", attributes:`data-id="${e(item.requestId)}"`}) + quickMessageControl({value:quickMsgDraft[item.requestId], message:current.pickup.quickMessage?.text, online:networkAvailable && !busy, prefix:"ride-", attributes:`data-id="${e(item.requestId)}"`}) : "";
-  const active=current ? `${vehicleBadge}<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>${pickupMap && current.pickup.place ? '<div class="pickup-map" data-ride-map></div><button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : ""}${controls}${current.pickup.status==="ACTIVE"?ridePushCard(item.requestId):""}${proposalBlock({proposal:current.pickup.placeProposal,picking:pickingRide===item.requestId,mapReady:Boolean(pickupMap),status:current.pickup.status})}` : "";
+  const readiness = current ? readinessControl({participant:current.pickup.participant, online:networkAvailable, blocked:busy, sending:readinessSendingId===item.requestId, pendingValue:readinessRetries.get(item.requestId), retry:readinessRetries.get(item.requestId), prefix:"ride-", attributes:`data-id="${e(item.requestId)}"`}) : "";
+  const message = current ? quickMessageControl({value:quickMsgDraft[item.requestId], message:current.pickup.quickMessage?.text, online:networkAvailable && !busy, prefix:"ride-", attributes:`data-id="${e(item.requestId)}"`}) : "";
+  const active = current ? `${vehicleBadge}<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>
+    ${readiness}<div class="pickup-place-tools" data-proposal-area>
+      ${pickupMap && current.pickup.place ? '<div class="pickup-map" data-ride-map></div><button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : ""}
+      ${proposalBlock({proposal:current.pickup.placeProposal,picking:pickingRide===item.requestId,mapReady:Boolean(pickupMap),status:current.pickup.status})}
+    </div>${message}${current.pickup.status==="ACTIVE" ? ridePushCard(item.requestId) : ""}` : "";
   return `<li class="person-row ride-row" id="ride-${e(item.requestId)}" data-state="${e(item.status)}">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong><p>${item.status==="ACTIVE" ? "만날 장소" : item.driverInvitation?"운전자가 제안한 장소":"내가 요청한 장소"} · ${e(item.place.label)}</p>${waiting}${active}${item.status==="INVITED"?`<p>이 장소에서 탈까요? 수락해도 내 픽업이 시작되기 전에는 차량 위치가 공유되지 않아요.</p><p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답해주세요.</p>${button("이 장소에서 탈게요","invitation-accept",`data-id="${e(item.requestId)}"`)}${button("초대 거절","invitation-reject",`data-id="${e(item.requestId)}"`,true)}`:""}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
 }
 const upgradedPushRequests=new Set();
@@ -143,7 +148,7 @@ function selectedPlaceText() {
 }
 let pickingRide = null;
 const proposalPanel = createProposalPanel({
-  onSubmit: place => { void submitRideProposal(place); },
+  onSubmit: submitRideProposal,
   searchPlaces: (keyword,page) => searchPickupPlaces(placeMaps,keyword,page),
   onSelectPoint: place => pickupMap?.selectPickingPoint(place) ?? false,
   onCancel: () => { pickingRide=null; proposalPanel.reset(); render(); },
@@ -161,7 +166,7 @@ async function submitRideProposal(place) {
 // One passenger has at most one ACTIVE ride, so a single map follows that ride.
 function updateRideMap() {
   if (!pickupMap) return;
-  pickupMap.attach(root.querySelector("[data-ride-map]"));
+  pickupMap.attach(root.querySelector("[data-ride-map]"), "data-ride-map");
   const [current]=[...tracking.values()];
   if (current) pickupMap.update(current.pickup.place,vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),networkAvailable,current.pickup.status),current.pickup.placeProposal?.place);
   if (pickingRide && current && tracking.has(pickingRide) && current.pickup.status==="ACTIVE") {
@@ -175,7 +180,8 @@ function updateRideMap() {
 function rideEtaText(current) {
   if (current.pickup.status==="ARRIVED") return "차량이 도착했어요. 약속 장소에서 차량을 확인해주세요.";
   const view=vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),networkAvailable,current.pickup.status);
-  if (!view) return "도착 시간을 확인하고 있어요.";
+  if (!networkAvailable) return "인터넷 연결을 확인해주세요.";
+  if (!view) return "차량 정보를 기다리고 있어요. 위치가 공유되면 도착 시간이 표시돼요.";
   if (view.kind==="lost") return `위치 확인 중 · 마지막 갱신 ${ageText(view.ageMillis)}`;
   const eta=`내 장소까지 ${etaText(view)}`;
   return view.kind==="stale" ? `마지막 예상 시간 · ${eta} · ${vehicleFreshnessText(view)}` : eta;
@@ -205,6 +211,7 @@ function changeAccountTab(next) {
   if (rideTarget) closeRideRequest(false);
   accountTab = next;
   render();
+  window.scrollTo?.(0, 0);
   const selected = root.querySelector('.account-nav [aria-current="page"]');
   if (keepFocus) selected?.focus({preventScroll:true});
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
@@ -518,7 +525,7 @@ root.addEventListener("click", event => {
     return;
   }
   if (action === "ride-map-center") { placePicker?.chooseCenter(); return; }
-  if (action === "propose-start") { const [id]=[...tracking.keys()]; if (!id || tracking.get(id)?.pickup.status!=="ACTIVE") return; pickingRide=id; render(); return; }
+  if (action === "propose-start") { const [id]=[...tracking.keys()]; if (!id || tracking.get(id)?.pickup.status!=="ACTIVE") return; pickingRide=id; render(); root.querySelector("[data-proposal-area]")?.scrollIntoView?.({block:"start"}); return; }
   if (action === "propose-withdraw") {
     const [id]=[...tracking.keys()]; if (!id) return;
     run(async () => { await api(`/ride-requests/${id}/place-proposal`,{method:"DELETE"}); await refresh(); notice="장소 제안을 취소했어요."; });

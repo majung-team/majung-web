@@ -101,7 +101,7 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
         ? `<form data-proposal-search class="place-search-bar">
             <div class="search-input-wrap">
               <span class="search-input-icon">🔍</span>
-              <input data-proposal-query class="search-input" maxlength="80" required placeholder="만날 장소나 주소 검색 (예: 의왕역)" autocomplete="off" />
+              <input aria-label="만날 장소 검색" data-proposal-query class="search-input" maxlength="80" required placeholder="만날 장소나 주소 검색 (예: 의왕역)" autocomplete="off" />
             </div>
             <button type="submit" class="search-submit-btn" data-proposal-search-button>검색</button>
           </form>
@@ -109,8 +109,12 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
         : ""
     }
     <div class="proposal-memo-group">
-      <label class="proposal-field-label">상세 위치 설명 <small>(선택)</small></label>
-      <input data-proposal-label class="proposal-detail-input" maxlength="${proposalLabelMax}" placeholder="예: 1번 출구 앞 택시 승강장" autocomplete="off" />
+      <label class="proposal-field-label" for="proposal-place-name">장소 이름 (필수)</label>
+      <input id="proposal-place-name" required data-proposal-label class="proposal-detail-input" maxlength="${proposalLabelMax}" placeholder="예: 1번 출구 앞 택시 승강장" autocomplete="off" />
+    </div>
+    <div class="proposal-memo-group">
+      <label class="proposal-field-label" for="proposal-memo">상세 위치 설명 (선택)</label>
+      <input id="proposal-memo" data-proposal-memo class="proposal-detail-input" maxlength="${proposalLabelMax}" placeholder="예: 택시 승강장 옆" autocomplete="off" />
     </div>
     <p class="hint" data-proposal-hint></p>
     <p class="alert" role="alert" data-proposal-error hidden></p>
@@ -121,6 +125,7 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
     parts = {
       element,
       input: element.querySelector("[data-proposal-label]"),
+      memo: element.querySelector("[data-proposal-memo]"),
       hint: element.querySelector("[data-proposal-hint]"),
       error: element.querySelector("[data-proposal-error]"),
       query: element.querySelector("[data-proposal-query]"),
@@ -160,8 +165,10 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
         }
       });
     }
-    element.querySelector("[data-proposal-send]").addEventListener("click", () => {
-      const result = buildProposal(parts.input.value, point);
+    element.querySelector("[data-proposal-send]").addEventListener("click", async () => {
+      const name = parts.input.value.trim();
+      const memo = parts.memo.value.trim();
+      const result = buildProposal(name && memo ? `${name} · ${memo}` : name, point);
       showError(result.error);
       if (result.place) {
         const sendBtn = element.querySelector("[data-proposal-send]");
@@ -169,11 +176,19 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
           sendBtn.disabled = true;
           sendBtn.textContent = "제안 보내는 중…";
         }
-        onSubmit(result.place);
+        try {
+          await onSubmit(result.place);
+        } finally {
+          if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = "이 장소로 변경 제안";
+          }
+        }
       }
     });
     element.querySelector("[data-proposal-close]").addEventListener("click", () => onCancel());
     parts.input.addEventListener("input", () => showError(""));
+    parts.memo.addEventListener("input", () => showError(""));
     element.addEventListener("focusout", () =>
       setTimeout(() => {
         if (!element.contains(document.activeElement)) onBlur?.();
@@ -212,6 +227,7 @@ export function createProposalPanel({ onSubmit, onCancel, onBlur, searchPlaces, 
       if (!parts) return;
       if (parts.query) parts.query.value = "";
       parts.input.value = "";
+      parts.memo.value = "";
       const sendBtn = parts.element?.querySelector("[data-proposal-send]");
       if (sendBtn) {
         sendBtn.disabled = false;

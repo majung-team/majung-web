@@ -118,5 +118,6 @@ test('도착 시간 안내는 지도 컨테이너 밖에 있어 지도 오류에
   const ui=await open();
   const html=ui.root.innerHTML;
   assert.ok(html.indexOf('class="pickup-eta-summary"') < html.indexOf('class="map-wrapper'));
-  assert.match(html,/도착 시간 확인 중/);
+  assert.match(html,/차량 정보 수신 대기/);
+  assert.ok(html.indexOf("readiness-card") < html.indexOf("map-wrapper"));
 });

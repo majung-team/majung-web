@@ -213,7 +213,7 @@ export function pickupStatusNotice(pickup, action = '') {
   return `<section class="pickup-status-notice ${arrived ? 'is-arrived' : 'is-ended'}" role="${arrived ? 'status' : 'alert'}" aria-live="assertive"><div><strong>${title}</strong><p>${arrived ? `${escapeHtml(pickup.place?.label || '약속 장소')} 근처에서 차량을 확인해주세요. 탑승 후 운전자가 픽업을 완료해요.` : '차량 위치 공유가 끝났어요. 이전 도착 시간은 더 이상 유효하지 않아요.'}</p></div>${action}</section>`;
 }
 export function vehicleFreshnessText(view) {
-  if (!view) return '차량 정보를 기다리고 있어요.';
+  if (!view) return '차량에서 위치를 보내면 지도와 도착 시간이 표시돼요.';
   if (view.kind === 'lost') return '갱신이 멈춰 도착 시간을 숨겼어요. 연결이 복구되면 다시 표시해요.';
   return view.kind === 'stale' ? `갱신 지연 · 마지막 정보 ${ageText(view.ageMillis)}. 현재 도착 시간과 다를 수 있어요.` : `차량 정보 ${ageText(view.ageMillis)} 갱신`;
 }
@@ -227,5 +227,5 @@ export function pickupEtaLabel(status, view, online = true) {
     const time=view.remainingSeconds > 0 ? `약 ${Math.ceil(view.remainingSeconds/60)}분 후 도착` : '곧 도착 예정';
     return view.kind === 'stale' ? `마지막 예상 · ${time}` : time;
   }
-  return '도착 시간 확인 중';
+  return view ? '도착 시간 확인 중' : '차량 정보 수신 대기';
 }

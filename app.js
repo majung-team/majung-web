@@ -152,7 +152,7 @@ let proposalMaps=null;
 const proposalPanel = createProposalPanel({
   searchPlaces: (keyword,page) => searchPickupPlaces(proposalMaps,keyword,page),
   onSelectPoint: place => pickupMap?.selectPickingPoint(place) ?? false,
-  onSubmit: (place) => void sendProposal(place),
+  onSubmit: sendProposal,
   onCancel: () => { picking = false; proposalPanel.reset(); render(); },
   onBlur: () => render(),
 });
@@ -371,6 +371,8 @@ function guest() {
       ${vehicleName ? `<span class="eta-vehicle-name">${vehicleName}</span>` : ""}
     </div>
 
+    ${readinessControl({ participant: snapshot.participant, online, sending: readinessSending, pendingValue: pendingReadiness, retry: pendingReadiness })}
+    <div class="pickup-place-tools" data-proposal-area>
     <!-- The time stays outside the map so map controls cannot cover it. -->
     <div class="map-wrapper${!pickupMap ? " no-map" : ""}">
       ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : '<div class="map-fallback"><div class="coordinates">차량 위치 · 위도 ' + (current?.latitude ? e(current.latitude.toFixed(5)) : "-") + ', 경도 ' + (current?.longitude ? e(current.longitude.toFixed(5)) : "-") + '</div></div>'}
@@ -384,17 +386,13 @@ function guest() {
         <span class="place-card-badge">만날 약속 장소</span>
         <strong class="place-card-name">📍 ${e(snapshot.place?.label || "장소 확인 중")}</strong>
       </div>
-      ${!picking && !snapshot.placeProposal && pickupMap && status === "ACTIVE" ? `
-        <button type="button" class="place-change-btn" data-action="propose-start"${!online ? " disabled" : ""}>
-          장소 변경
-        </button>
-      ` : ""}
     </div>
 
     <!-- Inline Proposal Panel (팝업 없이 바로 그 자리에 펼쳐짐) -->
     ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
+    </div>
 
-    ${readinessControl({ participant: snapshot.participant, online, sending: readinessSending, pendingValue: pendingReadiness, retry: pendingReadiness })}
+
     ${quickMessageControl({ value: guestQuickMsgText, message: snapshot.quickMessage?.text, online, attributes: 'data-role="guest"' })}
 
     <!-- 5. Arrival Notification (도착 알림) -->
@@ -804,6 +802,7 @@ root.addEventListener("click", async (event) => {
   if (action === "propose-start" && session?.role === "guest" && snapshot?.status === "ACTIVE") {
     picking = true;
     render();
+    root.querySelector("[data-proposal-area]")?.scrollIntoView?.({block:"start"});
     return;
   }
   if (action === "propose-withdraw" && session?.role === "guest" && online) {

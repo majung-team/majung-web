@@ -2102,3 +2102,6 @@ button, .button {
 .pickup-status-notice > div { flex:1; min-width:0; }
 .pickup-status-notice button { width:auto; flex:0 0 auto; min-width:120px; margin:0; }
 @media(max-width:600px) { .pickup-status-notice button {width:100%;} }
+
+.pickup-place-tools { scroll-margin-top: 92px; }
+.voice-composer-card button, .voice-composer-card .quick-msg-input { min-height: 48px; }
