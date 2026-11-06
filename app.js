@@ -368,6 +368,12 @@ function guest() {
   const etaText = pickupEtaLabel(status, current, online);
 
   const vehicleName = snapshot.vehicleName ? e(snapshot.vehicleName) : "";
+  const proposal = proposalBlock({
+    proposal: snapshot.placeProposal,
+    picking,
+    mapReady: Boolean(pickupMap),
+    status,
+  });
 
   return `${connection()}<section class="card pickup-live mobility-app-view">
     <div class="pickup-header-row">
@@ -387,9 +393,8 @@ function guest() {
         <span class="place-card-badge">만날 약속 장소</span>
         <strong class="place-card-name">📍 ${e(snapshot.place?.label || "장소 확인 중")}</strong>
       </div>
+      ${proposal ? `<div class="pickup-place-proposal">${proposal}</div>` : ""}
     </div>
-
-    ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
 
     <!-- The time stays outside the map so map controls cannot cover it. -->
     <div class="map-wrapper${!pickupMap ? " no-map" : ""}">
