@@ -27,7 +27,7 @@ import {
   setPushFlag,
 } from "./push.js";
 import { loadKakaoMaps, createPickupMap, searchPickupPlaces } from "./map.js";
-import { proposalBlock, createProposalPanel } from "./proposal.js";
+import { proposalBlock, createProposalPanel, unavailableProposal } from "./proposal.js";
 
 let toastTimer = null;
 function showToast(msg, type = "info", duration = 3600) {
@@ -232,7 +232,8 @@ function joinForm() {
     return `<section class="card"><h1>초대가 필요해요.</h1><p>운전자에게 받은 링크를 다시 열어주세요.</p>${button("처음으로", "home", true)}</section>`;
   return `<section class="intro small"><p class="eyebrow">마중 약속 초대</p><h1>함께 만날 약속에<br />참여할까요?</h1><p>참여하면 바로 연결돼서 만날 장소와<br />차량의 도착 정보를 볼 수 있어요.</p></section>
     <form id="join-form" class="card"><p class="hint">이름이나 가입 없이 참여해요. 이 링크는 한 사람만 쓸 수 있어요. 참여하면 만날 장소·차량 위치·도착 시간과 내 준비 상태를 공유해요. 휴대전화의 이동 위치나 연락처는 요청하지 않아요.</p>
-    <button class="primary" ${busy ? "disabled" : ""}>${busy ? "연결하고 있어요…" : "약속에 참여하기"}</button></form>`;
+    <button class="primary" ${busy ? "disabled" : ""}>${busy ? "연결하고 있어요…" : "약속에 참여하기"}</button></form>
+    <section class="card">${unavailableProposal("약속에 참여한 뒤 다른 장소를 제안할 수 있어요.")}</section>`;
 }
 
 function placeCard() {
@@ -345,7 +346,8 @@ function guest() {
   if (["WAITING_APPROVAL", "INVITE_EXPIRED"].includes(status))
     return `${connection()}<section class="card"><span class="badge">${status === "INVITE_EXPIRED" ? "참여 기한 만료" : "참여 요청 완료"}</span>
     <h1>${status === "INVITE_EXPIRED" ? "새 초대를<br />받아주세요." : "운전자 확인을<br />기다리고 있어요."}</h1><p>${status === "INVITE_EXPIRED" ? "운전자에게 새 링크를 요청해주세요." : "확인되면 이 화면에서<br />약속 장소와 도착 정보를 볼 수 있어요."}</p>
-    <div class="empty-state">아직 차량 위치를 공유하지 않아요.</div></section>`;
+    <div class="empty-state">아직 차량 위치를 공유하지 않아요.</div>
+    ${status === "WAITING_APPROVAL" ? unavailableProposal("운전자가 확인하면 다른 장소를 제안할 수 있어요.") : ""}</section>`;
 
   const current = vehicleView(
     vehicleForPlace(snapshot, vehicle),
