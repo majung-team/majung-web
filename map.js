@@ -33,7 +33,7 @@ export function loadKakaoMaps(key) {
 export function createPickupMap(maps) {
   const element = document.createElement("div");
   element.className = "pickup-map";
-  element.setAttribute("role", "img");
+  element.setAttribute("role", "group");
   element.setAttribute("aria-label", "차량 위치와 약속 장소 지도");
   const carElement = document.createElement("div");
   carElement.className = "car-marker";
@@ -63,7 +63,8 @@ export function createPickupMap(maps) {
 
   function ensureMap(center) {
     if (map) return;
-    map = new maps.Map(element, { center, level: 4 });
+    map = new maps.Map(element, { center, level: 4, scrollwheel: false });
+    if (maps.ZoomControl) map.addControl(new maps.ZoomControl(), maps.ControlPosition.TOPRIGHT);
     placeMarker = new maps.CustomOverlay({ content: placeElement, yAnchor: 1, zIndex: 2 });
     carOverlay = new maps.CustomOverlay({ content: carElement, yAnchor: 0, zIndex: 3 });
     proposalOverlay = new maps.CustomOverlay({ content: proposalElement, yAnchor: 0.5 });
@@ -79,8 +80,9 @@ export function createPickupMap(maps) {
 
   return {
     recenter,
-    attach(slot) {
+    attach(slot, markerAttribute) {
       if (!slot) return;
+      if (markerAttribute) element.setAttribute(markerAttribute, "");
       if (slot !== element) slot.replaceWith(element);
       map?.relayout();
     },
@@ -161,7 +163,8 @@ export function createPlacePicker(maps, onSelect) {
       enabled = interactive;
       if (slot !== element) slot.replaceWith(element);
       if (!map) {
-        map = new maps.Map(element, {center:new maps.LatLng(37.5665,126.9780),level:4});
+        map = new maps.Map(element, {center:new maps.LatLng(37.5665,126.9780),level:4,scrollwheel:false});
+        if (maps.ZoomControl) map.addControl(new maps.ZoomControl(), maps.ControlPosition.TOPRIGHT);
         marker = new maps.Marker();
         maps.event.addListener(map,"click",click);
       }

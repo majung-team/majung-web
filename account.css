@@ -779,7 +779,8 @@ body { overflow-x: clip; }
 
 .quick-chips button {
   padding: 8px 14px;
-  font-size: 14px;
+  min-height: 48px;
+  font-size: 15px;
   font-weight: 500;
   border-radius: 18px;
   background: #ffffff;
@@ -825,3 +826,6 @@ body { overflow-x: clip; }
   .linked-vehicle-row { align-items: flex-start; gap: 16px; flex-wrap: wrap; }
   .account-nav button { font-size: 15px; }
 }
+
+.pickup-place-tools { scroll-margin-top: 92px; }
+.voice-composer-card button, .voice-composer-card .quick-msg-input { min-height: 48px; }
