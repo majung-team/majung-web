@@ -373,14 +373,6 @@ function guest() {
 
     ${readinessControl({ participant: snapshot.participant, online, sending: readinessSending, pendingValue: pendingReadiness, retry: pendingReadiness })}
     <div class="pickup-place-tools" data-proposal-area>
-    <!-- The time stays outside the map so map controls cannot cover it. -->
-    <div class="map-wrapper${!pickupMap ? " no-map" : ""}">
-      ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : '<div class="map-fallback"><div class="coordinates">차량 위치 · 위도 ' + (current?.latitude ? e(current.latitude.toFixed(5)) : "-") + ', 경도 ' + (current?.longitude ? e(current.longitude.toFixed(5)) : "-") + '</div></div>'}
-    </div>
-
-    <p class="vehicle-freshness" role="status">${e(vehicleFreshnessText(current))}</p>
-    ${pickupMap ? '<button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : '<p class="hint">지도를 불러오지 못했어요. 아래 약속 장소와 도착 상태를 확인해주세요.</p>'}
-    <!-- 2. Meeting Place Card -->
     <div class="pickup-place-card">
       <div class="place-card-info">
         <span class="place-card-badge">만날 약속 장소</span>
@@ -388,8 +380,15 @@ function guest() {
       </div>
     </div>
 
-    <!-- Inline Proposal Panel (팝업 없이 바로 그 자리에 펼쳐짐) -->
     ${proposalBlock({ proposal: snapshot.placeProposal, picking, mapReady: Boolean(pickupMap), status })}
+
+    <!-- The time stays outside the map so map controls cannot cover it. -->
+    <div class="map-wrapper${!pickupMap ? " no-map" : ""}">
+      ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : '<div class="map-fallback"><div class="coordinates">차량 위치 · 위도 ' + (current?.latitude ? e(current.latitude.toFixed(5)) : "-") + ', 경도 ' + (current?.longitude ? e(current.longitude.toFixed(5)) : "-") + '</div></div>'}
+    </div>
+
+    <p class="vehicle-freshness" role="status">${e(vehicleFreshnessText(current))}</p>
+    ${pickupMap ? '<button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : '<p class="hint">지도를 불러오지 못했어요. 아래 약속 장소와 도착 상태를 확인해주세요.</p>'}
     </div>
 
 
