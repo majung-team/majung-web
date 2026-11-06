@@ -1529,10 +1529,6 @@ button, .button {
   margin: 0 !important;
 }
 
-.pickup-place-card + button[data-action="propose-start"] {
-  display: none;
-}
-
 /* 3. Interactive Passenger Readiness Control (모던 토스/카카오T 스타일 슬라이딩 세그먼트 컨트롤) */
 .readiness-card {
   background: #ffffff;
