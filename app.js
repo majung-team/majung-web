@@ -427,12 +427,9 @@ function guest() {
     </div>
 
     <!-- The time stays outside the map so map controls cannot cover it. -->
-    <div class="map-wrapper${!pickupMap ? " no-map" : ""}">
-      ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : ""}
-    </div>
-
+    ${pickupMap && snapshot.place ? '<div class="map-wrapper"><div id="map-slot" class="pickup-map"></div></div>' : ""}
     <p class="vehicle-freshness" role="status">${e(vehicleFreshnessText(current))}</p>
-    ${pickupMap ? '<button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : ""}
+    ${pickupMap && snapshot.place ? '<button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : ""}
     </div>
 
 

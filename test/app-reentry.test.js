@@ -116,12 +116,12 @@ test('메시지 저장 실패 때 초안을 지우지 않고 51자는 전송하�
   assert.match(vm.runInContext('message',ui.context),/50자/);
 });
 
-test('도착 시간 안내는 지도 컨테이너 밖에 있어 지도 오류에도 남는다', async()=>{
+test('지도 오류에는 빈 지도 영역 없이 도착 시간과 장소 제안 복구를 표시한다', async()=>{
   const ui=await open();
   const html=ui.root.innerHTML;
-  assert.ok(html.indexOf('class="pickup-eta-summary"') < html.indexOf('class="map-wrapper'));
-  assert.match(html,/차량 정보 수신 대기/);
-  assert.ok(html.indexOf("readiness-card") < html.indexOf("map-wrapper"));
+  assert.match(html,/pickup-eta-summary.*?차량 정보 수신 대기/s);
+  assert.match(html,/만날 약속 장소.*?지도 다시 불러오기/s);
+  assert.doesNotMatch(html,/class="map-wrapper"|data-action="map-recenter"/);
 });
 
 test('종료된 픽업의 초대에는 다시 참여할 수 있다는 버튼을 표시하지 않는다',async()=>{
