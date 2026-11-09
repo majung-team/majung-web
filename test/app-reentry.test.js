@@ -13,7 +13,7 @@ const pickupId='10000000-0000-4000-8000-000000000001';
 const otherId='10000000-0000-4000-8000-000000000002';
 const guest={role:'guest',pickupId,participantId:otherId,token:'g'.repeat(43)};
 const link=id=>`#join/${id}/${'i'.repeat(43)}`;
-async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=false,onReadiness=null,onJoin=null}={}) {
+async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=false,onReadiness=null,onJoin=null,onPreview=null}={}) {
   const reads=[],writes=[],events={},rootEvents={};
   const store=new Map(saved ? [['majung.pickup.session.v1',JSON.stringify(saved)]]:[]);
   const root={innerHTML:'',addEventListener(name,callback){rootEvents[name]=callback;},contains:()=>false,querySelector:()=>null};
@@ -22,6 +22,7 @@ async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=fa
     openPickupStream:()=>({close(){}}),
     request:async(path,options={})=>{
       (options.method && options.method!=='GET'?writes:reads).push({path,...options});
+      if(path.endsWith('/invitation-preview')) return onPreview ? onPreview() : {placeLabel:'시험 장소'};
       if(path.endsWith('/participants') && onJoin) return onJoin();
       if(path.endsWith('/readiness') && onReadiness) return onReadiness(options);
       if(rejected)throw new ApiError(403,{code:'PARTICIPANT_REVOKED'});
@@ -42,7 +43,7 @@ async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=fa
 }
 test('같은 링크 재접속은 저장한 참여 권한으로 조회하고 다시 참여하지 않는다',async()=>{
   const ui=await open();
-  assert.match(ui.root.innerHTML,/마중 차량이 오고 있어요/);
+  assert.match(ui.root.innerHTML,/차량 위치와 도착 시간을 기다리고 있어요/);
   assert.equal(ui.reads[0].token,guest.token);
   assert.equal(ui.writes.length,0);
   assert.doesNotMatch(ui.root.innerHTML,/id="join-form"/);
@@ -131,9 +132,21 @@ test('종료된 픽업의 초대에는 다시 참여할 수 있다는 버튼을 
   assert.match(ui.root.innerHTML,/운전자에게 새 초대 링크/);
   assert.doesNotMatch(ui.root.innerHTML,/id="join-form"/);
 });
+test('사용할 수 없는 초대는 참여 버튼을 누르기 전에 안내한다',async()=>{
+  const ui=await open({saved:null,onPreview:()=>{throw new ApiError(410,{code:'INVITE_UNAVAILABLE'});}});
+  assert.match(ui.root.innerHTML,/운전자에게 새 초대 링크/);
+  assert.doesNotMatch(ui.root.innerHTML,/id="join-form"/);
+  assert.equal(ui.writes.length,1);
+});
+test('유효한 초대는 만날 장소만 먼저 보여주고 참여를 기다린다',async()=>{
+  const ui=await open({saved:null});
+  assert.match(ui.root.innerHTML,/시험 장소/);
+  assert.match(ui.root.innerHTML,/id="join-form"/);
+  assert.deepEqual(ui.writes.map(write=>write.path),[`/${pickupId}/invitation-preview`]);
+});
 test('재발급 링크를 열면 철회된 기존 세션 대신 새 초대로 참여할 수 있다',async()=>{
   const ui=await open({rejected:true});
   assert.match(ui.root.innerHTML,/id="join-form"/);
   assert.equal(ui.store.size,0);
-  assert.equal(ui.writes.length,0);
+  assert.deepEqual(ui.writes.map(write=>write.path),[`/${pickupId}/invitation-preview`]);
 });
