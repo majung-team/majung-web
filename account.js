@@ -1,5 +1,5 @@
 import { existingArrivalSubscription } from "./push.js";
-import { vehicleFreshnessText, pickupStatusNotice, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend } from "./model.js";
+import { guestPickupHeading, vehicleFreshnessText, pickupStatusNotice, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend } from "./model.js";
 import { openPickupStream } from "./stream.js";
 import { createAccountClient, AccountError } from "./account-api.js";
 import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, vehicleForPlace, etaText, ageText } from "./model.js";
@@ -80,13 +80,14 @@ function rideRow(source) {
     : "";
   const readiness = current ? readinessControl({participant:current.pickup.participant, online:networkAvailable, blocked:busy, sending:readinessSendingId===item.requestId, pendingValue:readinessRetries.get(item.requestId), retry:readinessRetries.get(item.requestId), prefix:"ride-", attributes:`data-id="${e(item.requestId)}"`}) : "";
   const message = current ? quickMessageControl({value:quickMsgDraft[item.requestId], message:current.pickup.quickMessage?.text, online:networkAvailable && !busy, prefix:"ride-", attributes:`data-id="${e(item.requestId)}"`}) : "";
-  const active = current ? `${vehicleBadge}<p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>
-    ${readiness}<div class="pickup-place-tools" data-proposal-area>
-      ${proposalBlock({proposal:current.pickup.placeProposal,picking:pickingRide===item.requestId,mapReady:Boolean(pickupMap),status:current.pickup.status})}
+  const active = current ? `${vehicleBadge}<strong data-ride-heading="${e(item.requestId)}">${e(guestPickupHeading(current.pickup.status, rideVehicleView(current), networkAvailable))}</strong><p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>
+    ${readiness}<div class="pickup-place-tools" data-proposal-area><div class="pickup-place-card">
+      <div class="place-card-info"><span class="place-card-badge">만날 장소</span><strong class="place-card-name">${e(current.pickup.place?.label || item.place.label)}</strong></div>
+      <div class="pickup-place-proposal">${proposalBlock({proposal:current.pickup.placeProposal,picking:pickingRide===item.requestId,mapReady:Boolean(pickupMap),status:current.pickup.status})}</div></div>
       ${pickupMap && current.pickup.place ? '<div class="pickup-map" data-ride-map></div><button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : ""}
     </div>${message}${current.pickup.status==="ACTIVE" ? ridePushCard(item.requestId) : ""}`
     : item.status === "ACTIVE" ? unavailableProposal("픽업 정보를 불러오는 중이에요. 계속 안 보이면 새로 확인을 눌러주세요.") : "";
-  return `<li class="person-row ride-row" id="ride-${e(item.requestId)}" data-state="${e(item.status)}">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong><p>${item.status==="ACTIVE" ? "만날 장소" : item.driverInvitation?"운전자가 제안한 장소":"내가 요청한 장소"} · ${e(item.place.label)}</p>${waiting}${active}${["INVITED","PENDING","QUEUED"].includes(item.status) ? unavailableProposal("내 픽업이 시작되면 다른 장소를 제안할 수 있어요.") : ""}${item.status==="INVITED"?`<p>이 장소에서 탈까요? 수락해도 내 픽업이 시작되기 전에는 차량 위치가 공유되지 않아요.</p><p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답해주세요.</p>${button("이 장소에서 탈게요","invitation-accept",`data-id="${e(item.requestId)}"`)}${button("초대 거절","invitation-reject",`data-id="${e(item.requestId)}"`,true)}`:""}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
+  return `<li class="person-row ride-row" id="ride-${e(item.requestId)}" data-state="${e(item.status)}">${person(item.nickname,item.majungId)}<strong>${e(labels[item.status]||item.status)}</strong>${current ? "" : `<p>${item.status==="ACTIVE" ? "만날 장소" : item.driverInvitation?"운전자가 제안한 장소":"내가 요청한 장소"} · ${e(item.place.label)}</p>`}${waiting}${active}${["INVITED","PENDING","QUEUED"].includes(item.status) ? unavailableProposal("내 픽업이 시작되면 다른 장소를 제안할 수 있어요.") : ""}${item.status==="INVITED"?`<p>이 장소에서 탈까요? 수락해도 내 픽업이 시작되기 전에는 차량 위치가 공유되지 않아요.</p><p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답해주세요.</p>${button("이 장소에서 탈게요","invitation-accept",`data-id="${e(item.requestId)}"`)}${button("초대 거절","invitation-reject",`data-id="${e(item.requestId)}"`,true)}`:""}${item.status==="PENDING"?`<p class="hint">${e(new Date(item.expiresAt).toLocaleTimeString("ko-KR"))}까지 응답이 없으면 만료돼요.</p>`:""}${["PENDING","QUEUED"].includes(item.status)?button("마중 요청 취소","ride-cancel",`data-id="${e(item.requestId)}"`,true):""}</li>`;
 }
 const upgradedPushRequests=new Set();
 let pushKey=null, pushBusyId=null, pushMessageFor=null, pushMessage="";
@@ -178,9 +179,13 @@ function updateRideMap() {
     pickupMap.stopPicking();
   }
 }
+function rideVehicleView(current) {
+  return vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),networkAvailable,current.pickup.status);
+}
+
 function rideEtaText(current) {
   if (current.pickup.status==="ARRIVED") return "차량이 도착했어요. 약속 장소에서 차량을 확인해주세요.";
-  const view=vehicleView(vehicleForPlace(current.pickup,current.vehicle),current.timing,current.deadline,performance.now(),networkAvailable,current.pickup.status);
+  const view=rideVehicleView(current);
   if (!networkAvailable) return "인터넷 연결을 확인해주세요.";
   if (!view) return "차량 정보를 기다리고 있어요. 위치가 공유되면 도착 시간이 표시돼요.";
   if (view.kind==="lost") return `위치 확인 중 · 마지막 갱신 ${ageText(view.ageMillis)}`;
@@ -194,7 +199,7 @@ function vehicleDescription(vehicle) {
   return `${vehicle.vehicleName || "마중 차량"} · ${code} · 연결 ${linked}`;
 }
 function rideSections() {
-  const form=rideTarget?`<section class="card confirmation ride-request-form"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>장소명·주소로 검색한 뒤 만날 곳을 선택해주세요. 지도나 현재 위치로도 고를 수 있어요.</p>${placeSearchPanel()}${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 불러오지 못하면 현재 위치로 요청할 수 있어요.</p>'}<div class="selected-meeting-place" aria-live="polite"><strong>${e(selectedPlaceText())}</strong>${ridePlace?.address?`<p>${e(ridePlace.address)}</p>`:""}</div><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><div class="request-submit"><button class="primary" ${busy||placeSearchBusy||!ridePlace?"disabled":""}>${busy?"요청 보내는 중…":"이 장소로 마중 요청"}</button></div></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
+  const form=rideTarget?`<section class="card confirmation ride-request-form"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>장소명·주소로 검색한 뒤 만날 곳을 선택해주세요. 지도나 현재 위치로도 고를 수 있어요.</p>${placeSearchPanel()}${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 열 수 없으면 현재 위치로 요청할 수 있어요.</p><button type="button" data-action="retry-map" class="quiet">지도 다시 불러오기</button>'}<div class="selected-meeting-place" aria-live="polite"><strong>${e(selectedPlaceText())}</strong>${ridePlace?.address?`<p>${e(ridePlace.address)}</p>`:""}</div><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><div class="request-submit"><button class="primary" ${busy||placeSearchBusy||!ridePlace?"disabled":""}>${busy?"요청 보내는 중…":"이 장소로 마중 요청"}</button></div></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
   const pair=vehiclePair||vehicleRequest?`<section class="card vehicle-pair-card"><h2>${(vehiclePair?.kind || vehicleRequest?.kind) === "enroll" ? "차량과 운전자 처음 연결" : "내 계정과 차량 연결"}</h2>${vehicleRequest?`<div class="vehicle-pair-status" role="status"><strong>차량에서 ${e(info.member.nickname)} 님의 연결을 승인해주세요.</strong><p>차량 화면의 ‘요청한 계정 확인하고 연결’을 누르면 바로 연결돼요.</p></div><div class="row-actions">${button("연결 상태 확인","refresh")}${button("연결 요청 취소","vehicle-dismiss","",true)}</div>`:`<p>운전자 본인의 차량 화면에 표시된 QR인지 확인해주세요. 로그인한 계정을 차량에서 한 번 더 확인하면 연결돼요. 관리자 코드는 필요 없어요. 탑승자는 이 연결을 할 필요가 없어요.</p><div class="row-actions">${button("이 계정으로 차량 연결 요청","vehicle-claim")}${button("차량 연결 요청 닫기","vehicle-dismiss","",true)}</div>`}</section>`:"";
   return `${pair}${accountTab === "settings" ? `<section class="card"><h2>내 차량</h2><p class="hint">차량 연결은 운전자만 필요해요. 탑승자는 운전자를 찾아 바로 요청할 수 있어요.</p>${linkedVehicles.length?linkedVehicles.map(vehicle=>`<div class="linked-vehicle-row"><div class="linked-vehicle-details"><strong>${e(vehicle.vehicleName)}</strong><span>${e(vehicleDescription(vehicle))}</span></div>${button("연결 해제","vehicle-detach",`data-id="${e(vehicle.vehicleId)}" aria-label="${e(vehicleDescription(vehicle))} 계정 연결 해제"`,true)}</div>`).join(""):"<p>연결된 차량이 없어요. 운전자라면 차량 앱의 계정 연결 QR을 스캔해주세요.</p>"}</section>` : ""}${accountTab === "pickup" ? `${form}<section class="card${rides.some(ride=>ride.status==="ACTIVE") ? " active-pickup-card" : ""}"><div class="section-heading"><h2>${rides.some(ride=>ride.status==="ACTIVE") ? "진행 중인 픽업" : "받은 초대와 내 마중 요청"}</h2>${button("새로 확인","refresh","",true)}</div>${rides.some(ride=>ride.status==="ACTIVE") ? "" : '<p class="hint">받은 초대를 확인하거나 사람 찾기에서 새 마중을 요청해보세요.</p>'}${rides.length?`<ul class="person-list">${[...rides].sort((a,b)=>({ACTIVE:0,INVITED:1,QUEUED:2,PENDING:3}[a.status]??4)-({ACTIVE:0,INVITED:1,QUEUED:2,PENDING:3}[b.status]??4)).map(rideRow).join("")}</ul>`:`<div class="empty-pickup"><strong>아직 진행 중인 픽업이 없어요</strong><p>운전자를 찾고 만날 장소를 보내주세요.<br />받은 초대도 여기에서 확인할 수 있어요.</p>${button("운전자 찾아 마중 요청", "tab-people")}</div>`}</section>` : ""}`;
 }
@@ -296,11 +301,11 @@ function render() {
     return;
   }
   if (!info.authenticated) {
-    root.innerHTML = `<section class="intro small"><p class="eyebrow">내 연결</p><h1>찾아두면,<br />다음 만남이 편해져요.</h1><p>닉네임으로 운전자를 찾아 마중을 요청하세요.<br />같은 닉네임은 마중 ID로 구분할 수 있어요.</p></section>${alerts}
-      <section class="card"><h2>마중 시작하기</h2><ol class="account-steps"><li>카카오로 로그인해요.</li><li>마중에서 쓸 닉네임을 정해요.</li><li>운전자를 찾아 만날 장소와 함께 요청해요.</li></ol>
+    root.innerHTML = `<section class="intro small"><p class="eyebrow">내 연결</p><h1>운전자에게<br />마중을 요청해요.</h1><p>닉네임으로 운전자를 찾아 마중을 요청하세요.<br />같은 닉네임은 마중 ID로 구분할 수 있어요.</p></section>${alerts}
+      <section class="card"><h2>카카오로 로그인하고 요청하기</h2><ol class="account-steps"><li>카카오로 로그인해요.</li><li>마중에서 쓸 닉네임을 정해요.</li><li>운전자를 찾아 만날 장소와 함께 요청해요.</li></ol>
       <p class="hint">로그인에는 카카오 회원번호를 사용하고 마중 ID와 닉네임을 관리해요. 이메일·사진·친구 목록은 요청하지 않아요. 시작 전에 개인정보 처리방침과 위치 공유·보관 안내를 확인해주세요.</p>
       ${info?.loginEnabled ? '<a class="kakao-login" href="/api/v1/auth/login">카카오로 시작하기</a>' : '<p class="hint">로그인 기능을 준비하고 있어요. 받은 픽업 초대는 기존 링크에서 열 수 있어요.</p>'}
-      ${button("다시 확인", "refresh", "", true)}<p class="hint">연결을 수락해도 차량 위치는 공유되지 않아요.</p></section>`;
+      ${button("다시 확인", "refresh", "", true)}<p class="hint">연결을 수락해도 차량 위치는 공유되지 않아요.</p></section><section class="card"><h2>초대 링크를 받았어요</h2><p>운전자가 보낸 메시지에서 링크를 열면 로그인 없이 참여할 수 있어요.</p></section>`;
     return;
   }
   const profile = info.member;
@@ -526,6 +531,7 @@ root.addEventListener("click", event => {
     return;
   }
   if (action === "ride-map-center") { placePicker?.chooseCenter(); return; }
+  if (action === "retry-map") { void loadConfiguration(true); return; }
   if (action === "propose-start") { const [id]=[...tracking.keys()]; if (!id || tracking.get(id)?.pickup.status!=="ACTIVE") return; pickingRide=id; render(); root.querySelector("[data-proposal-area]")?.scrollIntoView?.({block:"start"}); return; }
   if (action === "propose-withdraw") {
     const [id]=[...tracking.keys()]; if (!id) return;
@@ -672,6 +678,9 @@ setInterval(()=>{
   // Update the countdown text in place; a full render would interrupt typing.
   for (const [id,current] of tracking) {
     const node=root.querySelector(`[data-ride-eta="${CSS.escape(id)}"]`);
+    const heading=root.querySelector(`[data-ride-heading="${CSS.escape(id)}"]`);
+    const headingText=guestPickupHeading(current.pickup.status, rideVehicleView(current), networkAvailable);
+    if (heading && heading.textContent!==headingText) heading.textContent=headingText;
     const text=rideEtaText(current);
     if (node && node.textContent!==text) node.textContent=text;
   }
@@ -697,12 +706,30 @@ async function toggleRidePush(requestId, turnOn) {
   finally { pushBusyId=null; render(); }
 }
 
-// Start without push: a failed configuration read keeps the page working and hides the notice card.
-void fetch("/api/v1/config", { cache: "no-store", credentials: "omit", redirect: "error", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(8000) })
-  .then(response => response.ok ? response.json() : null)
-  .then(configuration => { pushKey = typeof configuration?.webPushPublicKey === "string" ? configuration.webPushPublicKey : null; if (pushKey && tracking.size && !busy) render(); return loadKakaoMaps(configuration?.kakaoMapJavaScriptKey); })
-  .then(maps => { if (!maps) return; placeMaps=maps; pickupMap=createPickupMap(maps); if ((tracking.size || rideTarget) && !busy) render(); })
-  .catch(() => { });
+let configurationLoading = false;
+async function loadConfiguration(retry = false) {
+  if (configurationLoading || pickupMap) return;
+  configurationLoading = true;
+  if (retry) { notice = "지도를 다시 불러오고 있어요."; render(); }
+  try {
+    const response = await fetch("/api/v1/config", { cache: "no-store", credentials: "omit",
+      redirect: "error", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(8000) });
+    if (!response.ok) throw new Error();
+    const configuration = await response.json();
+    pushKey = typeof configuration.webPushPublicKey === "string" ? configuration.webPushPublicKey : null;
+    const maps = await loadKakaoMaps(configuration.kakaoMapJavaScriptKey);
+    if (!maps) throw new Error();
+    placeMaps = maps;
+    pickupMap = createPickupMap(maps);
+    if (retry) notice = "";
+  } catch {
+    if (retry) notice = "지도를 불러오지 못했어요. 잠시 후 다시 시도해주세요.";
+  } finally {
+    configurationLoading = false;
+    if (!busy && (retry || tracking.size || rideTarget)) render();
+  }
+}
+void loadConfiguration();
 
 window.addEventListener("popstate", event => {
   // A browser Back closes the local draft, not the preceding OAuth page.

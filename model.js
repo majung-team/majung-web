@@ -174,7 +174,7 @@ export function readinessControl({ participant, online = true, sending = false, 
 
 export function quickMessageControl({ value = '', message = '', online = true, prefix = 'guest-', attributes = '' }) {
   return `<section class="voice-composer-card" aria-label="운전자에게 메시지 보내기">
-    <div class="voice-header-row"><strong class="voice-title">운전자에게 메시지</strong><span class="voice-subtitle">차량에서 음성으로 안내해요</span></div>
+    <div class="voice-header-row"><strong class="voice-title">운전자에게 메시지</strong><span class="voice-subtitle">아래 문구는 누르면 바로 보내요</span></div>
     <div class="quick-chips">${['지금 내려가요','1번 출구 앞이에요','곧 도착해요'].map(text => `<button type="button" class="quiet quick-chip" data-action="${prefix}quick-msg" data-msg="${escapeHtml(text)}" ${attributes} ${!online ? 'disabled' : ''}>${text}</button>`).join('')}</div>
     <form class="quick-input-form quick-msg-form" ${attributes}><label class="sr-only">운전자에게 보낼 메시지</label><input type="text" name="quickMsg" class="quick-msg-input" aria-label="운전자에게 보낼 메시지" placeholder="메시지 입력 (최대 50자)" maxlength="50" autocomplete="off" value="${escapeHtml(value)}" ${!online ? 'disabled' : ''}/><button type="submit" class="quick-send-btn" ${!online ? 'disabled' : ''}>전송</button></form>
     <p class="hint quick-msg-count" data-message-count>${String(value).length}/50자</p>
@@ -228,4 +228,12 @@ export function pickupEtaLabel(status, view, online = true) {
     return view.kind === 'stale' ? `마지막 예상 · ${time}` : time;
   }
   return view ? '도착 시간 확인 중' : '차량 정보 수신 대기';
+}
+
+export function guestPickupHeading(status, view, online) {
+  if (status === "ARRIVED") return "차량이 도착했어요";
+  if (!online) return "픽업 정보를 다시 확인하고 있어요";
+  if (!view) return "차량 위치와 도착 시간을 기다리고 있어요";
+  if (view.kind !== "fresh") return "차량 정보가 잠시 끊겼어요";
+  return "마중 차량이 오고 있어요";
 }

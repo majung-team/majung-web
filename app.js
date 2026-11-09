@@ -1,5 +1,5 @@
 import { existingArrivalSubscription } from "./push.js";
-import { pickupEtaLabel, pickupStatusNotice, vehicleFreshnessText, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend } from "./model.js";
+import { guestPickupHeading, pickupEtaLabel, pickupStatusNotice, vehicleFreshnessText, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend } from "./model.js";
 import { openPickupStream } from "./stream.js";
 import { request, ApiError } from "./api.js";
 import {
@@ -92,6 +92,9 @@ const storageKey = "majung.pickup.session.v1";
 let invitation = parseInvitation(location.hash);
 let reopenedInvitation = null;
 let unavailableInvitation = "";
+let invitationPreview = null;
+let invitationChecking = false;
+let invitationCheckFailed = false;
 const hostInvitation = parseHostInvitation(location.hash);
 const invalidInvitation = Boolean(
   (location.hash.startsWith("#join") || location.hash.startsWith("#share")) && !invitation && !hostInvitation,
@@ -207,9 +210,9 @@ function alerts() {
 function home() {
   return `<section class="intro service-intro"><p class="eyebrow">함께 만날 약속, 마중</p>
     <h1>차가 언제 오는지<br />함께 확인해요.</h1><p>만날 장소를 정하고 준비 상태를 전해보세요.<br />차량이 출발하면 위치와 도착 시간을 확인할 수 있어요.</p>
-    <a class="primary service-start" href="/account">마중 시작하기</a></section>
+    <a class="primary service-start" href="/account">운전자 찾아 마중 요청하기</a></section>
     <section class="card service-guide"><h2>처음이라면 이렇게 시작해요.</h2><ol><li><strong>운전자를 찾아요.</strong><span>카카오로 로그인하고 닉네임이나 마중 ID로 찾아주세요.</span></li><li><strong>만날 장소를 보내요.</strong><span>장소를 검색하고 운전자가 수락하면 픽업 대기에 들어가요.</span></li><li><strong>위치와 시간을 함께 봐요.</strong><span>내 픽업이 시작되면 준비 상태를 전하고 도착 시간을 확인해요.</span></li></ol></section>
-    <section class="card"><h2>초대 링크를 받았나요?</h2><p>받은 링크를 열면 이 화면 대신 이번 픽업이 바로 열려요. 링크 초대는 회원가입 없이 참여할 수 있어요.</p></section>
+    <section class="card"><h2>초대 링크를 받았어요</h2><p>운전자가 보낸 메시지에서 초대 링크를 열어주세요. 회원가입 없이 이번 픽업에 참여할 수 있어요.</p></section>
     ${developmentToolsEnabled ? `<details class="dev-card"><summary>개발 도구</summary><p>차량 없이 API를 확인하는 로컬 시험용 화면이에요.</p>${button("픽업 준비하기", "prepare", true)}</details>` : ""}`;
 }
 
@@ -232,15 +235,42 @@ function createForm() {
     ${button("돌아가기", "home", true)}`;
 }
 
+async function checkInvitation() {
+  if (!invitation || invitationChecking) return;
+  const invite = invitation;
+  invitationChecking = true;
+  invitationCheckFailed = false;
+  render();
+  try {
+    const preview = await request(`/${invite.pickupId}/invitation-preview`, {
+      method: "POST", body: { inviteToken: invite.inviteToken },
+    });
+    if (invite === invitation) invitationPreview = preview;
+  } catch (error) {
+    if (invite !== invitation) return;
+    if (error instanceof ApiError && error.code === "INVITE_UNAVAILABLE") {
+      unavailableInvitation = "이 초대 링크는 더 이상 사용할 수 없어요.";
+      invitation = null;
+    } else invitationCheckFailed = true;
+  } finally {
+    invitationChecking = false;
+    render();
+  }
+}
+
 function joinForm() {
   if (unavailableInvitation)
     return `<section class="card"><h1>${e(unavailableInvitation)}</h1><p>운전자에게 새 초대 링크를 받아 열어주세요.</p>${button("처음으로", "home", true)}</section>`;
   if (!invitation)
     return `<section class="card"><h1>초대가 필요해요.</h1><p>운전자에게 받은 링크를 다시 열어주세요.</p>${button("처음으로", "home", true)}</section>`;
-  return `<section class="intro small"><p class="eyebrow">마중 약속 초대</p><h1>함께 만날 약속에<br />참여할까요?</h1><p>참여하면 바로 연결돼서 만날 장소와<br />차량의 도착 정보를 볼 수 있어요.</p></section>
+  if (!invitationPreview)
+    return invitationCheckFailed
+      ? `<section class="card"><h1>초대를 확인하지 못했어요.</h1><p>인터넷 연결을 확인한 뒤 다시 시도해주세요.</p>${button("초대 다시 확인", "retry-invitation")}</section>`
+      : '<section class="card" role="status"><h1>초대를 확인하고 있어요.</h1></section>';
+  return `<section class="intro small"><p class="eyebrow">마중 약속 초대</p><h1>이 장소에서 만날까요?</h1><p>가입 없이 참여할 수 있어요.</p></section>
+    <section class="card"><div class="place"><span>만날 장소</span><strong>${e(invitationPreview.placeLabel)}</strong></div></section>
     <form id="join-form" class="card"><p class="hint">이름이나 가입 없이 참여해요. 이 링크는 한 사람만 쓸 수 있어요. 참여하면 만날 장소·차량 위치·도착 시간과 내 준비 상태를 공유해요. 휴대전화의 이동 위치나 연락처는 요청하지 않아요.</p>
-    <button class="primary" ${busy ? "disabled" : ""}>${busy ? "연결하고 있어요…" : "약속에 참여하기"}</button></form>
-    <section class="card">${unavailableProposal("약속에 참여한 뒤 다른 장소를 제안할 수 있어요.")}</section>`;
+    <button class="primary" ${busy ? "disabled" : ""}>${busy ? "연결하고 있어요…" : "약속에 참여하기"}</button></form>`;
 }
 
 function placeCard() {
@@ -378,7 +408,7 @@ function guest() {
   return `${connection()}<section class="card pickup-live mobility-app-view">
     <div class="pickup-header-row">
       <span class="badge">${status === "ARRIVED" ? "도착 안내" : "약속 진행 중"}</span>
-      <h1>${status === "ARRIVED" ? "차량이 도착했어요" : "마중 차량이 오고 있어요"}</h1>
+      <h1 data-guest-pickup-heading>${e(guestPickupHeading(status, current, online))}</h1>
     </div>
 
     <div class="pickup-eta-summary" role="status" aria-live="polite">
@@ -398,11 +428,11 @@ function guest() {
 
     <!-- The time stays outside the map so map controls cannot cover it. -->
     <div class="map-wrapper${!pickupMap ? " no-map" : ""}">
-      ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : '<div class="map-fallback"><div class="coordinates">차량 위치 · 위도 ' + (current?.latitude ? e(current.latitude.toFixed(5)) : "-") + ', 경도 ' + (current?.longitude ? e(current.longitude.toFixed(5)) : "-") + '</div></div>'}
+      ${pickupMap && snapshot.place ? '<div id="map-slot" class="pickup-map"></div>' : ""}
     </div>
 
     <p class="vehicle-freshness" role="status">${e(vehicleFreshnessText(current))}</p>
-    ${pickupMap ? '<button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : '<p class="hint">지도를 불러오지 못했어요. 아래 약속 장소와 도착 상태를 확인해주세요.</p>'}
+    ${pickupMap ? '<button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : ""}
     </div>
 
 
@@ -505,6 +535,8 @@ function render() {
 
 function updateFocusedMap() {
   const view=vehicleView(vehicleForPlace(snapshot,vehicle),timing,deadline,performance.now(),online,snapshot?.status);
+  const heading = root.querySelector('[data-guest-pickup-heading]');
+  if (heading) heading.textContent = guestPickupHeading(snapshot?.status, view, online);
   const eta=root.querySelector('.floating-eta');
   if (eta) eta.textContent=pickupEtaLabel(snapshot?.status,view,online);
   const freshness=root.querySelector('.vehicle-freshness');
@@ -643,6 +675,8 @@ async function refresh() {
       reopenedInvitation = null;
       forgetSession();
       invitation = nextInvitation;
+      invitationPreview = null;
+      void checkInvitation();
       page = "join";
       message = "";
     } else handleError(error);
@@ -741,7 +775,7 @@ root.addEventListener("submit", async (event) => {
       };
       storeSession();
     });
-  } else if (form.id === "join-form" && invitation) {
+  } else if (form.id === "join-form" && invitation && invitationPreview) {
     const invite = invitation;
     await mutate(async () => {
       let joined;
@@ -831,6 +865,8 @@ root.addEventListener("click", async (event) => {
     await toggleArrivalPush(action === "push-on");
     return;
   }
+  if (action === "retry-invitation") { void checkInvitation(); return; }
+  if (action === "retry-map") { void loadConfiguration(true); return; }
   if (action === "propose-start" && session?.role === "guest" && snapshot?.status === "ACTIVE") {
     picking = true;
     render();
@@ -997,29 +1033,36 @@ setInterval(() => {
 }, 1000);
 render();
 if (session) void refresh();
-// Start closed: a failed configuration read must not expose the development form.
-void fetch("/api/v1/config", {
-  cache: "no-store",
-  credentials: "omit",
-  redirect: "error",
-  referrerPolicy: "no-referrer",
-  signal: AbortSignal.timeout(8000),
-}).then(async (response) => {
-  if (response.ok) {
+if (invitation) void checkInvitation();
+
+let configurationLoading = false;
+async function loadConfiguration(retry = false) {
+  if (configurationLoading || pickupMap) return;
+  configurationLoading = true;
+  if (retry) { notice = "지도를 다시 불러오고 있어요."; render(); }
+  try {
+    const response = await fetch("/api/v1/config", {
+      cache: "no-store", credentials: "omit", redirect: "error",
+      referrerPolicy: "no-referrer", signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) throw new Error();
     const configuration = await response.json();
     developmentToolsEnabled = configuration.developmentToolsEnabled === true;
     pushKey = typeof configuration.webPushPublicKey === "string" ? configuration.webPushPublicKey : null;
     render();
-    void loadKakaoMaps(configuration.kakaoMapJavaScriptKey)
-      .then((maps) => {
-        if (!maps) return;
-        proposalMaps=maps;
-        pickupMap = createPickupMap(maps);
-        render();
-      })
-      .catch(() => { /* Without the map the screen keeps the text-only layout. */ });
+    const maps = await loadKakaoMaps(configuration.kakaoMapJavaScriptKey);
+    if (!maps) throw new Error();
+    proposalMaps = maps;
+    pickupMap = createPickupMap(maps);
+    if (retry) notice = "";
+  } catch {
+    if (retry) notice = "지도를 불러오지 못했어요. 잠시 후 다시 시도해주세요.";
+  } finally {
+    configurationLoading = false;
+    render();
   }
-}).catch(() => { /* Invitation access remains available without development tools. */ });
+}
+void loadConfiguration();
 
 window.addEventListener("pagehide",()=>{pickupStream?.close();pickupStream=null;streamSession=null;});
 window.addEventListener("pageshow", event => {
