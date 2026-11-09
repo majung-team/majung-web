@@ -1367,21 +1367,6 @@ button, .button {
   box-shadow: none !important;
 }
 
-.map-wrapper.no-map {
-  height: auto;
-  min-height: 80px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.map-fallback .coordinates {
-  display: block;
-  font-size: 13px;
-  color: var(--muted, #64748b);
-  text-align: center;
-}
 
 .pickup-eta-summary {
   display: flex;
