@@ -13,7 +13,7 @@ const pickupId='10000000-0000-4000-8000-000000000001';
 const otherId='10000000-0000-4000-8000-000000000002';
 const guest={role:'guest',pickupId,participantId:otherId,token:'g'.repeat(43)};
 const link=id=>`#join/${id}/${'i'.repeat(43)}`;
-async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=false,onReadiness=null,onJoin=null,onPreview=null}={}) {
+async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=false,onReadiness=null,onJoin=null,onPreview=null,navigator={}}={}) {
   const reads=[],writes=[],events={},rootEvents={};
   const store=new Map(saved ? [['majung.pickup.session.v1',JSON.stringify(saved)]]:[]);
   const root={innerHTML:'',addEventListener(name,callback){rootEvents[name]=callback;},contains:()=>false,querySelector:()=>null};
@@ -33,7 +33,7 @@ async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=fa
     window:{addEventListener:(name,callback)=>{events[name]=callback;}},
     location:{hash,pathname:'/',origin:'https://test.invalid',reload(){}},
     history:{replaceState(){}},sessionStorage:{getItem:key=>store.get(key),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},
-    performance:{now:()=>1000},setInterval(){},fetch:async()=>({ok:false}),navigator:{},CSS:{escape:x=>x},URL,AbortSignal,
+    performance:{now:()=>1000},setInterval(){},fetch:async()=>({ok:false}),navigator,CSS:{escape:x=>x},URL,AbortSignal,
   });
   const source=(await readFile(new URL('../app.js',import.meta.url),'utf8')).replace(/^import[\s\S]*?from ["'][^"']+["'];\n/gm,'');
   vm.runInContext(source,context);
@@ -149,4 +149,23 @@ test('재발급 링크를 열면 철회된 기존 세션 대신 새 초대로 �
   assert.match(ui.root.innerHTML,/id="join-form"/);
   assert.equal(ui.store.size,0);
   assert.deepEqual(ui.writes.map(write=>write.path),[`/${pickupId}/invitation-preview`]);
+});
+
+test('iPhone 초대 확인은 앱 열기를 제공하고 참여 토큰을 먼저 사용하지 않는다', async () => {
+  const ui = await open({saved:null,navigator:{userAgent:"iPhone"}});
+  assert.match(ui.root.innerHTML, /마중 앱에서 열기/);
+  assert.match(ui.root.innerHTML, new RegExp(`majung://join/${pickupId}/${"i".repeat(43)}`));
+  assert.equal(ui.writes.filter(write=>write.path.endsWith("/participants")).length,0);
+  assert.match(ui.root.innerHTML,/id="join-form"/);
+});
+
+test('사용할 수 없는 초대와 운전자 공유 화면은 앱 열기를 제공하지 않는다', async () => {
+  for (const options of [
+    {onPreview:()=>{throw new ApiError(410,{code:"INVITE_UNAVAILABLE"});}},
+    {hash:link(pickupId).replace("#join/","#share/")},
+    {hash:"#join/invalid/short"}
+  ]) {
+    const ui=await open({saved:null,navigator:{userAgent:"iPhone"},...options});
+    assert.doesNotMatch(ui.root.innerHTML,/majung:\/\/join\//);
+  }
 });

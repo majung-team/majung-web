@@ -175,3 +175,14 @@ test("message success uses short user-facing wording without a read claim", asyn
   const { quickMessageSavedText } = await import("../model.js");
   assert.equal(quickMessageSavedText, "메시지를 보냈어요.");
 });
+
+import { nativeInvitationUrl, supportsIOSApp } from "../model.js";
+test("앱 열기는 검증한 탑승자 초대만 전달한다", () => {
+  assert.equal(nativeInvitationUrl({pickupId:id,inviteToken:token}), `majung://join/${id}/${token}`);
+  for (const invite of [null, {}, {pickupId:id,inviteToken:"short"}, {pickupId:"../",inviteToken:token}])
+    assert.equal(nativeInvitationUrl(invite), null);
+  assert.equal(supportsIOSApp({userAgent:"iPhone"}),true);
+  assert.equal(supportsIOSApp({platform:"MacIntel",maxTouchPoints:5}),true);
+  assert.equal(supportsIOSApp({platform:"MacIntel",maxTouchPoints:0}),false);
+  assert.equal(supportsIOSApp({userAgent:"Android"}),false);
+});
