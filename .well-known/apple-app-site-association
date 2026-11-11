@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "K2G6G3ZNZQ.app.majung.ios"
+        ],
+        "components": [
+          { "/": "/", "#": "join/*" },
+          { "/": "/", "#": "vehicle/*" },
+          { "/": "/", "#": "enroll/*" },
+          { "/": "/account", "#": "vehicle/*" },
+          { "/": "/account", "#": "enroll/*" }
+        ]
+      }
+    ]
+  }
+}

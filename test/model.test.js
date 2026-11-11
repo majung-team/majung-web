@@ -176,11 +176,15 @@ test("message success uses short user-facing wording without a read claim", asyn
   assert.equal(quickMessageSavedText, "메시지를 보냈어요.");
 });
 
-import { nativeInvitationUrl, supportsIOSApp } from "../model.js";
+import { nativeInvitationUrl, nativeVehiclePairingUrl, supportsIOSApp } from "../model.js";
 test("앱 열기는 검증한 탑승자 초대만 전달한다", () => {
   assert.equal(nativeInvitationUrl({pickupId:id,inviteToken:token}), `majung://join/${id}/${token}`);
   for (const invite of [null, {}, {pickupId:id,inviteToken:"short"}, {pickupId:"../",inviteToken:token}])
     assert.equal(nativeInvitationUrl(invite), null);
+  assert.equal(nativeVehiclePairingUrl({kind:"vehicle",challengeId:id,code:token}), `majung://vehicle/${id}/${token}`);
+  assert.equal(nativeVehiclePairingUrl({kind:"enroll",challengeId:id,code:token}), `majung://enroll/${id}/${token}`);
+  for (const pair of [null, {kind:"join",challengeId:id,code:token}, {kind:"vehicle",challengeId:id,code:"short"}, {kind:"enroll",challengeId:"../",code:token}])
+    assert.equal(nativeVehiclePairingUrl(pair), null);
   assert.equal(supportsIOSApp({userAgent:"iPhone"}),true);
   assert.equal(supportsIOSApp({platform:"MacIntel",maxTouchPoints:5}),true);
   assert.equal(supportsIOSApp({platform:"MacIntel",maxTouchPoints:0}),false);

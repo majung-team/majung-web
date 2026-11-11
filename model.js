@@ -21,6 +21,12 @@ export function nativeInvitationUrl(invitation) {
   return `majung://join/${invitation.pickupId}/${invitation.inviteToken}`;
 }
 
+export function nativeVehiclePairingUrl(pair) {
+  if (!pair || !["vehicle", "enroll"].includes(pair.kind) ||
+      !idPattern.test(pair.challengeId) || !tokenPattern.test(pair.code)) return null;
+  return `majung://${pair.kind}/${pair.challengeId}/${pair.code}`;
+}
+
 export function supportsIOSApp(navigator) {
   return /iPhone|iPad|iPod/.test(navigator?.userAgent || "") ||
     (navigator?.platform === "MacIntel" && navigator?.maxTouchPoints > 1);

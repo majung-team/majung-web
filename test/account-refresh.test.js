@@ -10,8 +10,8 @@ import * as proposal from "../proposal.js";
 import { AccountError } from "../account-api.js";
 
 // Execute the real account entry point with an isolated DOM shell and controlled API clock.
-async function screen({pairHash = "", contacts = [], searchResults = [], requests, vehicles = [], messageFailure = false} = {}) {
-  let now = 0, seconds = 420, fail = false, authenticated = true, trackingReads = 0;
+async function screen({pairHash = "", contacts = [], searchResults = [], requests, vehicles = [], messageFailure = false, authenticated: initialAuthenticated = true, navigator: initialNavigator} = {}) {
+  let now = 0, seconds = 420, fail = false, authenticated = initialAuthenticated, trackingReads = 0;
   let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
   const timers = [], events = {}, windowEvents = {}, rootEvents = {}, writes = [];
   const pairStorage = new Map();
@@ -55,6 +55,7 @@ async function screen({pairHash = "", contacts = [], searchResults = [], request
     window: { addEventListener(name,callback) {windowEvents[name]=callback;} }, location: { href: "https://test.invalid/account", hash: pairHash, search: "", pathname: "/account" },
     history, sessionStorage: { getItem: key => pairStorage.get(key) || null, setItem(key,value) {pairStorage.set(key,value);}, removeItem(key) {pairStorage.delete(key);} },
     performance: { now: () => now }, URL, URLSearchParams, AbortSignal, crypto: {randomUUID:()=>`test-request-${++requestSequence}`}, fetch: async () => ({ ok: true, json: async () => ({}) }),
+    navigator: initialNavigator ?? { userAgent: "" },
     setInterval: callback => timers.push(callback), CSS: { escape: value => value },
   });
   const source = (await readFile(new URL("../account.js", import.meta.url), "utf8")).replace(/^import .*;\n/gm, "");
@@ -521,4 +522,33 @@ test("GPS 대기 중 뒤로가면 늦게 온 위치를 다음 요청에 넣지 �
   assert.equal(app.writes.length,0);
   vm.runInContext('beginRideRequest({memberId:"driver"})',app.context);
   assert.equal(vm.runInContext('ridePlace',app.context),null);
+});
+
+test("iPhone 차량 연결 QR은 로그인 전후 모두 마중 앱 열기 링크를 제공한다", async () => {
+  const challengeId = "10000000-0000-4000-8000-000000000099";
+  const code = "V".repeat(43);
+  const loggedOut = await screen({
+    authenticated: false,
+    pairHash: `#vehicle/${challengeId}/${code}`,
+    navigator: { userAgent: "iPhone" },
+  });
+  assert.match(loggedOut.root.innerHTML, /마중 앱에서 연결하기/);
+  assert.match(loggedOut.root.innerHTML, new RegExp(`majung://vehicle/${challengeId}/${code}`));
+
+  const loggedIn = await screen({
+    authenticated: true,
+    pairHash: `#enroll/${challengeId}/${code}`,
+    navigator: { userAgent: "iPhone" },
+    requests: [],
+  });
+  assert.match(loggedIn.root.innerHTML, /마중 앱에서 연결하기/);
+  assert.match(loggedIn.root.innerHTML, new RegExp(`majung://enroll/${challengeId}/${code}`));
+
+  const android = await screen({
+    authenticated: true,
+    pairHash: `#vehicle/${challengeId}/${code}`,
+    navigator: { userAgent: "Android" },
+    requests: [],
+  });
+  assert.doesNotMatch(android.root.innerHTML, /majung:\/\//);
 });
