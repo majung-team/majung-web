@@ -15,6 +15,17 @@ export function parseInvitation(hash) {
   return { pickupId: parts[1], inviteToken: parts[2] };
 }
 
+export function nativeInvitationUrl(invitation) {
+  if (!invitation || !idPattern.test(invitation.pickupId) ||
+      !tokenPattern.test(invitation.inviteToken)) return null;
+  return `majung://join/${invitation.pickupId}/${invitation.inviteToken}`;
+}
+
+export function supportsIOSApp(navigator) {
+  return /iPhone|iPad|iPod/.test(navigator?.userAgent || "") ||
+    (navigator?.platform === "MacIntel" && navigator?.maxTouchPoints > 1);
+}
+
 export function parseHostInvitation(hash) {
   if (!hash.startsWith("#share/")) return null;
   return parseInvitation(hash.replace(/^#share\//, "#join/"));

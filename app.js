@@ -4,6 +4,8 @@ import { openPickupStream } from "./stream.js";
 import { request, ApiError } from "./api.js";
 import {
   parseInvitation,
+  nativeInvitationUrl,
+  supportsIOSApp,
   parseHostInvitation,
   validSession,
   invitationUrl,
@@ -258,6 +260,13 @@ async function checkInvitation() {
   }
 }
 
+function nativeInvitationAction() {
+  if (!supportsIOSApp(globalThis.navigator)) return "";
+  const url = nativeInvitationUrl(invitation);
+  if (!url) return "";
+  return `<a class="button quiet" href="${e(url)}">마중 앱에서 열기</a><p class="hint">마중 앱이 설치되어 있으면 이 초대를 앱에서 확인할 수 있어요.</p>`;
+}
+
 function joinForm() {
   if (unavailableInvitation)
     return `<section class="card"><h1>${e(unavailableInvitation)}</h1><p>운전자에게 새 초대 링크를 받아 열어주세요.</p>${button("처음으로", "home", true)}</section>`;
@@ -268,7 +277,7 @@ function joinForm() {
       ? `<section class="card"><h1>초대를 확인하지 못했어요.</h1><p>인터넷 연결을 확인한 뒤 다시 시도해주세요.</p>${button("초대 다시 확인", "retry-invitation")}</section>`
       : '<section class="card" role="status"><h1>초대를 확인하고 있어요.</h1></section>';
   return `<section class="intro small"><p class="eyebrow">마중 약속 초대</p><h1>이 장소에서 만날까요?</h1><p>가입 없이 참여할 수 있어요.</p></section>
-    <section class="card"><div class="place"><span>만날 장소</span><strong>${e(invitationPreview.placeLabel)}</strong></div></section>
+    <section class="card"><div class="place"><span>만날 장소</span><strong>${e(invitationPreview.placeLabel)}</strong></div>${nativeInvitationAction()}</section>
     <form id="join-form" class="card"><p class="hint">이름이나 가입 없이 참여해요. 이 링크는 한 사람만 쓸 수 있어요. 참여하면 만날 장소·차량 위치·도착 시간과 내 준비 상태를 공유해요. 휴대전화의 이동 위치나 연락처는 요청하지 않아요.</p>
     <button class="primary" ${busy ? "disabled" : ""}>${busy ? "연결하고 있어요…" : "약속에 참여하기"}</button></form>`;
 }
