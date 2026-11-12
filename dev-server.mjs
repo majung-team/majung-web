@@ -31,7 +31,7 @@ const server = http.createServer(async (req, res) => {
     res.end(`<!doctype html><html lang="ko"><meta charset="utf-8"><title>마중 · 모바일 화면 확인</title><style>body{margin:0;background:#e9edf0;font:14px sans-serif;color:#626d75}p{text-align:center;margin:16px}iframe{display:block;width:390px;height:844px;border:0;margin:0 auto;background:white;box-shadow:0 12px 40px #20282e18}</style><p>390 × 844 · 로컬 화면 검사 · 실제 휴대전화 시험과 별도</p><iframe title="마중 모바일 화면" src="${source}"></iframe></html>`);
     return;
   }
-  if (path.startsWith('/api/') || path === '/sandbox' || path.startsWith('/sandbox/')) {
+  if (path.startsWith('/api/')) {
     const upstream = http.request({hostname: '127.0.0.1', port: apiPort, path: req.url,
       method: req.method, headers: {...req.headers, host: '127.0.0.1:8080'}}, response => {
       res.writeHead(response.statusCode, response.headers);

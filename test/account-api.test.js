@@ -57,9 +57,7 @@ test("마중 요청과 차량 연결은 계정 세션·CSRF로만 보내고 차�
   assert.equal(calls.at(-1).options.headers["X-CSRF-TOKEN"],"fixture-csrf");
   assert.equal(calls.at(-1).options.headers.Authorization,undefined);
   await client("/vehicle-links/requests",{method:"POST",body:{challengeId:"fixture",code:"Q".repeat(43)}});
-  await client("/ride-requests/vehicles/lookup?code=VEH-7K2M9A");
-  await client("/ride-requests/favorite-vehicles");
-  await client("/ride-requests/11111111-1111-4111-8111-111111111111/tracking");
+  await client("/ride-requests/abcd/tracking");
   await client("/ride-requests/abcd/accept-invitation",{method:"POST"});
   assert.equal(calls.at(-1).options.headers["X-CSRF-TOKEN"],"fixture-csrf");
   await client("/ride-requests/abcd/reject-invitation",{method:"POST"});

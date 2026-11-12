@@ -37,9 +37,6 @@ let networkAvailable = globalThis.navigator?.onLine !== false;
 let recoveringNetwork = false;
 let networkEpoch = 0;
 let linkedVehicles = [];
-let favoriteVehicles = [];
-let vehicleCodeQuery = "";
-let lookedUpVehicle = null;
 let vehicleRequest = null;
 let vehiclePair = null;
 let pairingGeneration = 0;
@@ -325,11 +322,7 @@ function render() {
   root.innerHTML = `<div data-critical-status>${criticalAccountMarkup()}</div><section class="account-welcome account-heading${activePickup ? " compact" : ""}"><div><p class="eyebrow">마중</p><h1>${ready ? `${e(profile.nickname)} 님` : "어떤 이름으로<br />만날까요?"}</h1><p class="majung-id">내 마중 ID · ${e(profile.majungId)}</p></div></section>${alerts}
     ${ready ? `<nav class="account-nav${activePickup ? " bottom-nav" : ""}" aria-label="마중 메뉴"><span class="account-tab-indicator tab-position-${accountTab}" aria-hidden="true"></span>${[["pickup","내 요청·초대"],["people","사람 찾기"],["settings","내 정보"]].map(([key,label])=>`<button type="button" data-action="tab-${key}" aria-current="${accountTab===key?"page":"false"}">${label}${key==="pickup" && rides.some(item=>item.status==="INVITED") ? `<span class="menu-badge">${rides.filter(item=>item.status==="INVITED").length}</span>` : ""}</button>`).join("")}</nav>${rides.some(ride=>ride.status==="ACTIVE") ? `<p class="live-connection${accountStreamConnected ? " connected" : ""}" data-live-connection role="status">${accountStreamConnected ? "실시간으로 확인 중" : "연결 상태 확인 중"}</p>` : ""}` : ""}
     ${(!ready || accountTab === "settings") ? `<section class="card"><h2>${ready ? "내 닉네임" : "먼저 닉네임을 정해주세요."}</h2><form id="nickname-form"><label for="nickname">닉네임<input id="nickname" name="nickname" value="${e(nickname)}" minlength="2" maxlength="20" required autocomplete="nickname" placeholder="2~20자" /></label><p class="hint">닉네임은 같을 수 있어요. 마중 ID는 바뀌지 않아요.</p><button class="primary" ${busy ? "disabled" : ""}>${ready ? "닉네임 저장" : "이 이름으로 시작하기"}</button></form>${ready ? button("로그아웃", "logout", "", true) : ""}</section>` : ""}
-    ${ready && accountTab === "people" ? `<section class="card"><p class="eyebrow">휴대전화 미연결 차량도 가능</p><h2>차량 코드로 바로 요청</h2><p class="hint">운전자가 휴대전화를 연결하지 않았어도 차량 코드로 차종과 차량 번호를 확인한 뒤 바로 마중을 요청할 수 있어요.</p>
-      <form id="vehicle-lookup-form"><label for="vehicleCode">차량 코드<input id="vehicleCode" name="vehicleCode" value="${e(vehicleCodeQuery)}" maxlength="16" required placeholder="예: VEH-7K2M9A" autocomplete="off" /></label><button class="primary" ${busy ? "disabled" : ""}>차량 확인</button></form>
-      ${lookedUpVehicle ? `<div class="selected-meeting-place"><strong>${e([lookedUpVehicle.vehicleModel, lookedUpVehicle.licensePlate].filter(Boolean).join(" · ") || lookedUpVehicle.displayName || lookedUpVehicle.vehicleCode)}</strong>${lookedUpVehicle.ownerHint ? `<p>구별 힌트 · ${e(lookedUpVehicle.ownerHint)}</p>` : ""}<p class="majung-id">${e(lookedUpVehicle.vehicleCode)}${lookedUpVehicle.trusted ? " · 자주 타는 차량" : ""}</p><div class="row-actions">${button("이 차량 맞음 · 마중 요청", "vehicle-ride-open")}${button("취소", "vehicle-lookup-clear", "", true)}</div></div>` : ""}
-      ${favoriteVehicles.length ? `<h3>자주 타는 차량</h3><ul class="person-list">${favoriteVehicles.map(v => `<li class="person-row"><div class="person-name"><strong>${e([v.vehicleModel, v.licensePlate].filter(Boolean).join(" · ") || v.displayName || v.vehicleCode)}</strong><span class="majung-id">${e([v.ownerHint, v.vehicleCode].filter(Boolean).join(" · "))}</span></div><div class="row-actions">${button("마중 요청", "favorite-vehicle-ride-open", `data-id="${e(v.vehicleId)}"`)}${button("제거", "favorite-vehicle-remove", `data-id="${e(v.vehicleId)}"`, true)}</div></li>`).join("")}</ul>` : ""}</section>
-      <section class="card"><p class="eyebrow">새 마중 요청</p><h2>누구를 만날까요?</h2><form id="search-form"><label for="query">닉네임 또는 마중 ID<input id="query" name="query" value="${e(query)}" minlength="2" maxlength="32" required placeholder="찾을 사람의 닉네임" autocomplete="off" /></label><button class="primary" ${busy ? "disabled" : ""}>검색</button></form>
+    ${ready && accountTab === "people" ? `<section class="card"><p class="eyebrow">새 마중 요청</p><h2>누구를 만날까요?</h2><form id="search-form"><label for="query">닉네임 또는 마중 ID<input id="query" name="query" value="${e(query)}" minlength="2" maxlength="32" required placeholder="찾을 사람의 닉네임" autocomplete="off" /></label><button class="primary" ${busy ? "disabled" : ""}>검색</button></form>
       ${searchDone ? results.length ? `<p class="hint">닉네임이 같다면 마중 ID까지 확인해주세요.</p><ul class="person-list">${results.map(item => `<li class="person-row">${person(item.nickname, item.majungId)}${button("마중 요청", "ride-open", `data-id="${e(item.memberId)}"`)}${button("연결만 요청", "request", `data-id="${e(item.memberId)}"`,true)}</li>`).join("")}</ul>` : '<p class="empty-account">검색 결과가 없어요. 닉네임이나 마중 ID를 다시 확인해주세요.</p>' : '<p class="hint">이름·마중 ID만 표시해요. 차량 위치와 픽업 정보는 공개하지 않아요.</p>'}
       ${searchDone ? pager("search", searchPage, results.length) : ""}</section>
       <section class="card"><div class="section-heading"><h2>연결 목록</h2>${button("새로 확인", "refresh", "", true)}</div><p class="hint">연결 요청은 받은 사람이 수락해야 연결돼요.<br />마중 요청·픽업 승인은 별도로 진행해요.</p>
@@ -351,7 +344,6 @@ async function refresh() {
     if (!nickname) nickname = info.member.profileReady ? info.member.nickname : "";
     connections = await api(`/connections?page=${connectionPage}`);
     linkedVehicles = await api("/vehicle-links");
-    favoriteVehicles = (await api("/ride-requests/favorite-vehicles").catch(() => ({ vehicles: [] }))).vehicles || [];
     const requestedAt=performance.now();
     rides = (await api("/ride-requests")).requests.map(item=>({...item,
       currentPickupRemainingSeconds:networkAvailable && epochAtStart===networkEpoch ? item.currentPickupRemainingSeconds : null,
@@ -446,7 +438,6 @@ root.addEventListener("input", event => {
     if (counter) counter.textContent=`${event.target.value.length}/50자`; }
   if (event.target.name === "nickname") nickname = event.target.value;
   if (event.target.name === "query") query = event.target.value;
-  if (event.target.name === "vehicleCode") vehicleCodeQuery = event.target.value;
   if (event.target.name === "rideLabel") rideLabel = event.target.value;
   if (event.target.name === "placeKeyword") placeKeyword = event.target.value;
 });
@@ -474,15 +465,9 @@ root.addEventListener("submit", event => {
     if (type === "ride-form") {
       if (!rideTarget || !ridePlace || !rideLabel.trim() || placeSearchBusy) return;
       if (ridePlace.source === "gps" && Date.now()-ridePlace.at>120000) throw new AccountError(400,"LOCATION_OLD","현재 위치를 다시 선택해주세요.");
-      const targetBody = rideTarget.vehicleId && !rideTarget.memberId
-        ? { vehicleId: rideTarget.vehicleId }
-        : { driverId: rideTarget.memberId };
-      await api("/ride-requests",{method:"POST",body:{...targetBody,requestId:rideRequestId,place:{label:rideLabel.trim(),latitude:ridePlace.latitude,longitude:ridePlace.longitude}}});
-      lookedUpVehicle = null;
+      await api("/ride-requests",{method:"POST",body:{driverId:rideTarget.memberId,requestId:rideRequestId,place:{label:rideLabel.trim(),latitude:ridePlace.latitude,longitude:ridePlace.longitude}}});
       closeRideRequest(false);
       await refresh(); notice="운전자에게 마중을 요청했어요. 수락하면 픽업 대기에 들어가요.";
-    } else if (type === "vehicle-lookup-form") {
-      lookedUpVehicle = await api(`/ride-requests/vehicles/lookup?code=${encodeURIComponent(vehicleCodeQuery.trim())}`);
     } else if (type === "nickname-form") {
       info.member = await api("/accounts/me", {method: "PATCH", body: {nickname}});
       nickname = info.member.nickname; notice = "닉네임을 저장했어요.";
@@ -498,24 +483,6 @@ root.addEventListener("click", event => {
     accountTab='pickup'; render();
     (root.querySelector('[data-ride-map]') || root.querySelector('.ride-row'))?.scrollIntoView?.({block:'center',behavior:'smooth'});
     pickupMap?.recenter(); return;
-  }
-  if (action === "vehicle-lookup-clear") { lookedUpVehicle = null; render(); return; }
-  if (action === "vehicle-ride-open" && lookedUpVehicle) {
-    const title = [lookedUpVehicle.vehicleModel, lookedUpVehicle.licensePlate].filter(Boolean).join(" · ") || lookedUpVehicle.displayName || lookedUpVehicle.vehicleCode;
-    beginRideRequest({ vehicleId: lookedUpVehicle.vehicleId, nickname: title, majungId: [lookedUpVehicle.ownerHint, lookedUpVehicle.vehicleCode].filter(Boolean).join(" · ") });
-    render(); focusRideRequest(); return;
-  }
-  if (action === "favorite-vehicle-ride-open") {
-    const fav = favoriteVehicles.find(item => item.vehicleId === target.dataset.id);
-    if (!fav) return;
-    const title = [fav.vehicleModel, fav.licensePlate].filter(Boolean).join(" · ") || fav.displayName || fav.vehicleCode;
-    beginRideRequest({ vehicleId: fav.vehicleId, nickname: title, majungId: [fav.ownerHint, fav.vehicleCode].filter(Boolean).join(" · ") });
-    render(); focusRideRequest(); return;
-  }
-  if (action === "favorite-vehicle-remove") {
-    const id = target.dataset.id;
-    run(async () => { await api(`/ride-requests/favorite-vehicles/${id}`, { method: "DELETE" }); await refresh(); notice = "자주 타는 차량에서 뺐어요."; });
-    return;
   }
   if (action === "ride-open") {
     const person = results.find(item=>item.memberId===target.dataset.id);
