@@ -653,6 +653,13 @@ npm test
 - [백엔드 픽업 요청 및 대기열](https://github.com/majung-team/majung-backend/blob/main/docs/ride-requests.md)
 - [백엔드 차량 계정 연결](https://github.com/majung-team/majung-backend/blob/main/docs/vehicle-account-link.md)
 - [개발 현황 및 검증 기록](https://github.com/majung-team/majung/blob/main/docs/development-status.md)
+- [Wiki: 휴대전화 QR 연결과 실시간 상태 회고](https://github.com/majung-team/majung/wiki/%ED%9C%B4%EB%8C%80%EC%A0%84%ED%99%94-QR-%EC%97%B0%EA%B2%B0%EA%B3%BC-%EC%9B%B9-iOS-%EC%8B%A4%EC%8B%9C%EA%B0%84-%EC%83%81%ED%83%9C%EB%8A%94-%EC%99%9C-%EC%96%B4%EA%B8%8B%EB%82%AC%EC%9D%84%EA%B9%8C)
+
+### 2026-11-12 최신 반영 (`0188bd2`)
+
+- `1cbd1c2` (`#88`): 차량 목록 및 연결 해제 확인에서 `vehicleDescription`으로 차량 코드·연결 시각을 함께 표시해 동일 이름 차량을 구분하고, `readinessControl`·`beginReadinessSend`로 준비 상태 전달 UI를 정리했다.
+- `babf15f` · `3207775`: iPhone 초대·차량 QR 핸드오프 시 Universal Links로 마중 iOS 앱을 열도록 연동했다.
+- `0188bd2`: 미연결 차량 코드 조회·임시 샌드박스 프록시를 되돌려 사람 연결·마중 요청 기준을 유지하며 `npm test` `104 passed`를 확인했다.
 
 ---
 

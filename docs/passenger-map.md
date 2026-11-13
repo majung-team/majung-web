@@ -492,6 +492,12 @@ https://t1.kakaocdn.net
 - [백엔드 카카오맵 설정](https://github.com/majung-team/majung-backend/blob/main/docs/kakao-map.md)
 - [백엔드 차량 최신성 정책](https://github.com/majung-team/majung-backend/blob/main/docs/vehicle-state.md)
 - [개발 현황 및 검증 기록](https://github.com/majung-team/majung/blob/main/docs/development-status.md)
+- [Wiki: 픽업 종료·지도 실패 빈 카드 제거 회고](https://github.com/majung-team/majung/wiki/%ED%94%BD%EC%97%85%EC%9D%B4-%EB%81%9D%EB%82%98%EA%B1%B0%EB%82%98-%EC%97%B0%EA%B2%B0%EC%9D%84-%EB%81%8A%EC%9C%BC%EB%A9%B4-%EC%9C%84%EC%B9%98-%EA%B3%B5%EC%9C%A0%EB%8A%94-%EB%B0%94%EB%A1%9C-%EB%A9%88%EC%B6%9C%EA%B9%8C)
+
+### 2026-11-12 최신 반영 (`0188bd2`)
+
+- `1cbd1c2` (`#88`): 계정 요청 화면의 `[data-place-picker]` 지도 영역(`min-height: 240px`, `clamp(240px, 36vh, 360px)`)과 선택 장소 요약 표시를 보완했다.
+- `30e28d2` (`#110`): 지도 SDK 연결 실패나 장소 미확정 시 빈 `.map-wrapper.no-map` 카드를 렌더링하지 않고 상태·ETA 카드만 유지하도록 수정했다. (`0188bd2` 기준 `npm test` `104 passed`)
 
 ---
 

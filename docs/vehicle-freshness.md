@@ -474,6 +474,11 @@ npm test
 - [백엔드 차량 최신성 API](https://github.com/majung-team/majung-backend/blob/main/docs/vehicle-state.md)
 - [백엔드 픽업 자동 종료 및 보관 정책](https://github.com/majung-team/majung-backend/blob/main/docs/pickup-lifecycle.md)
 - [개발 현황 및 PR 기록](https://github.com/majung-team/majung/blob/main/docs/development-status.md)
+- [Wiki: 픽업 종료·ETA 계약 검증 회고](https://github.com/majung-team/majung/wiki/%ED%94%BD%EC%97%85%EC%9D%B4-%EB%81%9D%EB%82%98%EA%B1%B0%EB%82%98-%EC%97%B0%EA%B2%B0%EC%9D%84-%EB%81%8A%EC%9C%BC%EB%A9%B4-%EC%9C%84%EC%B9%98-%EA%B3%B5%EC%9C%A0%EB%8A%94-%EB%B0%94%EB%A1%9C-%EB%A9%88%EC%B6%9C%EA%B9%8C)
+
+### 2026-11-12 확인 기준 (`0188bd2`)
+
+- `model.js` 기반 서버 `ageMillis`·웹 왕복 시간 이중 차감 방지 계약(`deploy/test_eta_contract.mjs`)과 웹 전체 `npm test` `104 passed`를 유지하고 있다.
 
 ---
 

@@ -471,6 +471,14 @@ stream.test.js
 - [백엔드 차량 최초 연결](https://github.com/majung-team/majung-backend/blob/main/docs/vehicle-enrollment.md)
 - [백엔드 차량 계정 연결](https://github.com/majung-team/majung-backend/blob/main/docs/vehicle-account-link.md)
 - [개발 현황 및 PR 기록](https://github.com/majung-team/majung/blob/main/docs/development-status.md)
+- [Wiki: 휴대전화 QR 연결과 실시간 상태 회고](https://github.com/majung-team/majung/wiki/%ED%9C%B4%EB%8C%80%EC%A0%84%ED%99%94-QR-%EC%97%B0%EA%B2%B0%EA%B3%BC-%EC%9B%B9-iOS-%EC%8B%A4%EC%8B%9C%EA%B0%84-%EC%83%81%ED%83%9C%EB%8A%94-%EC%99%9C-%EC%96%B4%EA%B8%8B%EB%82%AC%EC%9D%84%EA%B9%8C)
+- [Wiki: 픽업 종료·계약 검증 회고](https://github.com/majung-team/majung/wiki/%ED%94%BD%EC%97%85%EC%9D%B4-%EB%81%9D%EB%82%98%EA%B1%B0%EB%82%98-%EC%97%B0%EA%B2%B0%EC%9D%84-%EB%81%8A%EC%9C%BC%EB%A9%B4-%EC%9C%84%EC%B9%98-%EA%B3%B5%EC%9C%A0%EB%8A%94-%EB%B0%94%EB%A1%9C-%EB%A9%88%EC%B6%9C%EA%B9%8C)
+
+### 2026-11-12 최신 반영 (`0188bd2`)
+
+- **소통·상태 UX (`#86` · `231db70` · `727be6a` · `#88`)**: 차량 정보 배지, 퀵 메시지·직접 입력(`maxlength="100"`), 입력 중 재렌더링 보호, 슬라이딩 준비 상태 세그먼트(`readinessControl`)를 반영했다.
+- **지도·초대 안내 (`#108` · `#110` · `#111`)**: 지도 SDK 실패 시 빈 `.map-wrapper.no-map` 카드를 제거하고 초대 확인·재접속 안내를 보강했다.
+- **iPhone 앱 연계 (`babf15f` · `3207775`)**: iPhone 초대 화면과 차량 QR 핸드오프에서 Universal Links로 마중 iOS 앱을 열 수 있도록 연결했다. (`0188bd2` 기준 `npm test` `104 passed`)
 
 ---
 

@@ -138,3 +138,9 @@ Caddy는 다음 설정 파일을 통해 활성 백엔드에 연결한다.
 - [백엔드 GitHub Actions 배포](https://github.com/majung-team/majung-backend/blob/main/docs/github-actions.md)
 - [백엔드 블루·그린 배포](https://github.com/majung-team/majung-backend/blob/main/docs/blue-green.md)
 - [개발 현황 및 검증 기록](https://github.com/majung-team/majung/blob/main/docs/development-status.md)
+- [Wiki: 휴대전화 QR 연결·Universal Links 회고](https://github.com/majung-team/majung/wiki/%ED%9C%B4%EB%8C%80%EC%A0%84%ED%99%94-QR-%EC%97%B0%EA%B2%B0%EA%B3%BC-%EC%9B%B9-iOS-%EC%8B%A4%EC%8B%9C%EA%B0%84-%EC%83%81%ED%83%9C%EB%8A%94-%EC%99%9C-%EC%96%B4%EA%B8%8B%EB%82%AC%EC%9D%84%EA%B9%8C)
+
+## 7. 2026-11-12 배포·라우팅 보완 (`0188bd2`)
+
+- `3207775` · `31f894a`: iPhone Universal Links 지원을 위해 `.well-known/apple-app-site-association` 파일과 `deploy/Caddyfile` 라우팅 검증을 추가했다.
+- `0188bd2`: 임시 샌드박스 프록시 경로를 제거하고, 웹 단위·통합 테스트 `npm test` `104 passed`를 확인했다.
