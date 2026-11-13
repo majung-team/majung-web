@@ -498,7 +498,7 @@ function render() {
   else
     content =
       page === "create" ? createForm() : page === "join" ? joinForm() : home();
-  const fromPush = !session && /^\?pickup=[0-9a-f-]{36}$/.test(location.search || '') ? '<section class="notice" role="status"><strong>원래 열어둔 픽업 화면을 확인해주세요</strong><p>이 새 탭에는 초대 참여 정보가 없어요. 기존 탭으로 돌아가거나 받은 초대 링크를 다시 열어주세요.</p></section>' : '';
+  const fromPush = !finished && !session && /^\?pickup=[0-9a-f-]{36}$/.test(location.search || '') ? '<section class="notice" role="status"><strong>원래 열어둔 픽업 화면을 확인해주세요</strong><p>이 새 탭에는 초대 참여 정보가 없어요. 기존 탭으로 돌아가거나 받은 초대 링크를 다시 열어주세요.</p></section>' : '';
   const markup = `<div data-critical-status>${critical}</div>${fromPush}${alerts()}${content}`;
   if (markup !== renderedMarkup) {
     const focused = document.activeElement;
