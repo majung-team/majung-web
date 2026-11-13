@@ -1,5 +1,5 @@
 import { existingArrivalSubscription } from "./push.js";
-import { guestPickupHeading, vehicleFreshnessText, pickupStatusNotice, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend, nativeVehiclePairingUrl, supportsIOSApp } from "./model.js";
+import { guestPickupHeading, vehicleFreshnessText, pickupStatusNotice, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend, nativeVehiclePairingUrl, supportsIOSApp, showNativeAppNotice } from "./model.js";
 import { openPickupStream } from "./stream.js";
 import { createAccountClient, AccountError } from "./account-api.js";
 import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, vehicleForPlace, etaText, ageText } from "./model.js";
@@ -202,7 +202,7 @@ function nativeVehiclePairingAction() {
   if (!supportsIOSApp(globalThis.navigator)) return "";
   const url = nativeVehiclePairingUrl(vehiclePair);
   if (!url) return "";
-  return `<aside class="app-release-note"><strong>iOS 앱은 아직 정식 출시 전이에요.</strong><p>차량 연결은 이 웹에서 계속할 수 있어요.</p><details class="test-app-handoff"><summary>테스트 앱을 설치한 경우</summary><a class="button quiet" href="${e(url)}">테스트 앱에서 차량 연결</a><p class="hint">별도로 제공받은 테스트 앱이 설치된 기기에서만 열려요.</p></details></aside>`;
+  return `<div class="row-actions"><a class="button quiet" data-native-app-link href="${e(url)}">마중 앱에서 연결하기</a></div>`;
 }
 function rideSections() {
   const form=rideTarget?`<section class="card confirmation ride-request-form"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>장소명·주소로 검색한 뒤 만날 곳을 선택해주세요. 지도나 현재 위치로도 고를 수 있어요.</p>${placeSearchPanel()}${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 열 수 없으면 현재 위치로 요청할 수 있어요.</p><button type="button" data-action="retry-map" class="quiet">지도 다시 불러오기</button>'}<div class="selected-meeting-place" aria-live="polite"><strong>${e(selectedPlaceText())}</strong>${ridePlace?.address?`<p>${e(ridePlace.address)}</p>`:""}</div><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><div class="request-submit"><button class="primary" ${busy||placeSearchBusy||!ridePlace?"disabled":""}>${busy?"요청 보내는 중…":"이 장소로 마중 요청"}</button></div></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
@@ -476,6 +476,12 @@ root.addEventListener("submit", event => {
   });
 });
 root.addEventListener("click", event => {
+  const nativeLink = event.target.closest("[data-native-app-link]");
+  if (nativeLink?.dataset?.nativeAppLink !== undefined) {
+    event.preventDefault();
+    if (!busy) showNativeAppNotice(nativeLink);
+    return;
+  }
   const target = event.target.closest("button[data-action]");
   if (!target || busy) return;
   const action = target.dataset.action;

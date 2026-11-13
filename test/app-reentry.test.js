@@ -153,10 +153,9 @@ test('재발급 링크를 열면 철회된 기존 세션 대신 새 초대로 �
 
 test('iPhone 초대 확인은 앱 열기를 제공하고 참여 토큰을 먼저 사용하지 않는다', async () => {
   const ui = await open({saved:null,navigator:{userAgent:"iPhone"}});
-  assert.match(ui.root.innerHTML, /테스트 앱에서 초대 열기/);
-  assert.match(ui.root.innerHTML, /iOS 앱은 아직 정식 출시 전/);
-  assert.match(ui.root.innerHTML, /이 웹에서 바로 참여/);
-  assert.match(ui.root.innerHTML, /<details class="test-app-handoff">/);
+  assert.match(ui.root.innerHTML, /마중 앱에서 열기/);
+  assert.match(ui.root.innerHTML, /data-native-app-link/);
+  assert.doesNotMatch(ui.root.innerHTML, /테스트|test-app-handoff/);
   assert.match(ui.root.innerHTML, new RegExp(`majung://join/${pickupId}/${"i".repeat(43)}`));
   assert.equal(ui.writes.filter(write=>write.path.endsWith("/participants")).length,0);
   assert.match(ui.root.innerHTML,/id="join-form"/);

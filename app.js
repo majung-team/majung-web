@@ -6,6 +6,7 @@ import {
   parseInvitation,
   nativeInvitationUrl,
   supportsIOSApp,
+  showNativeAppNotice,
   parseHostInvitation,
   validSession,
   invitationUrl,
@@ -264,7 +265,7 @@ function nativeInvitationAction() {
   if (!supportsIOSApp(globalThis.navigator)) return "";
   const url = nativeInvitationUrl(invitation);
   if (!url) return "";
-  return `<aside class="app-release-note"><strong>iOS 앱은 아직 정식 출시 전이에요.</strong><p>앱을 설치하지 않아도 이 웹에서 바로 참여할 수 있어요.</p><details class="test-app-handoff"><summary>테스트 앱을 설치한 경우</summary><a class="button quiet" href="${e(url)}">테스트 앱에서 초대 열기</a><p class="hint">별도로 제공받은 테스트 앱이 설치된 기기에서만 열려요. 설치하지 않았다면 아래 웹 참여 버튼을 이용해주세요.</p></details></aside>`;
+  return `<a class="button quiet" data-native-app-link href="${e(url)}">마중 앱에서 열기</a>`;
 }
 
 function joinForm() {
@@ -853,6 +854,12 @@ async function sendReadiness(value) {
 }
 
 root.addEventListener("click", async (event) => {
+  const nativeLink = event.target.closest("[data-native-app-link]");
+  if (nativeLink?.dataset?.nativeAppLink !== undefined) {
+    event.preventDefault();
+    if (!busy) showNativeAppNotice(nativeLink);
+    return;
+  }
   const target = event.target.closest("[data-action]");
   if (!target || busy || target.disabled) return;
   const action = target.dataset.action;

@@ -27,6 +27,36 @@ export function nativeVehiclePairingUrl(pair) {
   return `majung://${pair.kind}/${pair.challengeId}/${pair.code}`;
 }
 
+// Native navigation only follows a second, explicit choice inside the notice.
+export function showNativeAppNotice(trigger, doc = globalThis.document) {
+  const url = trigger?.getAttribute?.("href") || "";
+  const parts = url.split("/");
+  if (parts.length !== 5 || parts[0] !== "majung:" || parts[1] !== "" ||
+      !["join", "vehicle", "enroll"].includes(parts[2]) ||
+      !idPattern.test(parts[3]) || !tokenPattern.test(parts[4])) return false;
+  if (doc.querySelector("dialog.native-app-notice[open]")) return true;
+
+  const dialog = doc.createElement("dialog");
+  dialog.className = "native-app-notice";
+  dialog.setAttribute("aria-labelledby", "native-app-notice-title");
+  dialog.setAttribute("aria-describedby", "native-app-notice-description");
+  dialog.innerHTML = `<h2 id="native-app-notice-title">마중 앱에서 열까요?</h2>
+    <p id="native-app-notice-description">iOS 앱은 현재 정식 출시 전 테스트 중이에요. 별도로 앱을 설치한 기기에서만 열 수 있어요.</p>
+    <p>앱을 설치하지 않았다면 웹에서 계속 이용해주세요.</p>
+    <div class="native-app-notice-actions"><a class="button primary" data-native-confirm>앱 열기</a><button type="button" class="quiet" data-native-cancel autofocus>웹에서 계속</button></div>`;
+  const confirm = dialog.querySelector("[data-native-confirm]");
+  confirm.setAttribute("href", url);
+  confirm.addEventListener("click", () => dialog.close());
+  dialog.querySelector("[data-native-cancel]").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("close", () => {
+    dialog.remove();
+    if (trigger.isConnected) trigger.focus();
+  }, {once:true});
+  doc.body.appendChild(dialog);
+  dialog.showModal();
+  return true;
+}
+
 export function supportsIOSApp(navigator) {
   return /iPhone|iPad|iPod/.test(navigator?.userAgent || "") ||
     (navigator?.platform === "MacIntel" && navigator?.maxTouchPoints > 1);
