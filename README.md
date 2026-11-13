@@ -61,9 +61,9 @@ majung-web/
 
 | 구분 | 구성 |
 | --- | --- |
-| **UI** | Vanilla HTML · CSS · ES Modules JavaScript (별도 프레임워크 미사용) |
-| **지도** | Kakao Maps SDK · Server-Sent Events(SSE) · Service Worker · Web Push(VAPID) |
-| **운영** | Caddy(HTTPS · 정적 파일 서빙) · GitHub Actions · Node.js 22+ `node --test` |
+| **UI** | Vanilla HTML · CSS · ES Modules JavaScript<br>(별도 프레임워크 미사용) |
+| **지도** | Kakao Maps SDK · Server-Sent Events(SSE)<br>Service Worker · Web Push(VAPID) |
+| **운영** | Caddy(HTTPS · 정적 서빙) · GitHub Actions<br>Node.js 22+ `node --test` |
 
 ---
 
@@ -74,8 +74,8 @@ majung-web/
 
 | 구분 | 범위 |
 | --- | --- |
-| **확인 완료** | `node --test` 단위/계약 테스트 (`104 passed`) · 공개 HTTPS(`majung.cloud`)<br>iPhone·데스크톱 브라우저 초대 재시도·장소 제안·지도 복구 확인 |
-| **추후 확인** | 백그라운드/잠금화면 Web Push 수신, LTE·Wi-Fi 전환<br>실차 주행 중 장시간 위치·ETA 연동 |
+| **확인&nbsp;완료** | `node --test` (`104 passed`) · 공개 `majung.cloud`<br>iPhone·데스크톱 초대 재시도·장소 제안·지도 복구 |
+| **추후&nbsp;확인** | 백그라운드/잠금화면 Web Push · LTE/Wi-Fi 전환<br>실차 주행 중 장시간 위치·ETA 연동 |
 
 ---
 
@@ -83,9 +83,9 @@ majung-web/
 
 | 분류 | 문서 |
 | --- | --- |
-| **화면 · 기능** | [서비스 화면](docs/service-screens.md) · [탑승자 지도](docs/passenger-map.md) · [장소 선택 및 제안](docs/place-proposal.md) · [사람 찾기 및 계정](docs/account-connections.md) · [초대 자동 참여](docs/auto-connect.md) |
-| **정책 · 운영** | [차량 정보 최신성](docs/vehicle-freshness.md) · [도착 임박 알림](docs/arrival-push.md) · [GitHub Actions 배포](docs/github-actions.md) · [기여 가이드](CONTRIBUTING.md) |
-| **허브 · 회고** | [전체 아키텍처](https://github.com/majung-team/majung/blob/main/docs/architecture.md) · [개발 현황](https://github.com/majung-team/majung/blob/main/docs/development-status.md) · [Wiki 기술 회고](https://github.com/majung-team/majung/wiki#%EA%B8%B0%EC%88%A0-%ED%9A%8C%EA%B3%A0) |
+| **화면&nbsp;·&nbsp;기능** | [서비스 화면](docs/service-screens.md) · [탑승자 지도](docs/passenger-map.md) · [장소 선택 및 제안](docs/place-proposal.md)<br>[사람 찾기 및 계정](docs/account-connections.md) · [초대 자동 참여](docs/auto-connect.md) |
+| **정책&nbsp;·&nbsp;운영** | [차량 정보 최신성](docs/vehicle-freshness.md) · [도착 임박 알림](docs/arrival-push.md)<br>[GitHub Actions 배포](docs/github-actions.md) · [기여 가이드](CONTRIBUTING.md) |
+| **허브&nbsp;·&nbsp;회고** | [전체 아키텍처](https://github.com/majung-team/majung/blob/main/docs/architecture.md) · [개발 현황](https://github.com/majung-team/majung/blob/main/docs/development-status.md)<br>[Wiki 기술 회고](https://github.com/majung-team/majung/wiki#%EA%B8%B0%EC%88%A0-%ED%9A%8C%EA%B3%A0) |
 
 | 저장소 | 역할 |
 | --- | --- |
