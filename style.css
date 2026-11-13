@@ -2082,3 +2082,10 @@ button, .button {
 
 .pickup-place-tools { scroll-margin-top: 92px; }
 .voice-composer-card button, .voice-composer-card .quick-msg-input { min-height: 48px; }
+
+/* Native app is not generally available; web participation remains the primary action. */
+.app-release-note { margin: 16px 0; padding: 14px 16px; border: 1px solid #dbe3ed; border-radius: 14px; background: #f3f6fa; color: #34445b; font-size: 15px; line-height: 1.6; }
+.app-release-note p { margin: 6px 0; font-size: inherit; }
+.test-app-handoff { margin-top: 10px; }
+.test-app-handoff summary { padding: 8px 0; cursor: pointer; font-size: 14px; }
+.test-app-handoff .button { margin-top: 8px; min-height: 44px; font-size: 15px; }

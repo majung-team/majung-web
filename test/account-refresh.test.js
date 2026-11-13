@@ -532,7 +532,9 @@ test("iPhone 차량 연결 QR은 로그인 전후 모두 마중 앱 열기 링�
     pairHash: `#vehicle/${challengeId}/${code}`,
     navigator: { userAgent: "iPhone" },
   });
-  assert.match(loggedOut.root.innerHTML, /마중 앱에서 연결하기/);
+  assert.match(loggedOut.root.innerHTML, /테스트 앱에서 차량 연결/);
+  assert.match(loggedOut.root.innerHTML, /iOS 앱은 아직 정식 출시 전/);
+  assert.match(loggedOut.root.innerHTML, /차량 연결은 이 웹에서 계속/);
   assert.match(loggedOut.root.innerHTML, new RegExp(`majung://vehicle/${challengeId}/${code}`));
 
   const loggedIn = await screen({
@@ -541,7 +543,7 @@ test("iPhone 차량 연결 QR은 로그인 전후 모두 마중 앱 열기 링�
     navigator: { userAgent: "iPhone" },
     requests: [],
   });
-  assert.match(loggedIn.root.innerHTML, /마중 앱에서 연결하기/);
+  assert.match(loggedIn.root.innerHTML, /테스트 앱에서 차량 연결/);
   assert.match(loggedIn.root.innerHTML, new RegExp(`majung://enroll/${challengeId}/${code}`));
 
   const android = await screen({

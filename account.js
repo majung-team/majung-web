@@ -202,7 +202,7 @@ function nativeVehiclePairingAction() {
   if (!supportsIOSApp(globalThis.navigator)) return "";
   const url = nativeVehiclePairingUrl(vehiclePair);
   if (!url) return "";
-  return `<div class="row-actions"><a class="button quiet" href="${e(url)}">마중 앱에서 연결하기</a></div><p class="hint">마중 앱이 설치되어 있으면 차량 연결 화면이 바로 열려요.</p>`;
+  return `<aside class="app-release-note"><strong>iOS 앱은 아직 정식 출시 전이에요.</strong><p>차량 연결은 이 웹에서 계속할 수 있어요.</p><details class="test-app-handoff"><summary>테스트 앱을 설치한 경우</summary><a class="button quiet" href="${e(url)}">테스트 앱에서 차량 연결</a><p class="hint">별도로 제공받은 테스트 앱이 설치된 기기에서만 열려요.</p></details></aside>`;
 }
 function rideSections() {
   const form=rideTarget?`<section class="card confirmation ride-request-form"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>장소명·주소로 검색한 뒤 만날 곳을 선택해주세요. 지도나 현재 위치로도 고를 수 있어요.</p>${placeSearchPanel()}${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 열 수 없으면 현재 위치로 요청할 수 있어요.</p><button type="button" data-action="retry-map" class="quiet">지도 다시 불러오기</button>'}<div class="selected-meeting-place" aria-live="polite"><strong>${e(selectedPlaceText())}</strong>${ridePlace?.address?`<p>${e(ridePlace.address)}</p>`:""}</div><form id="ride-form"><label>만날 장소 설명<input name="rideLabel" value="${e(rideLabel)}" required maxlength="120" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><div class="request-submit"><button class="primary" ${busy||placeSearchBusy||!ridePlace?"disabled":""}>${busy?"요청 보내는 중…":"이 장소로 마중 요청"}</button></div></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
@@ -310,9 +310,10 @@ function render() {
     const pairHandoff = nativeVehiclePairingAction();
     root.innerHTML = `<section class="intro small"><p class="eyebrow">내 연결</p><h1>운전자에게<br />마중을 요청해요.</h1><p>닉네임으로 운전자를 찾아 마중을 요청하세요.<br />같은 닉네임은 마중 ID로 구분할 수 있어요.</p></section>${alerts}
       ${pairHandoff ? `<section class="card vehicle-pair-card"><h2>차량 연결 QR을 열었어요</h2>${pairHandoff}</section>` : ""}
-      <section class="card"><h2>카카오로 로그인하고 요청하기</h2><ol class="account-steps"><li>카카오로 로그인해요.</li><li>마중에서 쓸 닉네임을 정해요.</li><li>운전자를 찾아 만날 장소와 함께 요청해요.</li></ol>
+      <section class="card"><h2>로그인하고 요청하기</h2><ol class="account-steps"><li>카카오로 로그인해요.</li><li>마중에서 쓸 닉네임을 정해요.</li><li>운전자를 찾아 만날 장소와 함께 요청해요.</li></ol>
       <p class="hint">로그인에는 카카오 회원번호를 사용하고 마중 ID와 닉네임을 관리해요. 이메일·사진·친구 목록은 요청하지 않아요. 시작 전에 개인정보 처리방침과 위치 공유·보관 안내를 확인해주세요.</p>
       ${info?.loginEnabled ? '<a class="kakao-login" href="/api/v1/auth/login">카카오로 시작하기</a>' : '<p class="hint">로그인 기능을 준비하고 있어요. 받은 픽업 초대는 기존 링크에서 열 수 있어요.</p>'}
+      <p class="app-release-note">iOS 앱은 아직 정식 출시 전이에요. 앱 설치 없이 이 웹에서 로그인하고 마중을 요청할 수 있어요.</p>
       ${button("다시 확인", "refresh", "", true)}<p class="hint">연결을 수락해도 차량 위치는 공유되지 않아요.</p></section><section class="card"><h2>초대 링크를 받았어요</h2><p>운전자가 보낸 메시지에서 링크를 열면 로그인 없이 참여할 수 있어요.</p></section>`;
     return;
   }

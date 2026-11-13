@@ -264,7 +264,7 @@ function nativeInvitationAction() {
   if (!supportsIOSApp(globalThis.navigator)) return "";
   const url = nativeInvitationUrl(invitation);
   if (!url) return "";
-  return `<a class="button quiet" href="${e(url)}">마중 앱에서 열기</a><p class="hint">마중 앱이 설치되어 있으면 이 초대를 앱에서 확인할 수 있어요.</p>`;
+  return `<aside class="app-release-note"><strong>iOS 앱은 아직 정식 출시 전이에요.</strong><p>앱을 설치하지 않아도 이 웹에서 바로 참여할 수 있어요.</p><details class="test-app-handoff"><summary>테스트 앱을 설치한 경우</summary><a class="button quiet" href="${e(url)}">테스트 앱에서 초대 열기</a><p class="hint">별도로 제공받은 테스트 앱이 설치된 기기에서만 열려요. 설치하지 않았다면 아래 웹 참여 버튼을 이용해주세요.</p></details></aside>`;
 }
 
 function joinForm() {
