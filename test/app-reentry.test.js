@@ -13,7 +13,7 @@ const pickupId='10000000-0000-4000-8000-000000000001';
 const otherId='10000000-0000-4000-8000-000000000002';
 const guest={role:'guest',pickupId,participantId:otherId,token:'g'.repeat(43)};
 const link=id=>`#join/${id}/${'i'.repeat(43)}`;
-async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=false,onReadiness=null,onJoin=null,onPreview=null,navigator={}}={}) {
+async function open({hash=link(pickupId),search='',saved=guest,status='ACTIVE',rejected=false,onReadiness=null,onJoin=null,onPreview=null,navigator={}}={}) {
   const reads=[],writes=[],events={},rootEvents={};
   const store=new Map(saved ? [['majung.pickup.session.v1',JSON.stringify(saved)]]:[]);
   const root={innerHTML:'',addEventListener(name,callback){rootEvents[name]=callback;},contains:()=>false,querySelector:()=>null};
@@ -31,7 +31,7 @@ async function open({hash=link(pickupId),saved=guest,status='ACTIVE',rejected=fa
     },
     document:{querySelector:()=>root,activeElement:null,hidden:false,addEventListener(){}},
     window:{addEventListener:(name,callback)=>{events[name]=callback;}},
-    location:{hash,pathname:'/',origin:'https://test.invalid',reload(){}},
+    location:{hash,search,pathname:'/',origin:'https://test.invalid',reload(){}},
     history:{replaceState(){}},sessionStorage:{getItem:key=>store.get(key),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},
     performance:{now:()=>1000},setInterval(){},fetch:async()=>({ok:false}),navigator,CSS:{escape:x=>x},URL,AbortSignal,
   });
@@ -170,4 +170,18 @@ test('사용할 수 없는 초대와 운전자 공유 화면은 앱 열기를 �
     const ui=await open({saved:null,navigator:{userAgent:"iPhone"},...options});
     assert.doesNotMatch(ui.root.innerHTML,/majung:\/\/join\//);
   }
+});
+
+for (const status of ['COMPLETED', 'CANCELLED', 'EXPIRED']) {
+  test(`${status} 뒤에는 새 탭 복귀 안내를 함께 표시하지 않는다`, async () => {
+    const ui = await open({status, search:`?pickup=${pickupId}`});
+    assert.match(ui.root.innerHTML, /위치 공유 종료/);
+    assert.doesNotMatch(ui.root.innerHTML, /원래 열어둔 픽업 화면|이 새 탭에는/);
+    assert.equal(ui.store.size, 0);
+  });
+}
+test('참여 정보 없는 진행 중 픽업 링크는 기존 탭 안내를 유지한다', async () => {
+  const ui = await open({hash:'', saved:null, search:`?pickup=${pickupId}`});
+  assert.match(ui.root.innerHTML, /원래 열어둔 픽업 화면/);
+  assert.equal(ui.writes.length, 0);
 });
