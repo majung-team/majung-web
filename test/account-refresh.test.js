@@ -10,7 +10,7 @@ import * as proposal from "../proposal.js";
 import { AccountError } from "../account-api.js";
 
 // Execute the real account entry point with an isolated DOM shell and controlled API clock.
-async function screen({pairHash = "", contacts = [], searchResults = [], requests, vehicles = [], messageFailure = false, authenticated: initialAuthenticated = true, navigator: initialNavigator, appleLoginEnabled = false} = {}) {
+async function screen({pairHash = "", contacts = [], searchResults = [], requests, vehicles = [], messageFailure = false, authenticated: initialAuthenticated = true, navigator: initialNavigator} = {}) {
   let now = 0, seconds = 420, fail = false, authenticated = initialAuthenticated, trackingReads = 0;
   let readinessSequence = 1, readinessReceivedSequence = 0, placeProposal = null;
   const timers = [], events = {}, windowEvents = {}, rootEvents = {}, writes = [];
@@ -30,7 +30,7 @@ async function screen({pairHash = "", contacts = [], searchResults = [], request
       return {};
     }
     if (fail) throw new Error("test network outage");
-    if (path === "/auth/session") return { authenticated, appleLoginEnabled, member: { nickname: "시험 탑승자", majungId: "test", profileReady: true } };
+    if (path === "/auth/session") return { authenticated, member: { nickname: "시험 탑승자", majungId: "test", profileReady: true } };
     if (path === "/connections" || path.startsWith("/connections?")) return contacts;
     if (path.startsWith("/accounts/search?")) return searchResults;
     if (path === "/vehicle-links") return vehicles;
@@ -553,12 +553,4 @@ test("iPhone 차량 연결 QR은 로그인 전후 모두 마중 앱 열기 링�
     requests: [],
   });
   assert.doesNotMatch(android.root.innerHTML, /majung:\/\//);
-});
-
-test('Apple 로그인은 서버가 명시적으로 허용할 때만 노출한다', async () => {
-  const disabled = await screen({authenticated:false});
-  assert.doesNotMatch(disabled.root.innerHTML, /href="\/api\/v1\/auth\/apple\/login"/);
-  const enabled = await screen({authenticated:false, appleLoginEnabled:true});
-  assert.match(enabled.root.innerHTML, /href="\/api\/v1\/auth\/apple\/login"/);
-  assert.match(enabled.root.innerHTML, /Apple로 계속하기/);
 });

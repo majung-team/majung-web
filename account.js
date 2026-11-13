@@ -313,7 +313,6 @@ function render() {
       <section class="card"><h2>로그인하고 요청하기</h2><ol class="account-steps"><li>카카오로 로그인해요.</li><li>마중에서 쓸 닉네임을 정해요.</li><li>운전자를 찾아 만날 장소와 함께 요청해요.</li></ol>
       <p class="hint">로그인에는 카카오 회원번호를 사용하고 마중 ID와 닉네임을 관리해요. 이메일·사진·친구 목록은 요청하지 않아요. 시작 전에 개인정보 처리방침과 위치 공유·보관 안내를 확인해주세요.</p>
       ${info?.loginEnabled ? '<a class="kakao-login" href="/api/v1/auth/login">카카오로 시작하기</a>' : '<p class="hint">로그인 기능을 준비하고 있어요. 받은 픽업 초대는 기존 링크에서 열 수 있어요.</p>'}
-      ${info?.appleLoginEnabled === true ? '<a class="apple-login" href="/api/v1/auth/apple/login">Apple로 계속하기</a>' : ''}
       <p class="app-release-note">iOS 앱은 아직 정식 출시 전이에요. 앱 설치 없이 이 웹에서 로그인하고 마중을 요청할 수 있어요.</p>
       ${button("다시 확인", "refresh", "", true)}<p class="hint">연결을 수락해도 차량 위치는 공유되지 않아요.</p></section><section class="card"><h2>초대 링크를 받았어요</h2><p>운전자가 보낸 메시지에서 링크를 열면 로그인 없이 참여할 수 있어요.</p></section>`;
     return;
