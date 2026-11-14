@@ -176,7 +176,8 @@ test("검색 결과 선택은 이름·좌표만 장소에 적용하고 전송은
   vm.runInContext('rideTarget={memberId:"driver"}; placeCandidates=[{label:"시험 정문",address:"시험 주소",latitude:37.3,longitude:127.3,id:"provider-only"}];',app.context);
   app.rootEvents.click({target:{closest:()=>({dataset:{action:"place-select",index:"0"}})}});
   assert.equal(app.writes.length,0);
-  assert.equal(vm.runInContext('rideLabel',app.context),'시험 정문');
+  assert.equal(vm.runInContext('rideLabel',app.context),'');
+  assert.equal(vm.runInContext('requestPlaceLabel()',app.context),'시험 정문');
   assert.equal(vm.runInContext('ridePlace.source',app.context),'search');
   assert.equal(vm.runInContext('ridePlace.latitude',app.context),37.3);
   assert.equal(vm.runInContext('ridePlace.id',app.context),undefined);
@@ -553,4 +554,54 @@ test("iPhone 차량 연결 QR은 로그인 전후 모두 마중 앱 열기 링�
     requests: [],
   });
   assert.doesNotMatch(android.root.innerHTML, /majung:\/\//);
+});
+
+
+test("지난 요청은 기본 접히고 현재 요청과 분리되며 새로고침에도 펼침 유지", async () => {
+  const requests=[{requestId:"waiting",status:"PENDING",nickname:"현재 운전자",place:{label:"새 장소"}},
+    {requestId:"old",status:"CANCELLED",nickname:"지난 운전자",place:{label:"이전 장소"}}];
+  const app=await screen({requests});
+  assert.match(app.root.innerHTML,/id="ride-waiting"/);
+  assert.doesNotMatch(app.root.innerHTML,/id="ride-old"/);
+  assert.match(app.root.innerHTML,/aria-expanded="false"/);
+  const toggle=()=>app.rootEvents.click({target:{closest: selector=>selector==="button[data-action]" ? {dataset:{action:"toggle-request-history"}} : null}});
+  toggle();
+  assert.match(app.root.innerHTML,/id="ride-old"/);
+  assert.match(app.root.innerHTML,/aria-expanded="true"/);
+  await app.tick(5000);
+  assert.match(app.root.innerHTML,/id="ride-old"/);
+  toggle();
+  assert.doesNotMatch(app.root.innerHTML,/id="ride-old"/);
+});
+
+test("지난 기록만 있어도 새 마중 요청 동선 유지", async () => {
+  const app=await screen({requests:[{requestId:"old",status:"COMPLETED",nickname:"운전자",place:{label:"이전 장소"}}]});
+  assert.match(app.root.innerHTML,/아직 진행 중인 픽업이 없어요/);
+  assert.match(app.root.innerHTML,/운전자 찾아 마중 요청/);
+  assert.match(app.root.innerHTML,/지난 요청/);
+  assert.doesNotMatch(app.root.innerHTML,/id="ride-old"/);
+});
+
+test("검색 장소명과 추가 설명을 함께 전송하며 좌표 유지", async () => {
+  const app=await screen();
+  vm.runInContext('rideTarget={memberId:"driver"}; rideRequestId="new"; ridePlace={label:"강남역",latitude:37.3,longitude:127.3,source:"search"}; rideLabel="2번 출구 앞"; render();',app.context);
+  assert.match(app.root.innerHTML,/추가 설명 \(선택\)/);
+  app.rootEvents.submit({preventDefault(){},target:{id:"ride-form"}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual({...app.writes[0].place},{label:"강남역 · 2번 출구 앞",latitude:37.3,longitude:127.3});
+});
+
+test("검색 장소는 추가 설명 없이 전송 가능하고 긴 설명은 초안 보존 후 차단", async () => {
+  const app=await screen();
+  vm.runInContext('rideTarget={memberId:"driver"}; rideRequestId="new"; ridePlace={label:"강남역",latitude:37.3,longitude:127.3,source:"search"}; rideLabel="가".repeat(120);',app.context);
+  app.rootEvents.submit({preventDefault(){},target:{id:"ride-form"}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.writes.length,0);
+  assert.match(app.root.innerHTML,/장소명과 설명은 합해 120자/);
+  assert.equal(vm.runInContext('rideLabel.length',app.context),120);
+  assert.equal(vm.runInContext('ridePlace.label',app.context),"강남역");
+  vm.runInContext('rideLabel="";',app.context);
+  app.rootEvents.submit({preventDefault(){},target:{id:"ride-form"}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.writes[0].place.label,"강남역");
 });
