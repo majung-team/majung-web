@@ -1,98 +1,90 @@
 <div align="center">
-  <img src="docs/media/majung-icon.png" width="76" alt="마중 아이콘" />
-  <h1>마중 웹 (Majung Web)</h1>
-  <p>별도 앱 설치 없이 모바일 브라우저에서 카카오 로그인, 지인 연결, 픽업 요청, 초대 참여와 실시간 차량 위치·도착 예정 시간(ETA)을 이용하는 웹 클라이언트입니다.</p>
-  <p>
-    <a href="https://majung.cloud">모바일 웹</a> ·
-    <a href="https://majung.cloud/account">계정 · 마중 요청</a> ·
-    <a href="https://github.com/majung-team/majung">마중 프로젝트</a> ·
-    <a href="https://github.com/majung-team/majung/wiki">Wiki</a> ·
-    <a href="https://github.com/majung-team/majung/blob/main/docs/development-status.md">개발 현황</a>
-  </p>
+  <img src="docs/media/majung-icon.png" width="72" alt="마중" />
+  <h1>마중 웹</h1>
+  <p>초대 링크를 열면, 데리러 오는 차량이 언제 도착할지 볼 수 있도록.</p>
+  <p><a href="https://majung.cloud/account">마중 요청하기</a> · <a href="https://github.com/majung-team/majung">서비스 소개</a> · <a href="docs/service-screens.md">화면 안내</a> · <a href="https://github.com/majung-team/majung/wiki">기술 회고</a></p>
 </div>
 
-> 내비게이션 경로나 ETA 계산, 인증·권한 제어는 차량 앱과 백엔드가 담당하며, 웹은 허용된 최신 상태만 화면에 반영합니다.
+## 앱을 설치하지 않아도 참여할 수 있다
 
----
+운전자가 보낸 초대 링크를 열고 만날 장소를 확인한 뒤 참여한다. 픽업이 시작되면 차량 위치와 도착 시간을 보고, 준비 완료나 ‘지금 내려가요’ 같은 메시지를 보낼 수 있다. 카카오 로그인 후에는 운전자를 찾아 먼저 마중을 요청할 수도 있다.
 
-## 1. 주요 기능
+<div align="center">
+  <img src="docs/media/eta-permission-20261106/guest-eta-mobile.jpg" width="260" alt="초대 링크로 참여한 탑승자의 차량 위치·도착 시간 화면" />
+  <p><sub>11월 6일 게스트 픽업 화면 확인 기록 · 시연 데이터</sub></p>
+</div>
 
-### 계정 · 차량 연결 · 마중 요청
-- **카카오 로그인 · 지인 연결**: 로그인 후 닉네임과 마중 ID를 설정하고, 지인을 검색해 친구 연결을 관리합니다.
-- **차량 QR 연결 · 요청**: 운전자는 차량 QR을 모바일 웹으로 열어 계정을 연결하고, 탑승자는 원하는 장소를 골라 연결 여부와 관계없이 운전자에게 마중을 요청합니다.
-- **요청 목록**: 진행 중 요청과 지난 기록을 분리합니다. 지난 기록은 기본으로 접히며 펼친 상태는 새로 확인해도 유지됩니다.
-- **만날 장소**: 검색에서 고른 장소명과 추가 설명을 구분해 입력하고 함께 전달합니다. 장소명과 설명을 합한 120자 제한을 적용합니다.
+| 들어온 경로 | 이어지는 이용 흐름 |
+| --- | --- |
+| 초대 링크 | 만날 장소 확인 → 게스트 참여 → 내 픽업 시작 후 위치·도착 시간 확인 |
+| 로그인 | 사람 검색 → 장소 선택 → 마중 요청 → 차량 수락·차례 대기 → 픽업 진행 |
+| 운전자의 차량 QR | 카카오 로그인 → 차량에서 계정 확인 → 연결 완료 |
 
-### 초대 링크 참여 · 실시간 픽업
-- **초대 링크 게스트 참여**: 회원가입 없이 전달받은 초대 링크로 만날 장소를 먼저 확인한 뒤 참여하거나 대기 중에 나갈 수 있습니다(조회만으로는 링크가 소진되지 않음).
-- **차량 배지 · 실시간 지도**: 픽업이 시작되면 매칭된 차량 정보 배지와 현재 위치, 도착 예정 시간(ETA), 도착·완료 상태를 카카오 지도 위에 실시간으로 보여줍니다.
+링크를 열어 장소를 미리 보는 것만으로 참여가 완료되지는 않는다. 대기 중인 탑승자에게 앞선 픽업의 위치를 보여주지 않고, 자신의 픽업이 시작된 뒤에 정보를 제공한다.
 
-### 소통 · 장소 변경 · 도착 알림
-- **준비 상태 · 빠른 메시지**: 준비 상태를 전환하고 빠른 칩이나 직접 입력(최대 50자)으로 메시지를 보내면 차량 화면 알림과 음성(TTS)으로 전달됩니다(입력 중 화면 갱신 간섭 방지·임시 초안 유지).
-- **만날 장소 변경 제안**: 픽업 대기·진행 중에 장소명/주소 검색이나 지도에서 새 장소를 제안할 수 있으며, 운전자가 확정하기 전까지는 기존 장소를 유지합니다.
-- **도착 임박 웹 푸시**: 브라우저 알림 권한을 허용하면 도착 약 3분 전 웹 푸시 알림을 받을 수 있습니다.
+## 기다리는 동안 할 수 있는 일
 
----
+- **준비 상태와 메시지 보내기** — 준비 중·완료를 바꾸고, 빠른 문구 또는 최대 50자 메시지를 전송한다. 서버 저장과 차량 수신 확인을 나눠 표시한다.
+- **만날 장소 제안하기** — 장소·주소 검색이나 지도에서 지점을 고른다. 운전자가 확정하기 전에는 기존 장소를 유지한다.
+- **도착 알림 받기** — 지원 브라우저에서 알림 권한과 구독이 갖춰지면 도착 약 3분 전 웹 푸시를 요청할 수 있다.
+- **지난 요청 확인하기** — 진행 중인 요청과 지난 기록을 나누고, 지난 기록을 펼친 상태는 갱신 후에도 유지한다.
 
-## 2. 시스템 구성 및 기술 스택
+## 화면이 갱신돼도 하던 입력은 남아야 한다
+
+준비 완료를 저장한 뒤 예전 조회 결과가 늦게 올 수 있다. 이전 응답이 새 상태를 덮지 않도록 하고, 메시지를 쓰는 중에는 화면 갱신이 입력을 방해하지 않게 했다. 장소명과 추가 설명도 따로 관리해, 설명을 수정하다 선택한 장소 이름을 잃지 않도록 한다.
+
+지도 로딩에 실패해도 장소·도착 시간 요약은 따로 남긴다. 차량 정보가 오래되면 지연 상태를 표시하고, 수신이 장시간 끊기거나 픽업이 종료되면 위치·도착 시간을 숨긴다.
+
+[화면 복귀와 상태 동기화 기록](docs/usability-2026-11-05.md) · [위치 정보 유효 시간](docs/vehicle-freshness.md) · [장소 선택·제안](docs/place-proposal.md)
+
+## 로컬 실행
+
+Node.js 22 이상을 사용한다. API 서버는 별도 터미널에서 실행한다. [백엔드 실행 안내](https://github.com/majung-team/majung-backend#먼저-실행해-보기)
+
+```sh
+npm ci
+npm start
+```
+
+- 웹: `http://127.0.0.1:4173/account`
+- API: 로컬 서버의 `127.0.0.1:8080`으로 `/api/` 요청 전달
+- 포트 변경: `MAJUNG_WEB_PORT`, `MAJUNG_API_PORT` 환경 변수
+
+```sh
+npm test
+```
+
+화면을 여는 것과 로그인·지도·푸시까지 사용하는 것은 설정이 다르다. 카카오 로그인과 지도 키는 백엔드에서 설정하며, 로컬 로그인은 리다이렉트 URI·쿠키 설정을 맞춰야 한다. 기기 알림은 HTTPS와 지원 브라우저 조건도 확인해야 한다. [계정·차량 연결](docs/account-connections.md) · [도착 알림](docs/arrival-push.md)
+
+## 구성
 
 ```mermaid
 flowchart LR
-    Web["모바일 웹 (HTML · CSS · JS)"] -->|"HTTPS 로그인 · 요청 · 상태 조회"| API["마중 백엔드 (/api/v1)"]
-    API -->|"SSE 변경 신호 · Web Push (VAPID)"| Web
-    Web -->|"지도 표시 · 마커 · 위치 이동"| Map["Kakao Maps SDK"]
+    Web["모바일 브라우저"] -->|"요청 · 상태 조회"| API["마중 API"]
+    API -->|"SSE 변경 신호 · Web Push"| Web
+    Web --> Map["Kakao Maps"]
 ```
 
-> SSE는 상태 변경 신호만 전달하며, 웹은 신호를 받거나 재연결될 때 관련 API를 다시 조회해 최신 화면을 맞춥니다.
+HTML·CSS·JavaScript ES Modules로 구성하며 UI 프레임워크는 사용하지 않는다. SSE 신호를 받으면 API를 다시 조회하고, 운영에서는 Caddy가 정적 파일과 API를 같은 서비스 주소로 제공한다.
 
-### 파일 구조
+<details>
+<summary>기능별 파일 찾기</summary>
 
-```text
-majung-web/
-├── index.html / account.html      # 픽업 추적 · 계정/요청 진입 화면
-├── privacy.html                   # 개인정보 안내 페이지
-├── app.js · api.js · model.js     # 픽업 상태 관리 · 백엔드 API 연동
-├── map.js · proposal.js           # Kakao Maps 렌더링 · 장소 검색/변경 제안
-├── account.js · account-api.js    # 로그인 · 지인 검색 · 차량 QR 연결 · 마중 요청
-├── stream.js · push.js · sw.js    # SSE 실시간 동기화 · Web Push 서비스 워커
-├── .well-known/                   # iOS Universal Links 설정 (AASA)
-└── test/                          # 모델 · 제안 · 푸시 · SSE · 링크 계약 테스트
-```
-
-### 기술 스택
-
-| 구분 | 구성 |
+| 파일 | 역할 |
 | --- | --- |
-| **UI** | Vanilla HTML · CSS · ES Modules JavaScript<br>(별도 프레임워크 미사용) |
-| **지도** | Kakao Maps SDK · Server-Sent Events(SSE)<br>Service Worker · Web Push(VAPID) |
-| **운영** | Caddy(HTTPS · 정적 서빙) · GitHub Actions<br>Node.js 22+ `node --test` |
+| `index.html`, `app.js`, `model.js` | 게스트 픽업·상태·도착 시간 계산 |
+| `account.html`, `account.js`, `account-api.js` | 로그인·사람 연결·차량 QR·요청 목록 |
+| `map.js`, `proposal.js` | 지도·장소 검색·변경 제안 |
+| `api.js`, `stream.js` | API 통신·실시간 변경 신호 |
+| `push.js`, `sw.js` | 도착 알림·서비스 워커 |
+| `test/` | 상태·지도·제안·푸시·SSE·링크 검증 |
 
----
+</details>
 
-## 3. 보안 정책 및 검증 범위
+## 확인 범위
 
-- **정보 신선도 구분 · 노출 제한**: 차량 좌표는 수신 시점에 따라 최신(`FRESH`)·지연(`STALE`)·대기(`WAITING`) 상태로 구분해 오래된 좌표를 현재 위치처럼 보이지 않으며, 대기 중인 탑승자에게는 다른 픽업의 위치·ETA나 차량 전용 인증 토큰을 전달하지 않습니다.
-- **비밀 값 분리**: 로그인 쿠키, CSRF 토큰, 초대 토큰 원문, 카카오 인증 키는 저장소에 포함하지 않고 백엔드 서버에서 안전하게 관리합니다.
+[Web CI](https://github.com/majung-team/majung-web/actions)에서 모델·API 연동·응답 순서·화면 복귀 등을 자동 검사한다. 공개 서버를 사용한 기록은 [공통 검증 문서](https://github.com/majung-team/majung/blob/main/docs/rehearsal-2026-11-13.md)에 환경과 함께 남긴다.
 
-| 구분 | 범위 |
-| --- | --- |
-| **확인&nbsp;완료** | `node --test` (`104 passed`) · 공개 `majung.cloud`<br>iPhone·데스크톱 초대 재시도·장소 제안·지도 복구 |
-| **추후&nbsp;확인** | 백그라운드/잠금화면 Web Push · LTE/Wi-Fi 전환<br>실차 주행 중 장시간 위치·ETA 연동 |
+실제 휴대전화의 잠금화면·백그라운드 푸시와 LTE/Wi-Fi 전환, 실차의 장시간 위치 연동은 별도 확인 범위다. iOS 앱은 아직 배포 전이며 웹의 ‘앱 열기’에서 현재 이용 조건을 안내한다.
 
----
-
-## 4. 상세 문서 및 관련 저장소
-
-| 분류 | 문서 |
-| --- | --- |
-| **화면&nbsp;·&nbsp;기능** | [서비스 화면](docs/service-screens.md) · [탑승자 지도](docs/passenger-map.md) · [장소 선택 및 제안](docs/place-proposal.md)<br>[사람 찾기 및 계정](docs/account-connections.md) · [초대 자동 참여](docs/auto-connect.md) |
-| **정책&nbsp;·&nbsp;운영** | [차량 정보 최신성](docs/vehicle-freshness.md) · [도착 임박 알림](docs/arrival-push.md)<br>[GitHub Actions 배포](docs/github-actions.md) · [기여 가이드](CONTRIBUTING.md) |
-| **허브&nbsp;·&nbsp;회고** | [전체 아키텍처](https://github.com/majung-team/majung/blob/main/docs/architecture.md) · [개발 현황](https://github.com/majung-team/majung/blob/main/docs/development-status.md)<br>[Wiki 기술 회고](https://github.com/majung-team/majung/wiki#%EA%B8%B0%EC%88%A0-%ED%9A%8C%EA%B3%A0) |
-
-| 저장소 | 역할 |
-| --- | --- |
-| [majung](https://github.com/majung-team/majung) | 전체 서비스 소개 · 설계 · 시연 |
-| [majung-vehicle-app](https://github.com/majung-team/majung-vehicle-app) | AAOS 차량 앱 및 Pleos SDK 연동 |
-| [majung-web](https://github.com/majung-team/majung-web) | 운전자 · 탑승자 모바일 웹 |
-| [majung-ios](https://github.com/majung-team/majung-ios) | SwiftUI iOS 모바일 앱 |
-| [majung-backend](https://github.com/majung-team/majung-backend) | Spring Boot API 및 운영 배포 |
+[서비스 화면](docs/service-screens.md) · [개인정보 안내](https://majung.cloud/privacy) · [배포 방법](docs/github-actions.md) · [기여 가이드](CONTRIBUTING.md)
