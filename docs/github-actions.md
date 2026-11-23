@@ -12,7 +12,7 @@
 | 실행 환경 | Node.js 24 |
 | 의존성 설치 | `npm ci` |
 | 자동 테스트 | `npm test` |
-| 추가 검사 | JavaScript 구문 검사 |
+| 추가 검사 | `commit-style` (`commitlint`), JavaScript 구문 검사 (`dev-server.mjs` 포함) |
 | PR | 코드 검사만 실행 |
 | main push | 검사 성공 시 자동 배포 |
 | 배포 활성화 | `MAJUNG_DEPLOY_ENABLED=true` |
@@ -140,7 +140,8 @@ Caddy는 다음 설정 파일을 통해 활성 백엔드에 연결한다.
 - [개발 현황 및 검증 기록](https://github.com/majung-team/majung/blob/main/docs/development-status.md)
 - [Wiki: 휴대전화 QR 연결·Universal Links 회고](https://github.com/majung-team/majung/wiki/%ED%9C%B4%EB%8C%80%EC%A0%84%ED%99%94-QR-%EC%97%B0%EA%B2%B0%EA%B3%BC-%EC%9B%B9-iOS-%EC%8B%A4%EC%8B%9C%EA%B0%84-%EC%83%81%ED%83%9C%EB%8A%94-%EC%99%9C-%EC%96%B4%EA%B8%8B%EB%82%AC%EC%9D%84%EA%B9%8C)
 
-## 7. 2026-11-12 배포·라우팅 보완 (`0188bd2`)
+## 8. 배포·검사 보완 기록
 
-- `3207775` · `31f894a`: iPhone Universal Links 지원을 위해 `.well-known/apple-app-site-association` 파일과 `deploy/Caddyfile` 라우팅 검증을 추가했다.
-- `0188bd2`: 임시 샌드박스 프록시 경로를 제거하고, 웹 단위·통합 테스트 `npm test` `104 passed`를 확인했다.
+- `3207775` · `31f894a` (2026-11-12): iPhone Universal Links 지원을 위해 `.well-known/apple-app-site-association` 파일과 `deploy/Caddyfile` 라우팅 검증을 추가했다.
+- `0188bd2` (2026-11-12): 임시 샌드박스 프록시 경로를 제거하고, 웹 단위·통합 테스트 `npm test` `104 passed`를 확인했다.
+- `b2865bd` · `350c1ef` (2026-11-23): `commit-style`(`commitlint`) 잡과 `dev-server.mjs` 구문 검사를 추가하고, `og-image.png` 정적 자산 패키징 및 서버 `WEB_FILES` 허용 목록을 갱신했다 (`npm test` `120 passed`).
