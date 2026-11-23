@@ -10,6 +10,29 @@ concurrency:
   group: web-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  commit-style:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Check commit style
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          npm ci --ignore-scripts
+          if [[ "$EVENT_NAME" == "pull_request" && -n "$BASE_SHA" ]]; then
+            npm run lint:commit -- --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+          else
+            npm run lint:commit -- --from HEAD~1 --to HEAD --verbose
+          fi
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -26,7 +49,7 @@ jobs:
         run: |
           npm ci
           npm test
-          for file in app.js api.js model.js map.js push.js proposal.js stream.js sw.js account.js account-api.js; do
+          for file in app.js api.js model.js map.js push.js proposal.js stream.js sw.js account.js account-api.js dev-server.mjs; do
             if [[ -f "$file" ]]; then node --check "$file"; fi
           done
           bash -n deploy/workflow.sh
