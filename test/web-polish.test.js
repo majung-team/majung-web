@@ -107,17 +107,22 @@ test("HTML 페이지에 OG·테마 메타 태그가 포함되고 app.js 오타·
     const html = await readFile(new URL(`../${file}`, import.meta.url), "utf8");
     assert.ok(html.includes('name="description"'), `${file} missing description`);
     assert.ok(html.includes('property="og:title"'), `${file} missing og:title`);
-    assert.ok(html.includes('property="og:image"'), `${file} missing og:image`);
+    assert.ok(html.includes('https://majung.cloud/og-image.png'), `${file} missing og-image.png`);
     assert.ok(html.includes('name="theme-color"'), `${file} missing theme-color`);
   }
+  const ogBytes = await readFile(new URL("../og-image.png", import.meta.url));
+  assert.ok(ogBytes.length > 1000, "og-image.png should be a valid non-empty PNG");
+  const devServer = await readFile(new URL("../dev-server.mjs", import.meta.url), "utf8");
+  assert.ok(devServer.includes("og-image.png"), "dev-server.mjs must serve og-image.png");
   const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.ok(!appSource.includes("차량이 차량이"), "duplicate word typo found in app.js");
   assert.ok(!appSource.includes("https://majung.cloud/privacy"), "hardcoded privacy origin in app.js");
 });
 
-test("Web CI 워크플로가 commit-style 검사와 dev-server.mjs 구문 검사를 포함한다", async () => {
+test("Web CI 워크플로가 commit-style 검사와 dev-server.mjs 구문 검사·og-image 패키징을 포함한다", async () => {
   const workflow = await readFile(new URL("../.github/workflows/web.yml", import.meta.url), "utf8");
   assert.ok(workflow.includes("commit-style:"));
   assert.ok(workflow.includes("lint:commit"));
   assert.ok(workflow.includes("dev-server.mjs"));
+  assert.ok(workflow.includes("og-image.png"));
 });
