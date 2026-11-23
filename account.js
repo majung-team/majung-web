@@ -1,9 +1,7 @@
-import { existingArrivalSubscription } from "./push.js";
-import { guestPickupHeading, vehicleFreshnessText, pickupStatusNotice, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend, nativeVehiclePairingUrl, supportsIOSApp, showNativeAppNotice } from "./model.js";
+import { guestPickupHeading, vehicleFreshnessText, pickupStatusNotice, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend, nativeVehiclePairingUrl, supportsIOSApp, showNativeAppNotice, escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, vehicleForPlace, etaText, ageText, placeActionBar, loadRecentPlaces, saveRecentPlace, removeRecentPlace, clearRecentPlaces } from "./model.js";
 import { openPickupStream } from "./stream.js";
 import { createAccountClient, AccountError } from "./account-api.js";
-import { escapeHtml as e, vehicleDeadline, vehicleTiming, vehicleView, vehicleForPlace, etaText, ageText } from "./model.js";
-import { browserPushEnvironment, pushState, pushCard, pushErrorText, enableArrivalPush, disableBrowserPush, pushFlag, setPushFlag } from "./push.js";
+import { existingArrivalSubscription, browserPushEnvironment, pushState, pushCard, pushErrorText, enableArrivalPush, pushFlag, setPushFlag } from "./push.js";
 import { loadKakaoMaps, createPickupMap, createPlacePicker, searchPickupPlaces } from "./map.js";
 import { proposalBlock, createProposalPanel, unavailableProposal } from "./proposal.js";
 
@@ -84,6 +82,7 @@ function rideRow(source) {
   const active = current ? `${vehicleBadge}<strong data-ride-heading="${e(item.requestId)}">${e(guestPickupHeading(current.pickup.status, rideVehicleView(current), networkAvailable))}</strong><p data-ride-eta="${e(item.requestId)}">${e(rideEtaText(current))}</p>
     ${readiness}<div class="pickup-place-tools" data-proposal-area><div class="pickup-place-card">
       <div class="place-card-info"><span class="place-card-badge">만날 장소</span><strong class="place-card-name">${e(current.pickup.place?.label || item.place.label)}</strong></div>
+      ${placeActionBar(current.pickup.place || item.place, { prefix: "ride-" })}
       <div class="pickup-place-proposal">${proposalBlock({proposal:current.pickup.placeProposal,picking:pickingRide===item.requestId,mapReady:Boolean(pickupMap),status:current.pickup.status})}</div></div>
       ${pickupMap && current.pickup.place ? '<div class="pickup-map" data-ride-map></div><button type="button" class="quiet map-recenter" data-action="map-recenter">차량·만날 장소 다시 보기</button>' : ""}
     </div>${message}${current.pickup.status==="ACTIVE" ? ridePushCard(item.requestId) : ""}`
@@ -101,6 +100,19 @@ let placeMaps = null, placePicker = null;
 let placeKeyword = "", placeSearchedKeyword = "", placeCandidates = [];
 let placeSearchPage = 1, placeSearchNext = false, placeSearchDone = false;
 let placeSearchBusy = false, placeSearchMessage = "", placeSearchGeneration = 0;
+let recentPlaces = loadRecentPlaces();
+function recentPlacesPanel() {
+  if (!recentPlaces.length) return "";
+  return `<div class="recent-places" aria-label="최근 선택한 장소">
+    <div class="recent-places-header"><span class="recent-places-title">최근 장소</span><button type="button" class="recent-places-clear" data-action="recent-places-clear" ${busy || placeSearchBusy ? "disabled" : ""}>전체 지우기</button></div>
+    <ul class="recent-places-list">${recentPlaces
+      .map(
+        (place, index) =>
+          `<li class="recent-place-item"><button type="button" class="recent-place-chip" data-action="recent-place-select" data-index="${index}" aria-pressed="${ridePlace?.source === "search" && ridePlace.latitude === place.latitude && ridePlace.longitude === place.longitude && ridePlace.label === place.label}" ${busy || placeSearchBusy ? "disabled" : ""}>${e(place.label)}</button><button type="button" class="recent-place-remove" data-action="recent-place-remove" data-index="${index}" aria-label="${e(place.label)} 최근 장소 삭제" ${busy || placeSearchBusy ? "disabled" : ""}>×</button></li>`,
+      )
+      .join("")}</ul>
+  </div>`;
+}
 function resetPlaceSearch() {
   placeSearchGeneration++; placeSearchBusy = false; placeKeyword = "";
   placeSearchedKeyword = ""; placeCandidates = []; placeSearchPage = 1;
@@ -215,7 +227,7 @@ function nativeVehiclePairingAction() {
   return `<div class="row-actions"><a class="button quiet" data-native-app-link href="${e(url)}">마중 앱에서 연결하기</a></div>`;
 }
 function rideSections() {
-  const form=rideTarget?`<section class="card confirmation ride-request-form"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>장소명·주소로 검색한 뒤 만날 곳을 선택해주세요. 지도나 현재 위치로도 고를 수 있어요.</p>${placeSearchPanel()}${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 열 수 없으면 현재 위치로 요청할 수 있어요.</p><button type="button" data-action="retry-map" class="quiet">지도 다시 불러오기</button>'}<div class="selected-meeting-place" aria-live="polite"><strong>${e(selectedPlaceText())}</strong>${ridePlace?.address?`<p>${e(ridePlace.address)}</p>`:""}</div><form id="ride-form"><label>${ridePlace?.label ? "추가 설명 (선택)" : "만날 장소 설명"}<input name="rideLabel" value="${e(rideLabel)}" ${ridePlace?.label ? "" : "required"} maxlength="${requestDescriptionLimit()}" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">${ridePlace?.label ? "고른 장소명은 그대로 보내요. 설명을 덧붙일 수 있어요." : "만날 지점을 알아볼 수 있게 설명해주세요."} 장소명과 설명은 합해 120자까지 보낼 수 있어요.</p><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><div class="request-submit"><button class="primary" ${busy||placeSearchBusy||!ridePlace?"disabled":""}>${busy?"요청 보내는 중…":"이 장소로 마중 요청"}</button></div></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
+  const form=rideTarget?`<section class="card confirmation ride-request-form"><h2>${e(rideTarget.nickname)} 님께 마중 요청</h2><p class="majung-id">${e(rideTarget.majungId)}</p><p>장소명·주소로 검색한 뒤 만날 곳을 선택해주세요. 지도나 현재 위치로도 고를 수 있어요.</p>${recentPlacesPanel()}${placeSearchPanel()}${button("현재 위치 선택","ride-location","",true)}${placeMaps?`<div class="pickup-map" data-place-picker></div>${button("지도 중심을 만날 장소로 선택","ride-map-center","",true)}`:'<p class="hint">지도를 열 수 없으면 현재 위치로 요청할 수 있어요.</p><button type="button" data-action="retry-map" class="quiet">지도 다시 불러오기</button>'}<div class="selected-meeting-place" aria-live="polite"><strong>${e(selectedPlaceText())}</strong>${ridePlace?.address?`<p>${e(ridePlace.address)}</p>`:""}</div><form id="ride-form"><label>${ridePlace?.label ? "추가 설명 (선택)" : "만날 장소 설명"}<input name="rideLabel" value="${e(rideLabel)}" ${ridePlace?.label ? "" : "required"} maxlength="${requestDescriptionLimit()}" placeholder="예: 정문 앞 주차장 입구" /></label><p class="hint">${ridePlace?.label ? "고른 장소명은 그대로 보내요. 설명을 덧붙일 수 있어요." : "만날 지점을 알아볼 수 있게 설명해주세요."} 장소명과 설명은 합해 120자까지 보낼 수 있어요.</p><p class="hint">안전하게 정차할 수 있는 곳인지 확인해주세요. 운전자가 확인하고 수락해야 픽업 대기에 들어가요.</p><div class="request-submit"><button class="primary" ${busy||placeSearchBusy||!ridePlace?"disabled":""}>${busy?"요청 보내는 중…":"이 장소로 마중 요청"}</button></div></form>${button("돌아가기","ride-dismiss","",true)}</section>`:"";
   const pair=vehiclePair||vehicleRequest?`<section class="card vehicle-pair-card"><h2>${(vehiclePair?.kind || vehicleRequest?.kind) === "enroll" ? "차량과 운전자 처음 연결" : "내 계정과 차량 연결"}</h2>${vehicleRequest?`<div class="vehicle-pair-status" role="status"><strong>차량에서 ${e(info.member.nickname)} 님의 연결을 승인해주세요.</strong><p>차량 화면의 ‘요청한 계정 확인하고 연결’을 누르면 바로 연결돼요.</p></div><div class="row-actions">${button("연결 상태 확인","refresh")}${button("연결 요청 취소","vehicle-dismiss","",true)}</div>`:`${nativeVehiclePairingAction()}<p>운전자 본인의 차량 화면에 표시된 QR인지 확인해주세요. 로그인한 계정을 차량에서 한 번 더 확인하면 연결돼요. 관리자 코드는 필요 없어요. 탑승자는 이 연결을 할 필요가 없어요.</p><div class="row-actions">${button("이 계정으로 차량 연결 요청","vehicle-claim")}${button("차량 연결 요청 닫기","vehicle-dismiss","",true)}</div>`}</section>`:"";
   const pastStatuses = new Set(["COMPLETED", "CANCELLED", "REJECTED", "EXPIRED"]);
   const currentRides = rides.filter(ride=>!pastStatuses.has(ride.status));
@@ -484,6 +496,12 @@ root.addEventListener("submit", event => {
       if (placeLabel.length > 120) throw new AccountError(400,"PLACE_DESCRIPTION_TOO_LONG","장소명과 설명은 합해 120자까지 보낼 수 있어요. 설명을 줄여주세요.");
       if (ridePlace.source === "gps" && Date.now()-ridePlace.at>120000) throw new AccountError(400,"LOCATION_OLD","현재 위치를 다시 선택해주세요.");
       await api("/ride-requests",{method:"POST",body:{driverId:rideTarget.memberId,requestId:rideRequestId,place:{label:placeLabel,latitude:ridePlace.latitude,longitude:ridePlace.longitude}}});
+      recentPlaces = saveRecentPlace({
+        label: ridePlace.label || placeLabel,
+        address: ridePlace.address || "",
+        latitude: ridePlace.latitude,
+        longitude: ridePlace.longitude,
+      });
       closeRideRequest(false);
       await refresh(); notice="운전자에게 마중을 요청했어요. 수락하면 픽업 대기에 들어가요.";
     } else if (type === "nickname-form") {
@@ -539,6 +557,36 @@ root.addEventListener("click", event => {
     const page=placeSearchPage+(action==="place-search-next"?1:-1);
     if (page>=1 && page<=3 && (action==="place-search-previous" || placeSearchNext)) void searchPlaces(page);
     return;
+  }
+  if (action === "ride-copy-place") {
+    const label = target.dataset.placeLabel || "";
+    if (!label) return;
+    void (async () => {
+      try {
+        await navigator.clipboard.writeText(label);
+        notice = "만날 장소를 복사했어요.";
+      } catch {
+        notice = "장소를 자동으로 복사하지 못했어요. 화면에서 직접 복사해주세요.";
+      }
+      render();
+    })();
+    return;
+  }
+  if (action === "recent-place-select") {
+    if (placeSearchBusy || !rideTarget) return;
+    const chosen = recentPlaces[Number(target.dataset.index)];
+    if (!chosen) return;
+    ridePlace = { latitude: chosen.latitude, longitude: chosen.longitude, label: chosen.label, address: chosen.address, source: "search", at: Date.now() };
+    rideLabel = "";
+    render(); root.querySelector("[data-place-picker]")?.scrollIntoView({ block: "center" }); return;
+  }
+  if (action === "recent-place-remove") {
+    recentPlaces = removeRecentPlace(Number(target.dataset.index));
+    render(); return;
+  }
+  if (action === "recent-places-clear") {
+    recentPlaces = clearRecentPlaces();
+    render(); return;
   }
   if (action === "place-select") {
     if (placeSearchBusy || !rideTarget) return;

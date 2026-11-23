@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   --ink: #21282e;
   --ink-secondary: #3d4449;
   --muted: #626d75;
@@ -2093,3 +2093,80 @@ button, .button {
 .native-app-notice p { margin: 0 0 14px; color: #5d6b76; font-size: 16px; line-height: 1.65; word-break: keep-all; overflow-wrap: break-word; }
 .native-app-notice-actions { display: grid; gap: 10px; margin-top: 22px; }
 .native-app-notice-actions .button, .native-app-notice-actions button { box-sizing: border-box; width: 100%; min-height: 48px; margin: 0; font-size: 16px; }
+
+/* Place quick actions: copy label & open external map */
+.place-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.place-action-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  width: auto;
+  margin: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.place-action-chip:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eef2f6;
+    --ink-secondary: #cbd5e1;
+    --muted: #9aa7b6;
+    --line: #2a3441;
+    --paper: #161d26;
+    --bg: #0f141a;
+    --primary: #5b9bff;
+    --primary-hover: #7ab0ff;
+    --primary-light: #1a2a42;
+    --green: #5b9bff;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.55);
+  }
+  .topbar { background: rgba(15, 20, 26, 0.88); }
+  .tag:hover { background: #223552; }
+  .card, .pickup-place-card, .voice-composer-card, .push-card, .readiness-card, .native-app-notice {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  .native-app-notice p { color: var(--muted); }
+  input, textarea, select {
+    background: #10161e;
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  input::placeholder { color: #7c8a99; }
+  .quiet, button.quiet, a.button.quiet {
+    background: #1d2633;
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  .quiet:hover, button.quiet:hover, a.button.quiet:hover {
+    background: #253142;
+  }
+  .pickup-status-notice { background: #162235; border-color: var(--primary); }
+  .pickup-status-notice strong { color: #8cbcff; }
+  .pickup-status-notice.is-arrived { background: #172840; }
+  .pickup-status-notice.is-ended { background: #1a212b; border-color: #475569; }
+  .queue-summary, .app-release-note, .empty-state, .data-notice {
+    background: #18212d;
+    border-color: var(--line);
+    color: var(--ink-secondary);
+  }
+  .readiness-segmented-control { background: #10161e; border-color: var(--line); }
+  .readiness-seg-btn { color: var(--ink-secondary); }
+  .readiness-seg-btn.selected { color: #ffffff; }
+  .readiness-error { color: #f87171; }
+  .place-action-chip { background: #1d2633; border-color: var(--line); color: var(--ink); }
+  .place-action-chip:hover { background: var(--primary-light); color: var(--primary); }
+}

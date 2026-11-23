@@ -829,3 +829,94 @@ body { overflow-x: clip; }
 
 .pickup-place-tools { scroll-margin-top: 92px; }
 .voice-composer-card button, .voice-composer-card .quick-msg-input { min-height: 48px; }
+
+/* Recent places quick-pick chips */
+.recent-places { margin: 16px 0; }
+.recent-places-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.recent-places-title { font-size: 14px; font-weight: 700; color: var(--muted); }
+.recent-places-clear {
+  width: auto;
+  margin: 0;
+  padding: 4px 8px;
+  min-height: 32px;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.recent-places-clear:hover { color: var(--ink); text-decoration: underline; }
+.recent-places-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+.recent-place-item {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  overflow: hidden;
+  max-width: 100%;
+}
+.recent-place-chip {
+  width: auto;
+  margin: 0;
+  padding: 8px 10px 8px 14px;
+  min-height: 40px;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.recent-place-chip[aria-pressed="true"] {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+}
+.recent-place-remove {
+  width: 36px;
+  min-height: 40px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.recent-place-remove:hover { color: var(--ink); background: var(--bg); }
+
+@media (prefers-color-scheme: dark) {
+  .account-home:hover { background: #223552; }
+  .selected-meeting-place { background: #1a2a42; color: #dbeafe; }
+  .quick-chips button {
+    background: #1d2633;
+    border-color: var(--line);
+    color: var(--ink);
+  }
+  .quick-chips button:hover { background: #253142; border-color: #475569; }
+  .account-nav { background: var(--paper); border-color: var(--line); }
+  .account-nav.bottom-nav { background: rgba(22, 29, 38, 0.94); border-color: var(--line); }
+  .privacy-summary { background: #1a2a42; border-color: var(--line); color: var(--ink); }
+  .recent-place-item { background: #1d2633; border-color: var(--line); }
+  .recent-place-remove:hover { background: #253142; }
+}

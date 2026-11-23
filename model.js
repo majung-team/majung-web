@@ -284,3 +284,103 @@ export function guestPickupHeading(status, view, online) {
   if (view.kind !== "fresh") return "차량 정보가 잠시 끊겼어요";
   return "마중 차량이 오고 있어요";
 }
+
+export function validPlacePoint(place) {
+  const latitude = Number(place?.latitude);
+  const longitude = Number(place?.longitude);
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    Math.abs(latitude) <= 90 &&
+    Math.abs(longitude) <= 180 &&
+    (latitude !== 0 || longitude !== 0)
+  );
+}
+
+export function externalMapLinks(place) {
+  if (!validPlacePoint(place)) return null;
+  const label = String(place.label || "만날 장소").trim().slice(0, 120) || "만날 장소";
+  const lat = Number(place.latitude).toFixed(6);
+  const lng = Number(place.longitude).toFixed(6);
+  const encoded = encodeURIComponent(label);
+  return {
+    kakao: `https://map.kakao.com/link/to/${encoded},${lat},${lng}`,
+    naver: `https://map.naver.com/v5/search/${encoded}?c=${lng},${lat},16,0,0,0,dh`,
+  };
+}
+
+export function placeActionBar(place, { prefix = "", attributes = "" } = {}) {
+  const label = String(place?.label || "").trim();
+  const links = externalMapLinks(place);
+  if (!label && !links) return "";
+  return `<div class="place-actions" aria-label="만날 장소 바로가기">
+    ${label ? `<button type="button" class="place-action-chip" data-action="${prefix}copy-place" data-place-label="${escapeHtml(label)}" ${attributes}>장소 복사</button>` : ""}
+    ${links ? `<a class="place-action-chip" href="${escapeHtml(links.kakao)}" target="_blank" rel="noopener noreferrer">카카오맵</a><a class="place-action-chip" href="${escapeHtml(links.naver)}" target="_blank" rel="noopener noreferrer">네이버 지도</a>` : ""}
+  </div>`;
+}
+
+export const RECENT_PLACES_KEY = "majung.recent.places.v1";
+export const RECENT_PLACES_MAX = 5;
+
+export function loadRecentPlaces(storage = globalThis.localStorage) {
+  try {
+    const parsed = JSON.parse(storage?.getItem?.(RECENT_PLACES_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item && typeof item.label === "string" && item.label.trim() && validPlacePoint(item))
+      .map((item) => ({
+        label: item.label.trim().slice(0, 120),
+        address: typeof item.address === "string" ? item.address.trim().slice(0, 200) : "",
+        latitude: Number(item.latitude),
+        longitude: Number(item.longitude),
+      }))
+      .slice(0, RECENT_PLACES_MAX);
+  } catch {
+    return [];
+  }
+}
+
+export function saveRecentPlace(place, storage = globalThis.localStorage) {
+  const label = String(place?.label || "").trim().slice(0, 120);
+  if (!label || !validPlacePoint(place)) return loadRecentPlaces(storage);
+  const entry = {
+    label,
+    address: typeof place.address === "string" ? place.address.trim().slice(0, 200) : "",
+    latitude: Number(place.latitude),
+    longitude: Number(place.longitude),
+  };
+  const existing = loadRecentPlaces(storage).filter(
+    (item) =>
+      item.label !== entry.label &&
+      !(Math.abs(item.latitude - entry.latitude) < 1e-4 && Math.abs(item.longitude - entry.longitude) < 1e-4),
+  );
+  const next = [entry, ...existing].slice(0, RECENT_PLACES_MAX);
+  try {
+    storage?.setItem?.(RECENT_PLACES_KEY, JSON.stringify(next));
+  } catch {
+    /* Storage may be blocked in private browsing; keep in-memory UX unaffected. */
+  }
+  return next;
+}
+
+export function removeRecentPlace(index, storage = globalThis.localStorage) {
+  const current = loadRecentPlaces(storage);
+  if (!Number.isInteger(index) || index < 0 || index >= current.length) return current;
+  const next = current.filter((_, i) => i !== index);
+  try {
+    if (next.length) storage?.setItem?.(RECENT_PLACES_KEY, JSON.stringify(next));
+    else storage?.removeItem?.(RECENT_PLACES_KEY);
+  } catch {
+    /* Ignore storage errors. */
+  }
+  return next;
+}
+
+export function clearRecentPlaces(storage = globalThis.localStorage) {
+  try {
+    storage?.removeItem?.(RECENT_PLACES_KEY);
+  } catch {
+    /* Ignore storage errors. */
+  }
+  return [];
+}

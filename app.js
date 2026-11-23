@@ -1,8 +1,14 @@
-import { existingArrivalSubscription } from "./push.js";
-import { guestPickupHeading, pickupEtaLabel, pickupStatusNotice, vehicleFreshnessText, quickMessageSavedText, readinessControl, quickMessageControl, beginReadinessSend } from "./model.js";
 import { openPickupStream } from "./stream.js";
 import { request, ApiError } from "./api.js";
 import {
+  guestPickupHeading,
+  pickupEtaLabel,
+  pickupStatusNotice,
+  vehicleFreshnessText,
+  quickMessageSavedText,
+  readinessControl,
+  quickMessageControl,
+  beginReadinessSend,
   parseInvitation,
   nativeInvitationUrl,
   supportsIOSApp,
@@ -17,15 +23,16 @@ import {
   vehicleForPlace,
   ageText,
   terminalStatuses,
+  placeActionBar,
   escapeHtml as e,
 } from "./model.js";
 import {
+  existingArrivalSubscription,
   browserPushEnvironment,
   pushState,
   pushCard,
   pushErrorText,
   enableArrivalPush,
-  disableBrowserPush,
   pushFlag,
   setPushFlag,
 } from "./push.js";
@@ -186,7 +193,6 @@ function forgetSession() {
   timing = null;
   pendingReadiness = null;
   picking = false;
-  activeTabModal = null;
   proposalPanel.reset();
   online = false;
   manualLink = false;
@@ -386,8 +392,6 @@ async function toggleArrivalPush(turnOn) {
   }
 }
 
-let activeTabModal = null; // null | "voice" | "proposal" | "push" | "info"
-
 function guest() {
   const status = snapshot.status;
   if (["WAITING_APPROVAL", "INVITE_EXPIRED"].includes(status))
@@ -433,6 +437,7 @@ function guest() {
         <span class="place-card-badge">만날 약속 장소</span>
         <strong class="place-card-name">📍 ${e(snapshot.place?.label || "장소 확인 중")}</strong>
       </div>
+      ${placeActionBar(snapshot.place)}
       ${proposal ? `<div class="pickup-place-proposal">${proposal}</div>` : ""}
     </div>
 
@@ -452,9 +457,7 @@ function guest() {
 
     <!-- 6. Footer Info Links -->
     <div class="pickup-footer-links">
-      <a href="https://majung.cloud/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>
-      <span class="footer-divider">·</span>
-      <a href="/privacy" target="_blank" rel="noopener noreferrer">위치 공유 안내</a>
+      <a href="/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침 · 위치 공유 안내</a>
     </div>
   </section>`;
 }
@@ -610,7 +613,7 @@ async function refresh() {
 
       // 1. Vehicle Arrival Detection
       if (prevSnapshot.status !== "ARRIVED" && data.status === "ARRIVED") {
-        showToast("차량이 차량이 도착했어요!", "arrival", 7000);
+        showToast("차량이 도착했어요!", "arrival", 7000);
         if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
           try { navigator.vibrate([200, 100, 200, 100, 300]); } catch (_) {}
         }
@@ -651,14 +654,16 @@ async function refresh() {
           online,
           data.status,
         );
+        const placeVersion = data.placeVersion ?? 1;
         if (
           data.status === "ACTIVE" &&
           currentView &&
           currentView.remainingSeconds > 0 &&
           currentView.remainingSeconds <= 60 &&
-          !currentSession.imminentAlerted
+          currentSession.imminentAlertedVersion !== placeVersion
         ) {
-          currentSession.imminentAlerted = true;
+          currentSession.imminentAlertedVersion = placeVersion;
+          storeSession();
           showToast("차량이 곧 도착해요! 만날 준비를 해주세요.", "info", 4500);
           if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
             try { navigator.vibrate([100, 60, 100]); } catch (_) {}
@@ -863,17 +868,6 @@ root.addEventListener("click", async (event) => {
   const target = event.target.closest("[data-action]");
   if (!target || busy || target.disabled) return;
   const action = target.dataset.action;
-  if (action === "toggle-tab") {
-    const tab = target.dataset.tab;
-    activeTabModal = activeTabModal === tab ? null : tab;
-    render();
-    return;
-  }
-  if (action === "close-tab-modal") {
-    activeTabModal = null;
-    render();
-    return;
-  }
   if (action === "push-on" || action === "push-off") {
     await toggleArrivalPush(action === "push-on");
     return;
@@ -933,6 +927,19 @@ root.addEventListener("click", async (event) => {
         manualLink = true;
         notice = "아래 링크를 직접 복사해주세요.";
       }
+    }
+    render();
+    return;
+  }
+  if (action === "copy-place") {
+    const label = target.dataset.placeLabel || snapshot?.place?.label || "";
+    if (!label) return;
+    try {
+      await navigator.clipboard.writeText(label);
+      notice = "만날 장소를 복사했어요.";
+      showToast("만날 장소를 복사했어요.", "success", 2800);
+    } catch {
+      notice = "장소를 자동으로 복사하지 못했어요. 화면에서 직접 복사해주세요.";
     }
     render();
     return;
@@ -1017,7 +1024,9 @@ document.addEventListener("visibilitychange", () => {
   vehicle = null;
   deadline = 0;
   timing = null;
+  syncPickupStream();
   if (!document.hidden) {
+    streamRefreshPending = true;
     render();
     void refresh();
   }
@@ -1087,7 +1096,6 @@ window.addEventListener("pageshow", event => {
   render();
   void refresh();
 });
-document.addEventListener("visibilitychange",()=>{syncPickupStream();if(!document.hidden)streamRefreshPending=true;});
 
 if (globalThis.navigator?.serviceWorker?.addEventListener) navigator.serviceWorker.addEventListener('message', event => {
   if (event.data?.type==='MAJUNG_PICKUP_REFRESH') { lastSafetyRefresh=0; void refresh(); }

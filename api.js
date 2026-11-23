@@ -22,7 +22,17 @@ export async function request(path, { method = "GET", token, body } = {}) {
     referrerPolicy: "no-referrer",
     signal: AbortSignal.timeout(8000),
   });
-  const data = await response.json();
+  let data = null;
+  if (response.status !== 204) {
+    try {
+      data = await response.json();
+    } catch {
+      throw new ApiError(response.status, {
+        code: "INVALID_RESPONSE",
+        message: "응답을 확인하지 못했어요. 잠시 후 다시 시도해주세요.",
+      });
+    }
+  }
   if (!response.ok) throw new ApiError(response.status, data);
   return data;
 }
